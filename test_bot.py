@@ -12,9 +12,28 @@ import os
 import json
 import random
 import re
+import time
 
 from playwright.sync_api import sync_playwright
 from google.genai import types
+from google.genai import errors as genai_errors
+
+
+def gemini_cagir(client, model, contents):
+    """Gemini çağrısı; geçici sunucu yoğunluğunda (503/429) bekleyip yeniden dener."""
+    son_hata = None
+    for bekleme in (0, 30, 90):
+        if bekleme:
+            print(f"⏳ Gemini yoğun, {bekleme} sn bekleyip yeniden denenecek...")
+            time.sleep(bekleme)
+        try:
+            return client.models.generate_content(model=model, contents=contents)
+        except (genai_errors.ServerError, genai_errors.ClientError) as e:
+            kod = getattr(e, "status_code", None) or getattr(e, "code", None)
+            if kod not in (429, 500, 503):
+                raise  # Kalıcı hata (yanlış anahtar vb.) -> bekleme, direkt yüksel
+            son_hata = e
+    raise son_hata
 
 
 def _durum_oku(page):
@@ -115,7 +134,7 @@ def oyunu_test_et(html_yolu, client, model):
             '{"puan": 1-10 arasi tam sayi, "yorum": "1-2 cümlelik Türkçe oyuncu yorumu", '
             '"sorunlar": ["varsa sorun listesi"]}'
         )
-        cevap = client.models.generate_content(model=model, contents=icerik)
+        cevap = gemini_cagir(client, model, icerik)
         api_cagrisi += 1
         metin = re.sub(r"^```json\s*|^```\s*|```$", "", cevap.text.strip(),
                        flags=re.MULTILINE).strip()
