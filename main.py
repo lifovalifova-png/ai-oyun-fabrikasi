@@ -22,7 +22,7 @@ from github import Github, Auth
 from github.GithubException import GithubException
 from google import genai
 
-from test_bot import oyunu_test_et
+from test_bot import oyunu_test_et, gemini_cagir
 
 # ================== AYARLAR ==================
 SHEET_ADI = "AI Uygulama Fabrikası"   # Google Sheets dosya adı
@@ -108,7 +108,7 @@ def kod_uret_ve_test_et(fikir, client):
 Önceki denemelerde alınan hatalar (varsa düzelt): {hata_gecmisi if hata_gecmisi else "Yok"}
 {KOD_KURALLARI}"""
 
-        cevap = client.models.generate_content(model=MODEL, contents=kod_prompt)
+        cevap = gemini_cagir(client, MODEL, kod_prompt)
         api_cagrisi += 1
 
         kod = cevap.text.strip()
@@ -128,7 +128,7 @@ Kusursuzsa Türkçe karakter KULLANMADAN SADECE "TEMIZ" yaz. Hata varsa hatayı 
 Kod:
 {kod}"""
 
-        cevap_qa = client.models.generate_content(model=MODEL, contents=qa_prompt)
+        cevap_qa = gemini_cagir(client, MODEL, qa_prompt)
         api_cagrisi += 1
         qa = cevap_qa.text.strip()
 
