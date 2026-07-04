@@ -1,0 +1,35 @@
+name: AI Oyun Fabrikasi
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # Her gün 09:00 UTC (TR saati 12:00)
+  workflow_dispatch:        # Manuel tetikleme butonu
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # KRİTİK: Repo (eski oyunlar + manifest) önce makineye iner
+      - name: Repoyu Checkout Yap
+        uses: actions/checkout@v4
+
+      - name: Python Ortamini Kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Kutuphaneleri Yukle
+        run: |
+          pip install google-genai gspread oauth2client PyGithub playwright
+          playwright install chromium --with-deps
+
+      - name: Credentials JSON Olustur
+        env:
+          GCP_CREDENTIALS_B64: ${{ secrets.GCP_CREDENTIALS_B64 }}
+        run: echo "$GCP_CREDENTIALS_B64" | base64 -d > credentials.json
+
+      - name: Fabrikayi Baslat
+        env:
+          GITHUB_PAT: ${{ secrets.PAT_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python main.py
