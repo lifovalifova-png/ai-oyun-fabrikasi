@@ -20,14 +20,17 @@ from google.genai import errors as genai_errors
 
 
 def gemini_cagir(client, model, contents):
-    """Gemini çağrısı; geçici sunucu yoğunluğunda (503/429) bekleyip yeniden dener."""
+    """Gemini çağrısı; geçici yoğunlukta (503/429) VEYA boş yanıtta bekleyip yeniden dener."""
     son_hata = None
-    for bekleme in (0, 30, 90):
+    for bekleme in (0, 30, 90, 180):
         if bekleme:
-            print(f"⏳ Gemini yoğun, {bekleme} sn bekleyip yeniden denenecek...")
+            print(f"⏳ Gemini yanıt veremedi, {bekleme} sn bekleyip yeniden denenecek...")
             time.sleep(bekleme)
         try:
-            return client.models.generate_content(model=model, contents=contents)
+            cevap = client.models.generate_content(model=model, contents=contents)
+            if cevap.text:  # Dolu yanıt geldiyse başarı
+                return cevap
+            son_hata = ValueError("Gemini boş yanıt döndürdü (yoğunluk/kesinti).")
         except (genai_errors.ServerError, genai_errors.ClientError) as e:
             kod = getattr(e, "status_code", None) or getattr(e, "code", None)
             if kod not in (429, 500, 503):
