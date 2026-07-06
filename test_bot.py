@@ -46,7 +46,7 @@ def _durum_oku(page):
         return None
 
 
-def oyunu_test_et(html_yolu, client, model):
+def oyunu_test_et(html_yolu, client, model, fikir=""):
     sorunlar = []
     hatalar = []
     ekranlar = []
@@ -130,9 +130,12 @@ def oyunu_test_et(html_yolu, client, model):
         icerik = [types.Part.from_bytes(data=e, mime_type="image/png") for e in ekranlar]
         icerik.append(
             "Sen titiz bir oyun test kullanıcısısın. İlk görsel oyunun menüsü, "
-            "ikincisi oyun ortası ekranı. Şunları değerlendir: yazılar Türkçe ve "
-            "okunaklı mı, arayüz taşıyor/üst üste biniyor mu, oyun görsel olarak "
-            "anlaşılır mı, ekranda gerçekten oyun oynanıyor gibi görünüyor mu? "
+            "ikincisi oyun ortası ekranı olmalı. Oyunun konsepti şu: \"" + fikir + "\". "
+            "Şunları değerlendir: (1) İkinci görselde GERÇEKTEN oynanan bir oyun mu var "
+            "(kuleler, düşmanlar, yol) yoksa hala menü/boş ekran mı? Oyun ekranı yoksa "
+            "puan EN FAZLA 4 olabilir. (2) Görseller konseptteki temayı yansıtıyor mu "
+            "(korsan oyununda deniz/gemi, uzayda yıldız/metal gibi)? Tema hiç yansımıyorsa "
+            "puan EN FAZLA 5 olabilir. (3) Yazılar Türkçe ve okunaklı mı, arayüz taşıyor mu? "
             'SADECE şu JSON ile cevap ver, başka hiçbir şey yazma: '
             '{"puan": 1-10 arasi tam sayi, "yorum": "1-2 cümlelik Türkçe oyuncu yorumu", '
             '"sorunlar": ["varsa sorun listesi"]}'
@@ -151,8 +154,9 @@ def oyunu_test_et(html_yolu, client, model):
     # --- KARAR ---
     kritik_var = any("konsol" in s.lower() or "çok zor" in s.lower()
                      or "can azalmadı" in s.lower() or "menu" in s.lower()
+                     or "menü" in s.lower()
                      for s in sorunlar)
-    gecti = (not kritik_var) and puan >= 6
+    gecti = (not kritik_var) and puan >= 7
 
     return {"gecti": gecti, "puan": puan, "yorum": yorum,
             "sorunlar": sorunlar, "api_cagrisi": api_cagrisi}
