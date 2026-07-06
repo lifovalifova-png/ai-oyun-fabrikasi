@@ -44,8 +44,9 @@ def slugify(text):
 
 
 def fikirden_baslik(fikir):
-    """Tek cümlelik fikirden kısa oyun adı türetir (ilk 5 kelime)."""
-    return " ".join(fikir.replace(";", " ").split()[:5]).rstrip(".,")
+    """Fikrin ';' öncesindeki tema kısmını oyun adı yapar (kırpık kelime olmaz)."""
+    baslik = fikir.split(";")[0].strip().rstrip(".,")
+    return baslik[:60]
 
 
 def analytics_ekle(html):
@@ -84,9 +85,11 @@ STRATEJİK VE KRİTİK KURALLAR:
 6. KOORDİNAT: Tıklama/dokunma konumları canvas.getBoundingClientRect() ile canvas'ın gerçek boyutuna oranlanacak. Canvas responsive olacak.
 7. DİL: Tüm oyun içi metinler Türkçe olacak.
 8. GÖRSEL KİMLİK (ÇOK ÖNEMLİ - basit şekiller YASAK):
-   - Temaya özel 5-6 renklik hex paleti tanımla (örn. ortaçağ: taş grisi, çimen yeşili, meşale turuncusu; uzay: lacivert, neon mavi, mor).
-   - HER karakter (düşman, kule) en az 3-4 geometrik şeklin BİRLEŞİMİYLE çizilecek: örn. ortaçağ kulesi = taş gövde dikdörtgeni + mazgal dişleri + çatı üçgeni + pencere; düşman = gövde + kafa + gözler + yürüme animasyonu. Tek renkli tek kare/daire KESİNLİKLE YASAK.
-   - Arka plan sahne gibi tasarlanacak: gradient gökyüzü + temaya uygun dekor öğeleri (dağlar, yıldızlar, ağaçlar, kum tepeleri) + yol/patika belirgin dokulu çizilecek.
+   - TEMA HER YERDE HİSSEDİLECEK: Arka plan, düşmanlar, kuleler ve yol, fikirdeki temaya özgü öğelerle tasarlanacak. Örn. korsan teması: deniz dokusu, ahşap güverte yolu, yelkenli düşmanlar, palmiyeler; ortaçağ: taş surlar, bayraklar, meşaleler; uzay: yıldızlı boşluk, metalik panel zemin, neon ışıklar. Temadan bağımsız jenerik kare/daire kullanımı REDDEDİLİR.
+   - Oyunun adı canvas üzerinde menüde ve oyun sırasında üst köşede görünecek.
+   - Temaya özel 5-6 renklik hex paleti tanımla ve sadece onu kullan.
+   - HER karakter (düşman, kule) en az 3-4 geometrik şeklin BİRLEŞİMİYLE çizilecek: örn. korsan gemisi düşmanı = gövde + yelken + direk + bayrak; kule = gövde + namlu + detay. Tek renkli tek kare/daire KESİNLİKLE YASAK.
+   - Arka plan sahne gibi tasarlanacak: gradient gökyüzü + temaya uygun dekor öğeleri + yol/patika belirgin dokulu çizilecek.
    - Efektler: düşman ölümünde 8-12 parçacıklı patlama, mermilerde iz (trail), kule ateşlerken namlu parlaması, hasar alınca sayı uçuşması (floating damage text), BOSS'larda can barı.
    - Animasyon: düşmanlar yürüme/salınım animasyonlu, kuleler hedefe dönerek ateş eder, ctx.shadowBlur ile parlama/derinlik kullanılır.
 9. DENGE: Dalga N'deki toplam düşman canı, mevcut kule gücüyle 20-30 saniyede eritilebilecek ve her dalgada %25-30 artacak şekilde formüle edilecek. Öldürülen düşman altın verir, altın ekonomisi yeni kule/yükseltme alımına yetecek şekilde dengelenir.
@@ -141,7 +144,7 @@ Kod:
             with open(test_yolu, "w", encoding="utf-8") as f:
                 f.write(kod)
 
-            rapor = oyunu_test_et(test_yolu, client, MODEL)
+            rapor = oyunu_test_et(test_yolu, client, MODEL, fikir)
             api_cagrisi += rapor["api_cagrisi"]
 
             if rapor["gecti"]:
