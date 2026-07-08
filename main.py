@@ -30,7 +30,7 @@ LOG_SEKMESI = "Loglar"                # Log sekmesi (A:Tarih B:Oyun C:API D:Duru
 HAVUZ_SEKMESI = "FikirHavuzu"         # Fikir havuzu (A:Fikir B:Durum)
 REPO_ADI = "ai-oyun-fabrikasi"        # GitHub repo adı
 MODEL = "gemini-2.5-flash"
-MAX_DENEME = 3
+MAX_DENEME = 5
 ANALYTICS_ID = "G-XXXXXXXXXX"         # Google Analytics 4 Ölçüm Kimliği (kurulumda değiştir)
 
 
