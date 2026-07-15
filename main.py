@@ -30,7 +30,7 @@ LOG_SEKMESI = "Loglar"                # Log sekmesi (A:Tarih B:Oyun C:API D:Duru
 HAVUZ_SEKMESI = "FikirHavuzu"         # Fikir havuzu (A:Fikir B:Durum)
 REPO_ADI = "ai-oyun-fabrikasi"        # GitHub repo adı
 MODEL = "gemini-2.5-flash"
-MAX_DENEME = 5
+MAX_DENEME = 4
 ANALYTICS_ID = "G-XXXXXXXXXX"         # Google Analytics 4 Ölçüm Kimliği (kurulumda değiştir)
 
 
@@ -94,15 +94,16 @@ STRATEJİK VE KRİTİK KURALLAR:
    - Animasyon: düşmanlar yürüme/salınım animasyonlu, kuleler hedefe dönerek ateş eder, ctx.shadowBlur ile parlama/derinlik kullanılır.
 9. DENGE: Dalga N'deki toplam düşman canı, mevcut kule gücüyle 20-30 saniyede eritilebilecek ve her dalgada %25-30 artacak şekilde formüle edilecek. Öldürülen düşman altın verir, altın ekonomisi yeni kule/yükseltme alımına yetecek şekilde dengelenir.
 10. LİMİT: Kod 1200 satırı GEÇMEYECEK ama görsel detay ve oyun derinliği için bu alanı sonuna kadar KULLAN. ÇIKTI: Sadece saf kod; <!DOCTYPE html> ile başla, KESİNLİKLE </html> ile bitir. Markdown kullanma.
-11. TEST ARAYÜZÜ: Global bir window.OYUN_DURUMU objesi tut ve her karede güncelle: {asama: "menu"|"oyunda"|"kazandi"|"kaybetti", dalga: sayı, can: sayı, skor: sayı}. Başlat butonuna id="baslaBtn" ver.
+11. TEST ARAYÜZÜ: Global bir window.OYUN_DURUMU objesi tut ve her karede güncelle: {asama: "menu"|"oyunda"|"kazandi"|"kaybetti", dalga: sayı, can: sayı, skor: sayı}. Başlat butonuna id="baslaBtn" ver. Kule seçim panelindeki HER kule satın alma butonuna class="kule-btn" ver ve ilk kule tipi, başlangıç altınıyla satın alınabilir olsun.
 """
 
 
 def kod_uret_ve_test_et(fikir, client):
-    """Oyunu üretir, truncation + LLM QA kontrolü yapar.
-    Döner: (kod veya None, api_cagri_sayisi)"""
+    """Oyunu üretir, truncation + LLM QA + robot oyuncu kontrolü yapar.
+    Döner: (kod veya None, api_cagri_sayisi, rapor veya hata özeti metni)"""
     hata_gecmisi = ""
     api_cagrisi = 0
+    deneme_ozetleri = []
 
     for deneme in range(1, MAX_DENEME + 1):
         print(f"🛠️ Üretim/Test döngüsü: {deneme}/{MAX_DENEME}")
@@ -120,6 +121,7 @@ def kod_uret_ve_test_et(fikir, client):
         # TEST A: Truncation
         if not kod.endswith("</html>"):
             print("❌ TEST A: Kod </html> ile bitmiyor.")
+            deneme_ozetleri.append(f"D{deneme}:TRUNCATION")
             hata_gecmisi += "\n- Kod yarıda kesildi; daha kısa ve öz yaz, </html> ile bitir."
             continue
 
@@ -154,15 +156,18 @@ Kod:
             print(f"❌ TEST C: Robot oyuncu reddetti (Puan: {rapor['puan']}/10)")
             for s in rapor["sorunlar"][:5]:
                 print(f"   - {s}")
+            ilk_sorun = rapor["sorunlar"][0][:60] if rapor["sorunlar"] else "?"
+            deneme_ozetleri.append(f"D{deneme}:ROBOT(p{rapor['puan']}) {ilk_sorun}")
             hata_gecmisi += "\n- Test oyuncusunun bulduğu sorunlar (düzelt): " \
                             + "; ".join(rapor["sorunlar"][:5])
             continue
 
         print(f"❌ QA hatası bulundu:\n{qa[:300]}")
+        deneme_ozetleri.append(f"D{deneme}:QA {qa[:60]}")
         hata_gecmisi += f"\n- QA hatası: {qa}"
 
     print("🚨 Maksimum deneme aşıldı, geçerli kod üretilemedi.")
-    return None, api_cagrisi, None
+    return None, api_cagrisi, " | ".join(deneme_ozetleri)
 
 
 # ================== KAYIT + GALERİ ==================
@@ -311,8 +316,8 @@ def main():
         # 2. Üret + test et (QA + robot oyuncu)
         kod, api_cagrisi, rapor = kod_uret_ve_test_et(fikir, client)
         if kod is None:
-            log_yaz(log_sekmesi, oyun_adi, api_cagrisi, "FAILED",
-                    "3 denemede testleri geçen kod üretilemedi")
+            sebep = rapor if isinstance(rapor, str) else "Sebep kaydedilemedi"
+            log_yaz(log_sekmesi, oyun_adi, api_cagrisi, "FAILED", sebep[:250])
             return
 
         # 3. Kaydet + galeri + push
