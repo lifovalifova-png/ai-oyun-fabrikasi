@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ay Ussu Savunmasi</title>
+    <!-- Tailwind CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* General body styling for full-screen game */
+        body { margin: 0; overflow: hidden; background-color: #1A1A2E; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        /* Game container to center and scale the canvas */
+        #gameContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+            background-color: #1A1A2E;
+        }
+        /* Canvas styling for responsiveness and visual flair */
+        canvas {
+            background-color: #1A1A2E; /* Fallback */
+            display: block;
+            border: 2px solid #537FE7;
+            box-shadow: 0 0 20px #537FE7; /* Glow effect */
+            /* Custom cursor for default state */
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="4" fill="%23FCF8E8" stroke="%23537FE7" stroke-width="2"/></svg>') 16 16, auto;
+        }
+        /* UI Panel common styling */
+        .ui-panel {
+            background-color: rgba(15, 52, 96, 0.85); /* Dark Lunar Surface with transparency */
+            border: 1px solid #537FE7;
+            box-shadow: 0 0 10px rgba(83, 127, 231, 0.7); /* Plasma Blue glow */
+            color: #FCF8E8;
+        }
+        /* UI Button common styling */
+        .ui-btn {
+            background-color: #537FE7;
+            color: #FCF8E8;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-radius: 6px;
+        }
+        .ui-btn:hover {
+            background-color: #1A1A2E; /* Deep Space on hover */
+            transform: translateY(-2px);
+        }
+        .ui-btn:active {
+            transform: translateY(0);
+        }
+        .ui-btn:disabled {
+            background-color: #0F3460; /* Darker lunar for disabled */
+            color: #2A2A5E; /* Metallic Grey for disabled text */
+            cursor: not-allowed;
+            transform: none;
+        }
+        /* Tooltip styling */
+        #tooltip {
+            position: absolute;
+            background-color: rgba(15, 52, 96, 0.95);
+            border: 1px solid #537FE7;
+            color: #FCF8E8;
+            padding: 10px;
+            font-size: 0.9rem;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 0 8px rgba(83, 127, 231, 0.8);
+            border-radius: 4px;
+            max-width: 200px;
+            line-height: 1.4;
+        }
+        #tooltip h4 { margin-bottom: 5px; color: #FFD700; } /* Gold title for tooltip */
+        #tooltip p { margin-bottom: 3px; }
+    </style>
+</head>
+<body>
+    <div id="gameContainer" class="relative">
+        <canvas id="gameCanvas" class="max-w-full max-h-full"></canvas>
+
+        <!-- Main Menu / Game Over Screen -->
+        <div id="menuPanel" class="absolute inset-0 flex flex-col items-center justify-center bg-opacity-80 bg-gray-900 z-10 hidden">
+            <h1 id="menuTitle" class="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-600 mb-8 tracking-wider" style="text-shadow: 0 0 15px #537FE7;">Ay Ussu Savunmasi</h1>
+            <p id="menuMessage" class="text-xl text-white mb-6 text-center"></p>
+            <button id="baslaBtn" class="ui-btn text-2xl px-12 py-4 rounded-lg">OYUNA BASLA</button>
+        </div>
+
+        <!-- In-Game UI (Always visible when playing) -->
+        <div id="gameUI" class="absolute top-0 left-0 w-full p-4 flex justify-between items-center text-white text-lg font-bold z-20 hidden">
+            <div class="flex flex-col items-start ui-panel p-3 rounded-lg">
+                <span>Can: <span id="healthDisplay">10</span></span>
+                <span>Skor: <span id="scoreDisplay">0</span></span>
+            </div>
+            <div class="flex flex-col items-center ui-panel p-3 rounded-lg">
+                <span>Dalga: <span id="waveDisplay">1</span></span>
+                <span>Altin: <span id="goldDisplay" class="text-yellow-400">100</span></span>
+            </div>
+            <div id="waveTimerDisplay" class="ui-panel p-3 rounded-lg text-yellow-300">Hazirlan: 5s</div>
+        </div>
+
+        <!-- Tower Selection Panel -->
+        <div id="towerSelectionPanel" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4 p-4 rounded-lg ui-panel z-20 hidden">
+            <!-- Tower buttons will be injected here by JavaScript -->
+        </div>
+
+        <!-- Tower Info/Upgrade Panel -->
+        <div id="towerInfoPanel" class="absolute bottom-4 right-4 p-4 rounded-lg ui-panel flex flex-col gap-3 z-20 hidden">
+            <h3 class="text-xl text-white font-bold" id="selectedTowerName"></h3>
+            <div class="text-sm text-gray-300 flex flex-col gap-1" id="selectedTowerStats"></div>
+            <button id="upgradeTowerBtn" class="ui-btn text-sm rounded">Yukselt (<span id="upgradeCost"></span>)</button>
+            <button id="sellTowerBtn" class="ui-btn text-sm rounded">Sat (<span id="sellAmount"></span>)</button>
+        </div>
+
+        <div id="tooltip" class="rounded"></div>
+    </div>
+
+    <script>
+        // Global Game State for testing and external access (as per requirements)
+        window.OYUN_DURUMU = {
+            asama: "menu",
+            dalga: 0,
+            can: 0,
+            skor: 0
+        };
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('gameContainer');
+
+        // References to UI elements for easy access
+        const menuPanel = document.getElementById('menuPanel');
+        const menuTitle = document.getElementById('menuTitle');
+        const menuMessage = document.getElementById('menuMessage');
+        const baslaBtn = document.getElementById('baslaBtn');
+        const gameUI = document.getElementById('gameUI');
+        const healthDisplay = document.getElementById('healthDisplay');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const waveDisplay = document.getElementById('waveDisplay');
+        const goldDisplay = document.getElementById('goldDisplay');
+        const waveTimerDisplay = document.getElementById('waveTimerDisplay');
+        const towerSelectionPanel = document.getElementById('towerSelectionPanel');
+        const towerInfoPanel = document.getElementById('towerInfoPanel');
+        const selectedTowerName = document.getElementById('selectedTowerName');
+        const selectedTowerStats = document.getElementById('selectedTowerStats');
+        const upgradeTowerBtn = document.getElementById('upgradeTowerBtn');
+        const sellTowerBtn = document.getElementById('sellTowerBtn');
+        const upgradeCostSpan = document.getElementById('upgradeCost');
+        const sellAmountSpan = document.getElementById('sellAmount');
+        const tooltip = document.getElementById('tooltip');
+
+        // Game Configuration Constants
+        const GAME_WIDTH = 1280;
+        const GAME_HEIGHT = 720;
+        const BASE_HEALTH = 10;
+        const START_GOLD = 150;
+        const WAVE_PREP_TIME = 5000; // 5 seconds in milliseconds
+        const GRAVITY = 0.00003; // Low gravity constant for projectiles (pixels/ms^2)
+
+        // Themed Color Palette (Hex values)
+        const COLORS = {
+            DEEP_SPACE: '#1A1A2E',      // Dark blue for space background
+            DARK_LUNAR: '#0F3460',      // Darker blue/grey for moon surface, shadows
+            ENERGY_RED: '#E94560',      // Vibrant red for enemy accents, damage, plasma
+            MOON_DUST: '#FCF8E8',       // Off-white for moon ground, highlights, laser
+            PLASMA_BLUE: '#537FE7',     // Bright blue for plasma, shields, glow
+            METALLIC_GREY: '#2A2A5E',   // Dark grey for structures, tower bodies
+            GOLD: '#FFD700',            // Gold for currency, special effects
+            CRATER_RIM: '#4F4F6A'       // Medium grey for crater outlines, specific details
+        };
+
+        // Game loop variables
+        let lastTime = 0;
+        let deltaTime = 0;
+        let game; // Main game instance - Will be assigned in initGame
+
+        // Path Definition for enemies (array of waypoints)
+        const path = [
+            { x: -50, y: GAME_HEIGHT / 2 - 50 }, // Start off-screen left
+            { x: 150, y: GAME_HEIGHT / 2 - 50 },
+            { x: 250, y: GAME_HEIGHT / 2 + 50 },
+            { x: 400, y: GAME_HEIGHT / 2 + 50 },
+            { x: 500, y: GAME_HEIGHT / 2 - 100 },
+            { x: 650, y: GAME_HEIGHT / 2 - 100 },
+            { x: 750, y: GAME_HEIGHT / 2 + 0 },
+            { x: 900, y: GAME_HEIGHT / 2 + 0 },
+            { x: 1000, y: GAME_HEIGHT / 2 - 120 },
+            { x: 1150, y: GAME_HEIGHT / 2 - 120 },
+            { x: GAME_WIDTH + 50, y: GAME_HEIGHT / 2 - 120 } // End off-screen right
+        ];
+        const BASE_POS = { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 2 - 100 }; // Player base location
+
+        // --- Utility Functions ---
+        // Converts mouse/touch coordinates to canvas coordinates, handling responsiveness
+        function getCanvasMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+            return {
+                x: (clientX - rect.left) / rect.width * GAME_WIDTH,
+                y: (clientY - rect.top) / rect.height * GAME_HEIGHT
+            };
+        }
+
+        // Calculates Euclidean distance between two points
+        function distance(p1, p2) {
+            return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+        }
+
+        // --- Drawing Helper Functions (for themed graphics) ---
+        // Draws a circle
+        function drawCircle(x, y, radius, color, shadow = false) {
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            if (shadow) {
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 10;
+            }
+            ctx.fill();
+            if (shadow) { ctx.shadowBlur = 0; }
+        }
+
+        // Draws a rectangle
+        function drawRect(x, y, width, height, color, shadow = false) {
+            ctx.fillStyle = color;
+            if (shadow) {
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 10;
+            }
+            ctx.fillRect(x, y, width, height);
+            if (shadow) { ctx.shadowBlur = 0; }
+        }
+
+        // Draws a rounded rectangle
+        function drawRoundedRect(x, y, width, height, radius, color, shadow = false) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fillStyle = color;
+            if (shadow) {
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 10;
+            }
+            ctx.fill();
+            if (shadow) { ctx.shadowBlur = 0; }
+        }
+
+        // --- Game Classes ---
+
+        class Path {
+            constructor(waypoints) {
+                this.waypoints = waypoints;
+            }
+
+            draw() {
+                // Main path (Moon Dust)
+                ctx.beginPath();
+                ctx.moveTo(this.waypoints[0].x, this.waypoints[0].y);
+                for (let i = 1; i < this.waypoints.length; i++) {
+                    ctx.lineTo(this.waypoints[i].x, this.waypoints[i].y);
+                }
+                ctx.strokeStyle = COLORS.MOON_DUST;
+                ctx.lineWidth = 30;
+                ctx.shadowColor = COLORS.DARK_LUNAR;
+                ctx.shadowBlur = 10;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Path texture/cracks (Dark Lunar)
+                ctx.strokeStyle = COLORS.DARK_LUNAR;
+                ctx.lineWidth = 3;
+                for (let i = 0; i < this.waypoints.length - 1; i++) {
+                    const p1 = this.waypoints[i];
+                    const p2 = this.waypoints[i + 1];
+                    // Draw random cracks along the path segments
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x + (Math.random() - 0.5) * 10, p1.y + (Math.random() - 0.5) * 10);
+                    ctx.lineTo(p2.x + (Math.random() - 0.5) * 10, p2.y + (Math.random() - 0.5) * 10);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color, vx, vy, life) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.vx = vx;
+                this.vy = vy;
+                this.life = life; // Milliseconds
+                this.maxLife = life;
+                this.radius = 2 + Math.random() * 3;
+            }
+
+            update(deltaTime) {
+                this.x += this.vx * deltaTime;
+                this.y += this.vy * deltaTime;
+                this.life -= deltaTime;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life / this.maxLife); // Fade out
+                drawCircle(this.x, this.y, this.radius, this.color);
+                ctx.restore();
+            }
+        }
+
+        class FloatingText {
+            constructor(x, y, text, color, duration = 1000) {
+                this.x = x;
+                this.y = y;
+                this.text = text;
+                this.color = color;
+                this.life = duration;
+                this.maxLife = duration;
+                this.vy = -0.05; // Moves upwards
+            }
+
+            update(deltaTime) {
+                this.y += this.vy * deltaTime;
+                this.life -= deltaTime;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
+                ctx.fillStyle = this.color;
+                ctx.font = 'bold 18px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+        }
+
+        class Enemy {
+            constructor(type, path, gameInstance) { // gameInstance eklendi
+                this.type = type;
+                this.path = path;
+                this.game = gameInstance; // gameInstance referansı saklandı
+                this.waypointIndex = 0;
+                this.x = path.waypoints[0].x; // Initial position at path start
+                this.y = path.waypoints[0].y;
+                this.radius = 15;
+                this.angle = 0; // For orientation and animation
+
+                this.setStats(type);
+                this.currentHealth = this.maxHealth;
+                this.alive = true;
+                this.offsetY = 0; // For floating/swaying animation
+                this.offsetAngle = Math.random() * Math.PI * 2; // Unique start for each enemy
+            }
+
+            setStats(type) {
+                switch (type) {
+                    case 'rover':
+                        this.maxHealth = 100;
+                        this.speed = 0.05; // pixels per ms
+                        this.gold = 10;
+                        this.color = COLORS.METALLIC_GREY;
+                        this.radius = 15;
+                        break;
+                    case 'drone':
+                        this.maxHealth = 150;
+                        this.speed = 0.06;
+                        this.gold = 15;
+                        this.color = COLORS.PLASMA_BLUE;
+                        this.radius = 12;
+                        break;
+                    case 'boss_tank':
+                        this.maxHealth = 1500;
+                        this.speed = 0.03;
+                        this.gold = 100;
+                        this.color = COLORS.ENERGY_RED;
+                        this.radius = 25;
+                        break;
+                }
+            }
+
+            takeDamage(amount) {
+                this.currentHealth -= amount;
+                if (this.currentHealth <= 0) {
+                    this.currentHealth = 0;
+                    this.alive = false;
+                }
+                this.game.floatingTexts.push(new FloatingText(this.x, this.y - this.radius - 10, `-${amount}`, COLORS.ENERGY_RED));
+            }
+
+            update(deltaTime) {
+                if (!this.alive) return;
+
+                const targetWaypoint = this.path.waypoints[this.waypointIndex];
+                const distToTarget = distance(this, targetWaypoint);
+
+                // Update animation offset
+                this.offsetAngle += deltaTime * 0.005; // Slower oscillation
+                this.offsetY = Math.sin(this.offsetAngle) * 2; // Small vertical sway
+
+                if (distToTarget < this.speed * deltaTime) {
+                    this.x = targetWaypoint.x;
+                    this.y = targetWaypoint.y;
+                    this.waypointIndex++;
+                    if (this.waypointIndex >= this.path.waypoints.length) {
+                        this.alive = false; // Reached end
+                        this.game.health--; // 'this.game' kullanıldı
+                        this.game.floatingTexts.push(new FloatingText(BASE_POS.x, BASE_POS.y + 20, `-1 CAN`, COLORS.ENERGY_RED, 1500)); // 'this.game' kullanıldı
+                        return;
+                    }
+                } else {
+                    const dx = targetWaypoint.x - this.x;
+                    const dy = targetWaypoint.y - this.y;
+                    this.angle = Math.atan2(dy, dx); // Angle for drawing direction
+                    this.x += dx / distToTarget * this.speed * deltaTime;
+                    this.y += dy / distToTarget * this.speed * deltaTime;
+                }
+            }
+
+            draw() {
+                if (!this.alive) return;
+
+                ctx.save();
+                ctx.translate(this.x, this.y + this.offsetY); // Apply sway animation
+                ctx.rotate(this.angle);
+
+                if (this.type === 'rover') {
+                    // Main body
+                    drawRoundedRect(-15, -10, 30, 20, 5, COLORS.METALLIC_GREY);
+                    // Wheels
+                    drawCircle(-10, 10, 5, COLORS.DARK_LUNAR);
+                    drawCircle(10, 10, 5, COLORS.DARK_LUNAR);
+                    // Antenna with glowing tip
+                    ctx.strokeStyle = COLORS.MOON_DUST;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -10);
+                    ctx.lineTo(0, -20);
+                    ctx.stroke();
+                    drawCircle(0, -20, 3, COLORS.ENERGY_RED, true);
+                } else if (this.type === 'drone') {
+                    // Central body (glowing)
+                    drawCircle(0, 0, this.radius, COLORS.METALLIC_GREY, true);
+                    // Two triangular wings
+                    ctx.fillStyle = COLORS.DARK_LUNAR;
+                    ctx.beginPath();
+                    ctx.moveTo(-this.radius, 0); ctx.lineTo(-this.radius - 10, -10); ctx.lineTo(-this.radius - 10, 10); ctx.closePath(); ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(this.radius, 0); ctx.lineTo(this.radius + 10, -10); ctx.lineTo(this.radius + 10, 10); ctx.closePath(); ctx.fill();
+                    // Red eye
+                    drawCircle(this.radius * 0.7, 0, 3, COLORS.ENERGY_RED, true);
+                } else if (this.type === 'boss_tank') {
+                    // Main armored body
+                    drawRoundedRect(-25, -15, 50, 30, 8, COLORS.METALLIC_GREY);
+                    // Cannon barrel
+                    ctx.fillStyle = COLORS.DARK_LUNAR;
+                    ctx.fillRect(15, -5, 20, 10);
+                    // Tracks on sides
+                    drawRoundedRect(-28, -18, 56, 8, 3, COLORS.CRATER_RIM);
+                    drawRoundedRect(-28, 10, 56, 8, 3, COLORS.CRATER_RIM);
+                    // Glowing energy core
+                    drawCircle(0, 0, 10, COLORS.ENERGY_RED, true);
+                }
+                ctx.restore();
+
+                // Health Bar (always visible above enemy)
+                const healthBarWidth = 30;
+                const healthBarHeight = 5;
+                ctx.fillStyle = 'gray';
+                ctx.fillRect(this.x - healthBarWidth / 2, this.y - this.radius - 10, healthBarWidth, healthBarHeight);
+                ctx.fillStyle = 'lime';
+                ctx.fillRect(this.x - healthBarWidth / 2, this.y - this.radius - 10, healthBarWidth * (this.currentHealth / this.maxHealth), healthBarHeight);
+
+                // Boss Health Bar (prominent at top of screen)
+                if (this.type === 'boss_tank') {
+                    ctx.fillStyle = COLORS.DARK_LUNAR;
+                    ctx.fillRect(GAME_WIDTH / 2 - 150, 20, 300, 15);
+                    ctx.fillStyle = COLORS.ENERGY_RED;
+                    ctx.fillRect(GAME_WIDTH / 2 - 150, 20, 300 * (this.currentHealth / this.maxHealth), 15);
+                    ctx.fillStyle = COLORS.MOON_DUST;
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`BOSS CANI: ${Math.round(this.currentHealth)} / ${this.maxHealth}`, GAME_WIDTH / 2, 33);
+                }
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, targetEnemy, damage, speed, type) {
+                this.x = x;
+                this.y = y;
+                this.targetEnemy = targetEnemy;
+                this.damage = damage;
+                this.speed = speed; // Pixels per ms
+                this.type = type;
+                this.alive = true;
+                this.trail = []; // For visual effect
+                this.hit = false;
+
+                // Initial velocity calculation, aiming slightly higher to counteract gravity
+                const targetX = targetEnemy.x;
+                const targetY = targetEnemy.y;
+                const dist = distance({ x, y }, { x: targetX, y: targetY });
+                // Estimate time to reach target
+                const estimatedTime = dist / this.speed; 
+                // Calculate required initial vertical velocity to hit target considering gravity
+                // y_final = y_initial + v_initial_y * t + 0.5 * g * t^2
+                // v_initial_y = (y_final - y_initial - 0.5 * g * t^2) / t
+                const requiredInitialVy = (targetY - y - 0.5 * GRAVITY * estimatedTime * estimatedTime) / estimatedTime;
+                
+                const angle = Math.atan2(requiredInitialVy, targetX - x);
+                
+                this.vx = Math.cos(angle) * this.speed;
+                this.vy = Math.sin(angle) * this.speed;
+            }
+
+            update(deltaTime) {
+                if (this.hit || !this.targetEnemy.alive) { // Projectile dies if target dead or already hit
+                    this.alive = false;
+                    return;
+                }
+
+                this.vy += GRAVITY * deltaTime; // Apply gravity
+                this.x += this.vx * deltaTime;
+                this.y += this.vy * deltaTime;
+
+                // Add current position to trail for visual effect
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 10) this.trail.shift(); // Keep trail length limited
+
+                // Collision detection with target enemy
+                if (distance(this, this.targetEnemy) < this.targetEnemy.radius / 2) {
+                    this.hit = true;
+                    this.targetEnemy.takeDamage(this.damage);
+                    this.alive = false; // Projectile is consumed on hit
+                }
+
+                // Remove if off-screen (optimization)
+                if (this.x < -50 || this.x > GAME_WIDTH + 50 || this.y < -50 || this.y > GAME_HEIGHT + 50) {
+                    this.alive = false;
+                }
+            }
+
+            draw() {
+                if (!this.alive) return;
+
+                // Draw trail (fading line)
+                let trailColor = COLORS.MOON_DUST;
+                if (this.type === 'laser') trailColor = COLORS.PLASMA_BLUE;
+                else if (this.type === 'plasma') trailColor = COLORS.ENERGY_RED;
+
+                ctx.strokeStyle = trailColor;
+                ctx.lineWidth = 2;
+                ctx.shadowColor = trailColor;
+                ctx.shadowBlur = 5;
+                ctx.beginPath();
+                if (this.trail.length > 0) {
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for (let i = 1; i < this.trail.length; i++) {
+                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    }
+                    ctx.stroke();
+                }
+                ctx.shadowBlur = 0;
+
+                // Draw projectile head
+                if (this.type === 'laser') {
+                    drawCircle(this.x, this.y, 3, COLORS.PLASMA_BLUE, true);
+                } else if (this.type === 'plasma') {
+                    drawCircle(this.x, this.y, 5, COLORS.ENERGY_RED, true);
+                } else if (this.type === 'missile') {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    const currentAngle = Math.atan2(this.vy, this.vx); // Orient missile to its flight path
+                    ctx.rotate(currentAngle);
+                    // Missile body
+                    drawRect(-5, -2, 10, 4, COLORS.METALLIC_GREY);
+                    // Fins
+                    ctx.fillStyle = COLORS.DARK_LUNAR;
+                    ctx.beginPath(); ctx.moveTo(-5, -2); ctx.lineTo(-8, -5); ctx.lineTo(-8, -2); ctx.closePath(); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(-5, 2); ctx.lineTo(-8, 5); ctx.lineTo(-8, 2); ctx.closePath(); ctx.fill();
+                    // Tip (energy red)
+                    ctx.fillStyle = COLORS.ENERGY_RED;
+                    ctx.beginPath(); ctx.moveTo(5, 0); ctx.lineTo(10, 0); ctx.lineTo(5, -2); ctx.lineTo(5, 2); ctx.closePath(); ctx.fill();
+                    ctx.restore();
+                }
+            }
+        }
+
+        class Tower {
+            constructor(x, y, type, gameInstance) { // gameInstance eklendi
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.level = 1;
+                this.angle = 0; // For aiming rotation
+                this.lastFireTime = 0;
+                this.game = gameInstance; // gameInstance referansı saklandı
+
+                this.setStats(type, this.level);
+            }
+
+            setStats(type, level) {
+                const typeData = this.game.towerTypes[type]; // 'this.game' kullanıldı
+                this.cost = typeData.cost;
+                const levelData = typeData.levels[level - 1]; // levels array is 0-indexed
+
+                this.range = levelData.rng;
+                this.damage = levelData.dmg;
+                this.fireRate = levelData.spd; // ms
+                this.projectileSpeed = levelData.projSpeed;
+                this.maxLevel = typeData.levels.length;
+
+                // Calculate sell value based on total cost spent
+                let totalCostSpent = this.cost;
+                for(let i = 0; i < level - 1; i++) {
+                    totalCostSpent += typeData.upgradeCosts[i];
+                }
+                this.sellValue = Math.floor(totalCostSpent / 2);
+
+                this.upgradeCost = (level < this.maxLevel) ? typeData.upgradeCosts[level - 1] : 0;
+                this.projectileType = type;
+            }
+
+            upgrade() {
+                if (this.level < this.maxLevel) {
+                    this.level++;
+                    this.setStats(this.type, this.level); // Recalculate stats for new level
+                }
+            }
+
+            update(deltaTime) {
+                // Find nearest enemy within range, prioritizing furthest along path
+                let target = null;
+                let furthestWaypointIndex = -1; // Keep track of progress on path
+
+                for (const enemy of this.game.enemies) { // 'this.game' kullanıldı
+                    if (enemy.alive && distance(this, enemy) < this.range) {
+                        if (enemy.waypointIndex > furthestWaypointIndex) {
+                            target = enemy;
+                            furthestWaypointIndex = enemy.waypointIndex;
+                        }
+                    }
+                }
+
+                if (target) {
+                    this.angle = Math.atan2(target.y - this.y, target.x - this.x); // Aim at target
+
+                    if (performance.now() - this.lastFireTime > this.fireRate) {
+                        this.game.projectiles.push(new Projectile(this.x, this.y, target, this.damage, this.projectileSpeed, this.projectileType)); // 'this.game' kullanıldı
+                        this.lastFireTime = performance.now();
+                        // Muzzle flash effect: particles burst from barrel tip
+                        const muzzleFlashX = this.x + Math.cos(this.angle) * 25; // Adjusted for barrel length
+                        const muzzleFlashY = this.y + Math.sin(this.angle) * 25;
+                        for (let i = 0; i < 5; i++) {
+                            const particleAngle = this.angle + (Math.random() - 0.5) * Math.PI / 4; // Spread slightly
+                            const speed = Math.random() * 0.1 + 0.05;
+                            this.game.particles.push(new Particle(muzzleFlashX, muzzleFlashY, COLORS.MOON_DUST, Math.cos(particleAngle) * speed, Math.sin(particleAngle) * speed, 150)); // 'this.game' kullanıldı
+                        }
+                    }
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle); // Rotate the tower to face its target
+
+                if (this.type === 'laser') {
+                    drawRoundedRect(-12, -12, 24, 24, 5, COLORS.METALLIC_GREY); // Base
+                    drawCircle(0, 0, 8, COLORS.DARK_LUNAR); // Turret body
+                    ctx.fillStyle = COLORS.MOON_DUST;
+                    ctx.fillRect(5, -2, 20, 4); // Barrel
+                    drawCircle(25, 0, 3, COLORS.PLASMA_BLUE, true); // Laser tip (glowing)
+                } else if (this.type === 'plasma') {
+                    drawRoundedRect(-15, -15, 30, 30, 8, COLORS.METALLIC_GREY); // Wider base
+                    drawCircle(0, 0, 10, COLORS.PLASMA_BLUE, true); // Energy Core (glowing)
+                    ctx.fillStyle = COLORS.DARK_LUNAR;
+                    ctx.fillRect(8, -5, 12, 10); // Inner barrel segment
+                    ctx.fillStyle = COLORS.ENERGY_RED;
+                    ctx.fillRect(20, -7, 8, 14); // Outer plasma emitter
+                } else if (this.type === 'missile') {
+                    drawRoundedRect(-18, -18, 36, 36, 10, COLORS.METALLIC_GREY); // Large base
+                    ctx.fillStyle = COLORS.DARK_LUNAR;
+                    ctx.fillRect(10, -12, 15, 8); // Top missile launcher
+                    ctx.fillRect(10, 4, 15, 8); // Bottom missile launcher
+                    drawCircle(-10, -10, 5, COLORS.MOON_DUST); // Targeting dish
+                    ctx.beginPath(); // Dish detail
+                    ctx.arc(-10, -10, 5, Math.PI, 0);
+                    ctx.strokeStyle = COLORS.CRATER_RIM;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+                ctx.restore();
+
+                // Draw range circle if selected
+                if (this.game.selectedTower === this) { // 'this.game' kullanıldı
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        class Game {
+            constructor() {
+                this.state = 'menu'; // menu, playing, gameOver, kazandi
+                this.health = BASE_HEALTH;
+                this.gold = START_GOLD;
+                this.score = 0;
+                this.wave = 0;
+                this.towers = [];
+                this.enemies = [];
+                this.projectiles = [];
+                this.particles = [];
+                this.floatingTexts = [];
+                this.path = new Path(path);
+                this.selectedTower = null; // Currently selected tower for info/upgrade
+                this.towerToPlace = null; // Type of tower currently being placed by player
+                this.waveTimer = 0; // Countdown until next wave starts
+                this.lastWaveCompletionTime = 0; // Timestamp of when last wave ended
+                this.currentMousePos = { x: 0, y: 0 }; // Track mouse position for tower placement preview
+
+                // Define tower types and their level stats & upgrade costs
+                this.towerTypes = {
+                    laser: { 
+                        name: "Lazer Kulesi", description: "Hizli ates eden temel kule, uzay araclarina karsi etkili.", cost: 100, 
+                        levels: [
+                            { dmg: 10, spd: 500, rng: 150, projSpeed: 0.5 }, // L1
+                            { dmg: 15, spd: 400, rng: 180, projSpeed: 0.5 }, // L2
+                            { dmg: 25, spd: 300, rng: 220, projSpeed: 0.5 }  // L3
+                        ],
+                        upgradeCosts: [150, 250] // Cost to upgrade to L2, then L3
+                    },
+                    plasma: { 
+                        name: "Plazma Topu", description: "Yuksek hasar veren orta menzilli kule, yavas ama guclu atislar.", cost: 250, 
+                        levels: [
+                            { dmg: 25, spd: 800, rng: 180, projSpeed: 0.4 },
+                            { dmg: 40, spd: 700, rng: 220, projSpeed: 0.4 },
+                            { dmg: 60, spd: 600, rng: 260, projSpeed: 0.4 }
+                        ],
+                        upgradeCosts: [300, 450]
+                    },
+                    missile: { 
+                        name: "Fuze Firlatici", description: "Uzun menzilli agir hasar kulesi, yavas dusmanlara karsi ideal.", cost: 400, 
+                        levels: [
+                            { dmg: 50, spd: 1200, rng: 250, projSpeed: 0.3 },
+                            { dmg: 80, spd: 1000, rng: 300, projSpeed: 0.3 },
+                            { dmg: 120, spd: 800, rng: 350, projSpeed: 0.3 }
+                        ],
+                        upgradeCosts: [500, 700]
+                    }
+                };
+
+                this.initUI();
+            }
+
+            // Helper to reset cursor to default
+            resetCursor() {
+                canvas.style.cursor = 'url("data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="4" fill="%23FCF8E8" stroke="%23537FE7" stroke-width="2"/></svg>") 16 16, auto';
+            }
+
+            // Initializes dynamic UI elements like tower selection buttons
+            initUI() {
+                baslaBtn.onclick = () => this.startGame();
+
+                towerSelectionPanel.innerHTML = '';
+                for (const type in this.towerTypes) {
+                    const towerData = this.towerTypes[type];
+                    const btn = document.createElement('button');
+                    btn.className = `ui-btn kule-btn flex flex-col items-center justify-center p-2 rounded-md transition-all duration-200 ease-in-out`;
+                    btn.innerHTML = `<span class="text-lg">${towerData.name}</span> <span class="text-sm">${towerData.cost} <span class="text-yellow-400">Altin</span></span>`;
+                    btn.onclick = () => this.selectTowerToPlace(type);
+                    btn.onmouseover = (e) => this.showTowerTooltip(e, type);
+                    btn.onmouseout = () => tooltip.style.display = 'none';
+                    btn.setAttribute('data-tower-type', type);
+                    towerSelectionPanel.appendChild(btn);
+                }
+
+                upgradeTowerBtn.onclick = () => this.upgradeSelectedTower();
+                sellTowerBtn.onclick = () => this.sellSelectedTower();
+            }
+
+            // Shows a detailed tooltip for tower purchase buttons
+            showTowerTooltip(e, type) {
+                const towerData = this.towerTypes[type];
+                const level1 = towerData.levels[0];
+                let tooltipContent = `<h4 class="text-lg font-bold">${towerData.name}</h4>`;
+                tooltipContent += `<p>${towerData.description}</p>`;
+                tooltipContent += `<p class="text-yellow-400">Maliyet: ${towerData.cost} Altin</p>`;
+                tooltipContent += `<p>Hasar: ${level1.dmg}</p>`;
+                tooltipContent += `<p>Menzil: ${level1.rng} px</p>`;
+                tooltipContent += `<p>Ates Hizi: ${(1000 / level1.spd).toFixed(1)}/sn</p>`;
+                tooltip.innerHTML = tooltipContent;
+                tooltip.style.left = `${e.clientX + 15}px`;
+                tooltip.style.top = `${e.clientY + 15}px`;
+                tooltip.style.display = 'block';
+            }
+
+            // Starts a new game or restarts after game over
+            startGame() {
+                this.health = BASE_HEALTH;
+                this.gold = START_GOLD;
+                this.score = 0;
+                this.wave = 0;
+                this.towers = [];
+                this.enemies = [];
+                this.projectiles = [];
+                this.particles = [];
+                this.floatingTexts = [];
+                this.selectedTower = null;
+                this.towerToPlace = null;
+                this.state = 'playing';
+                this.lastWaveCompletionTime = performance.now(); // Set initial prep time
+                this.waveTimer = WAVE_PREP_TIME; // Reset prep timer
+                this.enemies = []; // Clear existing enemies for the new game
+
+                menuPanel.classList.add('hidden');
+                gameUI.classList.remove('hidden');
+                towerSelectionPanel.classList.remove('hidden');
+                towerInfoPanel.classList.add('hidden');
+                this.resetCursor(); // Set default cursor on game start
+                this.updateUI();
+            }
+
+            // Handles game over or win conditions
+            gameOver(message, isWin = false) {
+                this.state = isWin ? 'kazandi' : 'gameOver';
+                menuPanel.classList.remove('hidden');
+                gameUI.classList.add('hidden');
+                towerSelectionPanel.classList.add('hidden');
+                towerInfoPanel.classList.add('hidden');
+                menuTitle.textContent = isWin ? 'ZAFER!' : 'OYUN BITTI';
+                menuMessage.textContent = message + ` Son Skorunuz: ${this.score}`;
+                baslaBtn.textContent = 'YENIDEN BASLA';
+                this.resetCursor(); // Set default cursor on game over
+                this.updateUI(); // Update window.OYUN_DURUMU
+            }
+
+            // Prepares and starts the next wave of enemies
+            startNextWave() {
+                this.wave++;
+                this.enemies = []; // Clear previous wave's enemies
+                this.waveTimer = WAVE_PREP_TIME; // Reset prep timer
+                this.lastWaveCompletionTime = performance.now(); // Mark time for prep countdown
+                this.selectedTower = null; // Deselect tower
+                towerInfoPanel.classList.add('hidden'); // Hide info panel
+
+                if (this.wave > 8) { // Game ends after 8 waves (can be adjusted for more depth)
+                    this.gameOver('Tum dalgalari savusturdunuz! Ay ussu guvende!', true);
+                    return;
+                }
+
+                // Wave generation logic with increasing difficulty
+                const baseEnemyCount = 5;
+                const totalEnemies = baseEnemyCount + this.wave * 2;
+                let enemyHealthMultiplier = 1 + (this.wave - 1) * 0.25; // Health increases per wave
+
+                if (this.wave % 4 === 0) { // Every 4th wave is a Boss wave
+                    const bossHealth = 1500 * (1 + (this.wave / 4 - 1) * 0.5); // Boss gets stronger
+                    setTimeout(() => {
+                        if (this.state === 'playing') {
+                            const bossEnemy = new Enemy('boss_tank', this.path, this); // 'this' game instance gecirildi
+                            bossEnemy.maxHealth = bossHealth;
+                            bossEnemy.currentHealth = bossHealth;
+                            bossEnemy.gold = 100 * (this.wave / 4);
+                            this.enemies.push(bossEnemy);
+                        }
+                    }, WAVE_PREP_TIME); // Boss da hazirlik suresi sonunda spawn olsun
+                } else {
+                    for (let i = 0; i < totalEnemies; i++) {
+                        setTimeout(() => {
+                            if (this.state === 'playing') { // Only activate enemy if game is still playing
+                                const enemyType = Math.random() < 0.7 ? 'rover' : 'drone'; // Mix of enemy types
+                                const newEnemy = new Enemy(enemyType, this.path, this); // 'this' game instance gecirildi
+                                newEnemy.maxHealth = Math.round(newEnemy.maxHealth * enemyHealthMultiplier);
+                                newEnemy.currentHealth = newEnemy.maxHealth;
+                                this.enemies.push(newEnemy); // Düşmanlar diziye gecikmeli olarak eklendi
+                            }
+                        }, i * 1000 + WAVE_PREP_TIME); // Add prep time to spawn delay for first enemy, then 1s stagger
+                    }
+                }
+                this.updateUI();
+            }
+
+            // Main game logic update loop
+            update(deltaTime) {
+                if (this.state !== 'playing') return;
+
+                // Handle wave timer / preparation phase
+                const allEnemiesDefeated = this.enemies.every(e => !e.alive);
+                const enemiesReachedEnd = this.enemies.some(e => e.waypointIndex >= this.path.waypoints.length - 1);
+                
+                // If all active enemies are defeated (or all spawned enemies have been dealt with)
+                // and we're not waiting for the wave timer to expire, start the prep timer.
+                // Or if it's the last wave and it's cleared, trigger game over.
+                if (allEnemiesDefeated && !enemiesReachedEnd) {
+                    if (this.waveTimer <= 0) { // Only reset timer if currently not in prep phase
+                        if (this.wave < 8) { // If not the final wave, prepare next
+                            this.waveTimer = WAVE_PREP_TIME;
+                            this.lastWaveCompletionTime = performance.now();
+                        } else if (this.wave === 8) { // Last wave cleared, game won
+                            this.gameOver('Tum dalgalari savusturdunuz! Ay ussu guvende!', true);
+                            return;
+                        }
+                    }
+                }
+
+                if (this.waveTimer > 0) {
+                    const elapsedPrepTime = performance.now() - this.lastWaveCompletionTime;
+                    this.waveTimer = Math.max(0, WAVE_PREP_TIME - elapsedPrepTime);
+                    waveTimerDisplay.textContent = `Hazirlan: ${Math.ceil(this.waveTimer / 1000)}s`;
+                    if (this.waveTimer === 0) {
+                        // After prep time, if enemies array is empty (meaning no new wave started yet), start new wave.
+                        // The enemies array will be filled by setTimeouts *after* startNextWave clears it.
+                        if (this.enemies.length === 0 && this.wave < 8) {
+                            this.startNextWave();
+                        } else if (this.wave === 8 && this.enemies.length === 0) {
+                             this.gameOver('Tum dalgalari savusturdunuz! Ay ussu guvende!', true);
+                             return;
+                        }
+                    }
+                } else if (this.enemies.length > 0) {
+                     waveTimerDisplay.textContent = ''; // Hide timer during active wave
+                } else if (this.wave === 0) { // Initial state before game starts
+                    waveTimerDisplay.textContent = `Hazirlan: ${Math.ceil(WAVE_PREP_TIME / 1000)}s`; // Show initial prep time
+                }
+
+                // Filter out dead enemies and award gold/score
+                this.enemies = this.enemies.filter(enemy => {
+                    if (!enemy.alive) {
+                        // If enemy was killed before reaching the end of the path
+                        if (enemy.waypointIndex < this.path.waypoints.length - 1) { // Check before last waypoint (base)
+                            this.gold += enemy.gold;
+                            this.score += enemy.maxHealth; // Score based on enemy max health
+                            // Enemy death explosion effect
+                            for (let i = 0; i < 10; i++) {
+                                const angle = Math.random() * Math.PI * 2;
+                                const speed = Math.random() * 0.1 + 0.05;
+                                this.particles.push(new Particle(enemy.x, enemy.y, enemy.color, Math.cos(angle) * speed, Math.sin(angle) * speed, 500 + Math.random() * 500));
+                            }
+                        }
+                        return false;
+                    }
+                    return true;
+                });
+
+                // Update all game entities
+                this.towers.forEach(tower => tower.update(deltaTime));
+                this.enemies.forEach(enemy => enemy.update(deltaTime));
+                this.projectiles = this.projectiles.filter(p => p.alive);
+                this.projectiles.forEach(p => p.update(deltaTime));
+                this.particles = this.particles.filter(p => p.life > 0);
+                this.particles.forEach(p => p.update(deltaTime));
+                this.floatingTexts = this.floatingTexts.filter(t => t.life > 0);
+                this.floatingTexts.forEach(t => t.update(deltaTime));
+
+                // Check for game over condition
+                if (this.health <= 0) {
+                    this.gameOver('Ay ussu imha edildi!');
+                }
+
+                this.updateUI(); // Update display values
+            }
+
+            // Draws all game elements on the canvas
+            draw() {
+                ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+                // --- Background Drawing ---
+                // Deep space gradient
+                const spaceGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+                spaceGradient.addColorStop(0, COLORS.DEEP_SPACE);
+                spaceGradient.addColorStop(1, COLORS.DARK_LUNAR);
+                ctx.fillStyle = spaceGradient;
+                ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+                // Stars
+                ctx.fillStyle = COLORS.MOON_DUST;
+                for (let i = 0; i < 100; i++) {
+                    drawCircle(Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT * 0.7, Math.random() * 1.5, COLORS.MOON_DUST);
+                }
+
+                // Craters (layered for depth)
+                ctx.fillStyle = COLORS.DARK_LUNAR;
+                ctx.shadowColor = COLORS.DEEP_SPACE;
+                ctx.shadowBlur = 15;
+                drawCircle(100, 100, 70, COLORS.DARK_LUNAR);
+                drawCircle(GAME_WIDTH - 200, 150, 60, COLORS.DARK_LUNAR);
+                drawCircle(GAME_WIDTH / 2, GAME_HEIGHT - 100, 90, COLORS.DARK_LUNAR);
+                ctx.shadowBlur = 0; // Reset shadow
+
+                this.path.draw(); // Draw the enemy path
+
+                this.drawBase(BASE_POS.x, BASE_POS.y); // Draw the player's base
+
+                // Draw all active game entities
+                this.towers.forEach(tower => tower.draw());
+                this.enemies.forEach(enemy => enemy.draw());
+                this.projectiles.forEach(p => p.draw());
+                this.particles.forEach(p => p.draw());
+                this.floatingTexts.forEach(t => t.draw());
+
+                // Draw tower placement preview if player is selecting a tower
+                if (this.towerToPlace && this.state === 'playing') {
+                    this.drawTowerPreview(this.currentMousePos.x, this.currentMousePos.y, this.towerToPlace);
+                }
+
+                // Game title display during gameplay
+                ctx.fillStyle = COLORS.MOON_DUST;
+                ctx.font = 'bold 24px Arial'; // Using Arial, assuming 'Orbitron' might not be available
+                ctx.shadowColor = COLORS.PLASMA_BLUE;
+                ctx.shadowBlur = 10;
+                ctx.textAlign = 'left';
+                ctx.fillText('Ay Ussu Savunmasi', 20, 40);
+                ctx.shadowBlur = 0;
+            }
+
+            // Draws the player's moon base structure
+            drawBase(x, y) {
+                // Main Dome (semi-circle)
+                ctx.beginPath();
+                ctx.arc(x, y, 70, Math.PI, 2 * Math.PI);
+                ctx.fillStyle = COLORS.METALLIC_GREY;
+                ctx.shadowColor = COLORS.PLASMA_BLUE;
+                ctx.shadowBlur = 15;
+                ctx.fill();
+                ctx.strokeStyle = COLORS.PLASMA_BLUE;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Base foundation
+                drawRect(x - 70, y, 140, 20, COLORS.DARK_LUNAR);
+
+                // Entrance/Docking port (rounded rectangle with inner door)
+                drawRoundedRect(x - 20, y + 20, 40, 15, 5, COLORS.MOON_DUST);
+                ctx.fillStyle = COLORS.CRATER_RIM;
+                drawRect(x - 15, y + 23, 30, 9, COLORS.CRATER_RIM);
+
+                // Solar Panels (simplified rectangles)
+                drawRect(x + 50, y + 10, 25, 10, COLORS.CRATER_RIM);
+                drawRect(x - 75, y + 10, 25, 10, COLORS.CRATER_RIM);
+                ctx.fillStyle = COLORS.PLASMA_BLUE; // Blue cells
+                drawRect(x + 52, y + 12, 21, 6, COLORS.PLASMA_BLUE);
+                drawRect(x - 73, y + 12, 21, 6, COLORS.PLASMA_BLUE);
+            }
+
+            // Draws a preview of a tower being placed at the current mouse position
+            drawTowerPreview(x, y, type) {
+                ctx.save();
+                ctx.translate(x, y);
+
+                // Draw with reduced opacity
+                ctx.globalAlpha = 0.5;
+
+                // Call the specific tower drawing logic
+                if (type === 'laser') {
+                    drawRoundedRect(-12, -12, 24, 24, 5, COLORS.METALLIC_GREY);
+                    drawCircle(0, 0, 8, COLORS.DARK_LUNAR);
+                    ctx.fillStyle = COLORS.MOON_DUST; ctx.fillRect(5, -2, 20, 4);
+                    drawCircle(25, 0, 3, COLORS.PLASMA_BLUE); // No shadow for preview
+                } else if (type === 'plasma') {
+                    drawRoundedRect(-15, -15, 30, 30, 8, COLORS.METALLIC_GREY);
+                    drawCircle(0, 0, 10, COLORS.PLASMA_BLUE);
+                    ctx.fillStyle = COLORS.DARK_LUNAR; ctx.fillRect(8, -5, 12, 10);
+                    ctx.fillStyle = COLORS.ENERGY_RED; ctx.fillRect(20, -7, 8, 14);
+                } else if (type === 'missile') {
+                    drawRoundedRect(-18, -18, 36, 36, 10, COLORS.METALLIC_GREY);
+                    ctx.fillStyle = COLORS.DARK_LUNAR; ctx.fillRect(10, -12, 15, 8); ctx.fillRect(10, 4, 15, 8);
+                    drawCircle(-10, -10, 5, COLORS.MOON_DUST);
+                    ctx.beginPath(); ctx.arc(-10, -10, 5, Math.PI, 0); ctx.strokeStyle = COLORS.CRATER_RIM; ctx.lineWidth = 1; ctx.stroke();
+                }
+
+                ctx.restore();
+                ctx.globalAlpha = 1.0; // Reset global alpha
+
+                // Draw range preview
+                ctx.beginPath();
+                ctx.arc(x, y, this.towerTypes[type].levels[0].rng, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(255, 255, 255, 0.3)`;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Sets the game state to 'placing tower'
+            selectTowerToPlace(type) {
+                if (this.gold >= this.towerTypes[type].cost) {
+                    this.towerToPlace = type;
+                    this.selectedTower = null; // Deselect any active tower
+                    towerInfoPanel.classList.add('hidden');
+                    // Change cursor to crosshair for placement mode
+                    canvas.style.cursor = 'crosshair';
+                } else {
+                    this.floatingTexts.push(new FloatingText(this.currentMousePos.x, this.currentMousePos.y, 'Yeterli altininiz yok!', COLORS.ENERGY_RED, 1500));
+                    this.towerToPlace = null; // Yeterli altin yoksa yerlestirme modundan cik
+                    this.resetCursor(); // İmleci sifirla
+                }
+            }
+
+            // Places a tower at given coordinates if valid
+            placeTower(x, y) {
+                if (!this.towerToPlace) return;
+
+                const towerType = this.towerToPlace;
+                const towerCost = this.towerTypes[towerType].cost;
+
+                // Placement validation rules
+                const minDistance = 50; // Minimum distance to other towers/path
+                let validPlacement = true;
+
+                // Check distance to base
+                if (distance({x, y}, BASE_POS) < minDistance + 50) validPlacement = false;
+
+                // Check distance to path (simplified line-segment distance check)
+                for (let i = 0; i < this.path.waypoints.length - 1; i++) {
+                    const p1 = this.path.waypoints[i];
+                    const p2 = this.path.waypoints[i + 1];
+                    const lengthSq = distance(p1, p2);
+                    // Avoid division by zero if waypoints are identical
+                    if (lengthSq === 0) {
+                         if (distance({ x, y }, p1) < minDistance) {
+                            validPlacement = false;
+                            break;
+                        }
+                        continue;
+                    }
+                    let t = ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / lengthSq;
+                    t = Math.max(0, Math.min(1, t)); // Clamp t to [0,1]
+                    const closestX = p1.x + t * (p2.x - p1.x);
+                    const closestY = p1.y + t * (p2.y - p1.y);
+                    if (distance({ x, y }, { x: closestX, y: closestY }) < minDistance) {
+                        validPlacement = false;
+                        break;
+                    }
+                }
+
+                // Check distance to other existing towers
+                for (const tower of this.towers) {
+                    if (distance({ x, y }, tower) < minDistance) {
+                        validPlacement = false;
+                        break;
+                    }
+                }
+
+                if (validPlacement && this.gold >= towerCost) {
+                    this.towers.push(new Tower(x, y, towerType, this)); // 'this' game instance gecirildi
+                    this.gold -= towerCost;
+                    this.towerToPlace = null; // Exit placement mode
+                    this.resetCursor(); // Yerlestirme sonrasi imleci sifirla
+                } else if (!validPlacement) {
+                    this.floatingTexts.push(new FloatingText(x, y, 'Gecersiz konum!', COLORS.ENERGY_RED, 1500));
+                } else { // Should not happen if `selectTowerToPlace` already checked gold
+                     this.floatingTexts.push(new FloatingText(x, y, 'Yeterli altininiz yok!', COLORS.ENERGY_RED, 1500));
+                     this.towerToPlace = null; // Yerlestirme modundan cik
+                     this.resetCursor(); // İmleci sifirla
+                }
+                this.updateUI();
+            }
+
+            // Selects an existing tower for upgrade/sell options
+            selectTower(x, y) {
+                this.selectedTower = null;
+                for (const tower of this.towers) {
+                    if (distance({ x, y }, tower) < 20) { // Click radius for tower selection
+                        this.selectedTower = tower;
+                        break;
+                    }
+                }
+                if (this.selectedTower) {
+                    this.showTowerInfo(this.selectedTower);
+                } else {
+                    towerInfoPanel.classList.add('hidden'); // Hide info panel if no tower selected
+                }
+                this.updateUI();
+            }
+
+            // Populates and displays the tower info panel
+            showTowerInfo(tower) {
+                selectedTowerName.textContent = `${this.towerTypes[tower.type].name} (Seviye ${tower.level})`;
+                selectedTowerStats.innerHTML = `
+                    <p>Hasar: ${tower.damage}</p>
+                    <p>Ates Hizi: ${(1000 / tower.fireRate).toFixed(1)}/sn</p>
+                    <p>Menzil: ${tower.range}</p>
+                `;
+
+                if (tower.level < tower.maxLevel) {
+                    upgradeCostSpan.textContent = `${tower.upgradeCost} Altin`;
+                    upgradeTowerBtn.disabled = this.gold < tower.upgradeCost;
+                    upgradeTowerBtn.classList.remove('hidden');
+                } else {
+                    upgradeCostSpan.textContent = 'Maks Seviye';
+                    upgradeTowerBtn.disabled = true;
+                    upgradeTowerBtn.classList.add('hidden'); // Hide if max level
+                }
+                sellAmountSpan.textContent = `${tower.sellValue} Altin`;
+                towerInfoPanel.classList.remove('hidden');
+            }
+
+            // Upgrades the currently selected tower
+            upgradeSelectedTower() {
+                if (this.selectedTower && this.selectedTower.level < this.selectedTower.maxLevel) {
+                    const upgradeCost = this.selectedTower.upgradeCost;
+                    if (this.gold >= upgradeCost) {
+                        this.selectedTower.upgrade();
+                        this.gold -= upgradeCost;
+                        this.showTowerInfo(this.selectedTower); // Update info panel after upgrade
+                        this.floatingTexts.push(new FloatingText(this.selectedTower.x, this.selectedTower.y, 'YUKSELTILDI!', COLORS.GOLD, 1500));
+                    } else {
+                        this.floatingTexts.push(new FloatingText(this.selectedTower.x, this.selectedTower.y, 'Yeterli altininiz yok!', COLORS.ENERGY_RED, 1500));
+                    }
+                }
+                this.updateUI();
+            }
+
+            // Sells the currently selected tower
+            sellSelectedTower() {
+                if (this.selectedTower) {
+                    this.gold += this.selectedTower.sellValue;
+                    this.towers = this.towers.filter(t => t !== this.selectedTower); // Remove tower from array
+                    this.floatingTexts.push(new FloatingText(this.selectedTower.x, this.selectedTower.y, `+${this.selectedTower.sellValue} Altin`, COLORS.GOLD, 1500));
+                    this.selectedTower = null; // Clear selection
+                    towerInfoPanel.classList.add('hidden'); // Hide info panel
+                }
+                this.updateUI();
+            }
+
+            // Updates all UI display elements and the global game state object
+            updateUI() {
+                healthDisplay.textContent = this.health;
+                scoreDisplay.textContent = this.score;
+                waveDisplay.textContent = this.wave;
+                goldDisplay.textContent = this.gold;
+
+                // Enable/disable tower purchase buttons based on current gold
+                document.querySelectorAll('.kule-btn').forEach(btn => {
+                    const type = btn.getAttribute('data-tower-type');
+                    const cost = this.towerTypes[type].cost;
+                    btn.disabled = this.gold < cost;
+                });
+
+                // Update the global test object
+                window.OYUN_DURUMU = {
+                    asama: this.state,
+                    dalga: this.wave,
+                    can: this.health,
+                    skor: this.score
+                };
+            }
+        }
+
+        // Main game animation loop
+        function animate(currentTime) {
+            deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            game.update(deltaTime);
+            game.draw();
+
+            requestAnimationFrame(animate);
+        }
+
+        // Initial setup function for the game
+        function initGame() {
+            canvas.width = GAME_WIDTH;
+            canvas.height = GAME_HEIGHT;
+
+            // Make canvas responsive to window size
+            function resizeCanvas() {
+                const containerWidth = gameContainer.offsetWidth;
+                const containerHeight = gameContainer.offsetHeight;
+                const aspectRatio = GAME_WIDTH / GAME_HEIGHT;
+
+                let newWidth, newHeight;
+                if (containerWidth / containerHeight > aspectRatio) {
+                    newHeight = containerHeight;
+                    newWidth = containerHeight * aspectRatio;
+                } else {
+                    newWidth = containerWidth;
+                    newHeight = containerWidth / aspectRatio;
+                }
+
+                canvas.style.width = `${newWidth}px`;
+                canvas.style.height = `${newHeight}px`;
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas(); // Initial call to set canvas size
+
+            game = new Game(); // Game instance burada olusturuluyor
+            game.updateUI(); // Set initial UI values and test status
+            menuPanel.classList.remove('hidden'); // Show main menu initially
+            game.resetCursor(); // Başlangıçta imleci sıfırla
+
+            // Event listeners for mouse/touch interactions
+            canvas.addEventListener('mousemove', (e) => {
+                game.currentMousePos = getCanvasMousePos(e);
+                // game.draw() burada çağrılmıyor, animate loop zaten sürekli çiziyor.
+                // Bu daha performanslıdır.
+                // Update tooltip position if visible
+                if (tooltip.style.display === 'block') {
+                    tooltip.style.left = `${e.clientX + 15}px`;
+                    tooltip.style.top = `${e.clientY + 15}px`;
+                }
+            });
+
+            canvas.addEventListener('mousedown', (e) => {
+                const mousePos = getCanvasMousePos(e);
+                if (game.state === 'playing') {
+                    if (game.towerToPlace) {
+                        game.placeTower(mousePos.x, mousePos.y);
+                    } else {
+                        game.selectTower(mousePos.x, mousePos.y);
+                    }
+                }
+            });
+
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevent default touch actions like scrolling/zooming
+                const touchPos = getCanvasMousePos(e);
+                if (game.state === 'playing') {
+                    if (game.towerToPlace) {
+                        game.placeTower(touchPos.x, touchPos.y);
+                    } else {
+                        game.selectTower(touchPos.x, touchPos.y);
+                    }
+                }
+            }, { passive: false }); // `passive: false` allows `preventDefault`
+
+            requestAnimationFrame(animate); // Start the game loop
+        }
+
+        // Ensure DOM is fully loaded before initializing the game
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
