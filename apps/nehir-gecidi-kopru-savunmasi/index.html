@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nehir Geçidi Savunması</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #F5F5DC; /* Beige for text */
+        }
+        canvas {
+            background-color: #2F4F4F; /* DarkSlateGray for default river */
+            display: block;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            border: 2px solid #CD853F; /* Peru for border */
+            touch-action: none; /* Prevent browser default touch actions like scrolling/zooming */
+        }
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            pointer-events: none; /* Allow clicks to pass through to canvas by default */
+        }
+        .ui-panel {
+            pointer-events: auto; /* Enable clicks for UI elements */
+        }
+        .hidden {
+            display: none !important;
+        }
+        .btn {
+            padding: 0.5rem 1rem; /* px-4 py-2 */
+            border-radius: 0.375rem; /* rounded-md */
+            font-weight: 700; /* font-bold */
+            transition-property: transform;
+            transition-duration: 150ms;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); /* transition-transform */
+            transform: var(--tw-transform); /* transform */
+            background-color: #CD853F; /* Peru */
+            color: #F5F5DC; /* Beige */
+            border: 1px solid #A0522D; /* Sienna */
+        }
+        .btn:hover {
+            transform: scale(1.05); /* hover:scale-105 */
+        }
+        .btn:active {
+            transform: scale(0.95); /* active:scale-95 */
+        }
+        .btn-green {
+            background-color: #5F9EA0; /* CadetBlue */
+            border: 1px solid #2F4F4F; /* DarkSlateGray */
+        }
+        .btn-red {
+            background-color: #8B0000; /* DarkRed */
+            border: 1px solid #A0522D; /* Sienna */
+        }
+        .btn:disabled {
+            background-color: #555;
+            color: #aaa;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameUI" class="ui-container">
+        <!-- Top UI: Score, Health, Gold -->
+        <div class="ui-panel flex justify-between p-4 bg-gray-800 bg-opacity-75 text-lg">
+            <div>Can: <span id="healthDisplay">100</span></div>
+            <div>Altın: <span id="goldDisplay">200</span></div>
+            <div>Skor: <span id="scoreDisplay">0</span></div>
+            <div>Dalga: <span id="waveDisplay">0</span>/<span id="maxWaveDisplay">8</span></div>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="mainMenu" class="ui-panel absolute inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-90 z-10">
+            <h1 class="text-6xl font-bold mb-8" style="color:#DAA520;">Nehir Geçidi Savunması</h1>
+            <button id="baslaBtn" class="btn text-2xl px-8 py-4">Oyunu Başlat</button>
+        </div>
+
+        <!-- Game Over / Win Screen -->
+        <div id="endGameScreen" class="ui-panel absolute inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-90 z-10 hidden">
+            <h2 id="endGameTitle" class="text-5xl font-bold mb-4" style="color:#DAA520;">Oyun Bitti!</h2>
+            <p id="endGameMessage" class="text-3xl mb-6">Kaybettin!</p>
+            <p class="text-2xl mb-4">Final Skorunuz: <span id="finalScoreDisplay">0</span></p>
+            <button id="restartBtn" class="btn text-xl px-6 py-3">Yeniden Başlat</button>
+        </div>
+        
+        <!-- Tower Selection Panel -->
+        <div id="towerPanel" class="ui-panel flex justify-around p-4 bg-gray-800 bg-opacity-75 hidden">
+            <div class="flex flex-col items-center">
+                <button class="kule-btn btn" data-type="archer" data-price="100">Okçu Kulesi (100 Altın)</button>
+                <p class="text-sm mt-1">Hızlı, Orta Menzil</p>
+            </div>
+            <div class="flex flex-col items-center">
+                <button class="kule-btn btn" data-type="catapult" data-price="250">Mancınık (250 Altın)</button>
+                <p class="text-sm mt-1">Yavaş, Yüksek Hasar, Alan Etkili</p>
+            </div>
+            <div class="flex flex-col items-center">
+                <button class="kule-btn btn" data-type="cannon" data-price="300">Top Kulesi (300 Altın)</button>
+                <p class="text-sm mt-1">Orta Hız, Yüksek Hasar</p>
+            </div>
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        // Renk Paleti (Thematik)
+        const PALETTE = {
+            RIVER_DEEP: '#2F4F4F',      // DarkSlateGray
+            SKY_TOP: '#87CEEB',         // SkyBlue
+            SKY_MID: '#ADD8E6',         // LightBlue
+            SHORE_SAND: '#D2B48C',      // Tan
+            BRIDGE_WOOD_DARK: '#CD853F',// Peru
+            BRIDGE_WOOD_LIGHT: '#A0522D',// Sienna
+            GOLD: '#DAA520',            // Goldenrod
+            DANGER_RED: '#8B0000',      // DarkRed
+            RIVER_SURFACE: '#5F9EA0',   // CadetBlue
+            TEXT_COLOR: '#F5F5DC',      // Beige
+            TOWER_STONE: '#708090',     // SlateGray
+            TOWER_DETAIL: '#8B4513'     // SaddleBrown
+        };
+
+        const CANVAS_WIDTH = 1200;
+        const CANVAS_HEIGHT = 700;
+        const TILE_SIZE = 50; // For pathfinding / placement spots
+
+        // Global game state for UI interaction / testing
+        window.OYUN_DURUMU = {
+            asama: "menu",
+            dalga: 0,
+            can: 100,
+            skor: 0,
+            altin: 0
+        };
+
+        class Vector2 {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+
+            distance(other) {
+                const dx = this.x - other.x;
+                const dy = this.y - other.y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            normalize() {
+                const len = this.distance(new Vector2(0, 0));
+                if (len > 0) {
+                    this.x /= len;
+                    this.y /= len;
+                }
+                return this;
+            }
+
+            static sub(v1, v2) {
+                return new Vector2(v1.x - v2.x, v1.y - v2.y);
+            }
+
+            static mult(v, scalar) {
+                return new Vector2(v.x * scalar, v.y * scalar);
+            }
+        }
+
+        class Entity {
+            constructor(x, y) {
+                this.position = new Vector2(x, y);
+                this.active = true;
+            }
+
+            update(deltaTime) { }
+            draw(ctx) { }
+        }
+
+        class Particle extends Entity {
+            constructor(x, y, dx, dy, color, size, lifetime) {
+                super(x, y);
+                this.velocity = new Vector2(dx, dy);
+                this.color = color;
+                this.size = size;
+                this.initialLifetime = lifetime;
+                this.lifetime = lifetime;
+            }
+
+            update(deltaTime) {
+                this.position.x += this.velocity.x * deltaTime;
+                this.position.y += this.velocity.y * deltaTime;
+                this.lifetime -= deltaTime;
+                if (this.lifetime <= 0) {
+                    this.active = false;
+                }
+            }
+
+            draw(ctx) {
+                if (!this.active) return;
+                const alpha = this.lifetime / this.initialLifetime;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.position.x, this.position.y, this.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class FloatingText extends Entity {
+            constructor(x, y, text, color, initialDy = -50, lifetime = 1.5) {
+                super(x, y);
+                this.text = text;
+                this.color = color;
+                this.velocity = new Vector2(0, initialDy);
+                this.initialLifetime = lifetime;
+                this.lifetime = lifetime;
+                this.fontSize = 16;
+            }
+
+            update(deltaTime) {
+                this.position.y += this.velocity.y * deltaTime;
+                this.lifetime -= deltaTime;
+                this.fontSize += deltaTime * 5; // Grow slightly
+                if (this.lifetime <= 0) {
+                    this.active = false;
+                }
+            }
+
+            draw(ctx) {
+                if (!this.active) return;
+                const alpha = this.lifetime / this.initialLifetime;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = this.color;
+                ctx.font = `${Math.floor(this.fontSize)}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.fillText(this.text, this.position.x, this.position.y);
+                ctx.restore();
+            }
+        }
+
+        class BridgePlank {
+            constructor(x, y, width, height) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.maxHealth = 100;
+                this.health = this.maxHealth;
+            }
+
+            takeDamage(amount) {
+                this.health -= amount;
+                if (this.health < 0) this.health = 0;
+            }
+
+            isBroken() {
+                return this.health <= this.maxHealth * 0.5 && this.health > 0;
+            }
+
+            isDestroyed() {
+                return this.health <= 0;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                if (this.isDestroyed()) {
+                    ctx.fillStyle = PALETTE.RIVER_DEEP; // Show river beneath
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    ctx.restore();
+                    return;
+                }
+
+                const healthRatio = this.health / this.maxHealth;
+                const colorLerp = (c1, c2, ratio) => {
+                    const r = parseInt(c1.substring(1, 3), 16) * (1 - ratio) + parseInt(c2.substring(1, 3), 16) * ratio;
+                    const g = parseInt(c1.substring(3, 5), 16) * (1 - ratio) + parseInt(c2.substring(3, 5), 16) * ratio;
+                    const b = parseInt(c1.substring(5, 7), 16) * (1 - ratio) + parseInt(c2.substring(5, 7), 16) * ratio;
+                    return `#${Math.round(r).toString(16).padStart(2, '0')}${Math.round(g).toString(16).padStart(2, '0')}${Math.round(b).toString(16).padStart(2, '0')}`;
+                };
+
+                const fillColor = colorLerp(PALETTE.BRIDGE_WOOD_DARK, PALETTE.BRIDGE_WOOD_LIGHT, healthRatio);
+                ctx.fillStyle = fillColor;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                // Add texture/cracks based on damage
+                if (this.isBroken()) {
+                    ctx.strokeStyle = PALETTE.DANGER_RED;
+                    ctx.lineWidth = 1 + (1 - healthRatio) * 2;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.width * 0.2, this.y + this.height * 0.3);
+                    ctx.lineTo(this.x + this.width * 0.8, this.y + this.height * 0.7);
+                    ctx.moveTo(this.x + this.width * 0.7, this.y + this.height * 0.2);
+                    ctx.lineTo(this.x + this.width * 0.3, this.y + this.height * 0.8);
+                    ctx.stroke();
+                }
+
+                ctx.strokeStyle = PALETTE.BRIDGE_WOOD_DARK;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x, this.y, this.width, this.height); // Plank border
+                ctx.restore();
+            }
+        }
+
+        class Enemy extends Entity {
+            constructor(x, y, type, path, bridgePlanks) {
+                super(x, y);
+                this.type = type;
+                this.path = path; // Array of Vector2 waypoints
+                this.pathIndex = 0;
+                this.targetWaypoint = path[this.pathIndex];
+                this.baseSpeed = 50; // pixels/second
+                this.currentSpeed = this.baseSpeed;
+                this.rotation = 0; // Angle in radians
+                this.value = 10;
+                this.bridgePlanks = bridgePlanks; // Reference to global bridge planks
+
+                // Type specific stats
+                switch (this.type) {
+                    case 'Küçük Tekne':
+                        this.baseHealth = 50;
+                        this.baseSpeed = 70;
+                        this.value = 10;
+                        this.collisionRadius = 15;
+                        break;
+                    case 'Sal':
+                        this.baseHealth = 150;
+                        this.baseSpeed = 40;
+                        this.value = 20;
+                        this.collisionRadius = 25;
+                        break;
+                    case 'Korsan Gemisi': // BOSS
+                        this.baseHealth = 1000;
+                        this.baseSpeed = 30;
+                        this.value = 100;
+                        this.collisionRadius = 40;
+                        this.isBoss = true;
+                        break;
+                }
+                this.health = this.baseHealth;
+                this.maxHealth = this.baseHealth;
+                this.currentSpeed = this.baseSpeed;
+            }
+
+            update(deltaTime) {
+                if (!this.active) return;
+
+                if (this.health <= 0) {
+                    this.active = false;
+                    return;
+                }
+
+                if (!this.targetWaypoint) {
+                    this.active = false; // Reached end of path
+                    game.health--; // Player takes damage
+                    game.floatingTexts.push(new FloatingText(this.position.x, this.position.y, "-1 Can!", PALETTE.DANGER_RED));
+                    return;
+                }
+
+                // Check for bridge plank status
+                let currentPlank = null;
+                for (const plank of this.bridgePlanks) {
+                    if (this.position.x > plank.x && this.position.x < plank.x + plank.width &&
+                        this.position.y > plank.y && this.position.y < plank.y + plank.height) {
+                        currentPlank = plank;
+                        break;
+                    }
+                }
+
+                this.currentSpeed = this.baseSpeed;
+                if (currentPlank && currentPlank.isDestroyed()) {
+                    this.currentSpeed *= 0.5; // Half speed on destroyed planks
+                } else if (currentPlank && currentPlank.isBroken()) {
+                    this.currentSpeed *= 0.75; // Slightly slower on broken planks
+                }
+
+                const direction = Vector2.sub(this.targetWaypoint, this.position);
+                this.rotation = Math.atan2(direction.y, direction.x);
+                direction.normalize();
+
+                this.position.x += direction.x * this.currentSpeed * deltaTime;
+                this.position.y += direction.y * this.currentSpeed * deltaTime;
+
+                if (this.position.distance(this.targetWaypoint) < 5) {
+                    this.pathIndex++;
+                    if (this.pathIndex < this.path.length) {
+                        this.targetWaypoint = this.path[this.pathIndex];
+                    } else {
+                        this.targetWaypoint = null;
+                    }
+                }
+            }
+
+            draw(ctx) {
+                if (!this.active) return;
+
+                ctx.save();
+                ctx.translate(this.position.x, this.position.y);
+                ctx.rotate(this.rotation);
+
+                // Apply a subtle sway animation
+                const swayOffset = Math.sin(performance.now() / 300) * 2;
+                ctx.translate(0, swayOffset);
+
+                ctx.shadowColor = PALETTE.RIVER_DEEP;
+                ctx.shadowBlur = 5;
+
+                switch (this.type) {
+                    case 'Küçük Tekne':
+                        this.drawSmallBoat(ctx);
+                        break;
+                    case 'Sal':
+                        this.drawRaft(ctx);
+                        break;
+                    case 'Korsan Gemisi':
+                        this.drawPirateShip(ctx);
+                        break;
+                }
+
+                ctx.restore();
+
+                // Draw health bar
+                if (this.health < this.maxHealth) {
+                    const barWidth = this.collisionRadius * 2;
+                    const barHeight = 4;
+                    const barX = this.position.x - barWidth / 2;
+                    const barY = this.position.y - this.collisionRadius - 10;
+
+                    ctx.fillStyle = PALETTE.DANGER_RED;
+                    ctx.fillRect(barX, barY, barWidth, barHeight);
+                    ctx.fillStyle = PALETTE.TOWER_DETAIL;
+                    ctx.fillRect(barX, barY, barWidth * (this.health / this.maxHealth), barHeight);
+                    ctx.strokeStyle = PALETTE.RIVER_DEEP;
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(barX, barY, barWidth, barHeight);
+                }
+            }
+
+            takeDamage(amount) {
+                this.health -= amount;
+                game.floatingTexts.push(new FloatingText(this.position.x + Math.random() * 10 - 5, this.position.y + Math.random() * 10 - 5, `-${amount}`, PALETTE.DANGER_RED));
+                if (this.health <= 0) {
+                    this.active = false;
+                    game.addGold(this.value);
+                    game.score += this.value;
+                    game.spawnParticles(this.position.x, this.position.y, 8, PALETTE.DANGER_RED); // Explosion
+                }
+            }
+
+            // Drawing functions for specific enemy types
+            drawSmallBoat(ctx) {
+                ctx.fillStyle = PALETTE.SHORE_SAND;
+                ctx.beginPath();
+                ctx.moveTo(-20, 0); ctx.lineTo(20, 0); ctx.lineTo(15, 10); ctx.lineTo(-15, 10); ctx.closePath();
+                ctx.fill(); ctx.strokeStyle = PALETTE.BRIDGE_WOOD_DARK; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = PALETTE.BRIDGE_WOOD_LIGHT;
+                ctx.fillRect(-5, -15, 10, 15); // Mast
+                ctx.beginPath();
+                ctx.moveTo(-10, -15); ctx.lineTo(10, -15); ctx.lineTo(0, -25); ctx.closePath();
+                ctx.fill(); ctx.stroke();
+                ctx.fillStyle = PALETTE.GOLD; ctx.fillRect(0, -25, 5, 5); // Flag
+            }
+
+            drawRaft(ctx) {
+                ctx.fillStyle = PALETTE.BRIDGE_WOOD_DARK;
+                for (let i = -20; i <= 20; i += 10) ctx.fillRect(-25, i - 5, 50, 8);
+                ctx.strokeStyle = PALETTE.BRIDGE_WOOD_LIGHT; ctx.lineWidth = 1;
+                for (let i = -20; i <= 20; i += 10) ctx.strokeRect(-25, i - 5, 50, 8);
+                ctx.fillStyle = PALETTE.SHORE_SAND; ctx.fillRect(-2, -20, 4, 30); // Mast
+                ctx.strokeStyle = PALETTE.BRIDGE_WOOD_DARK; ctx.lineWidth = 1; ctx.strokeRect(-2, -20, 4, 30);
+                ctx.fillStyle = PALETTE.DANGER_RED; ctx.beginPath();
+                ctx.moveTo(2, -20); ctx.lineTo(15, -15); ctx.lineTo(2, -10); ctx.closePath();
+                ctx.fill(); // Flag
+            }
+
+            drawPirateShip(ctx) {
+                ctx.fillStyle = PALETTE.BRIDGE_WOOD_LIGHT;
+                ctx.beginPath();
+                ctx.moveTo(-40, 0); ctx.lineTo(-30, 20); ctx.lineTo(30, 20); ctx.lineTo(40, 0);
+                ctx.lineTo(30, -10); ctx.lineTo(-30, -10); ctx.closePath();
+                ctx.fill(); ctx.strokeStyle = PALETTE.BRIDGE_WOOD_DARK; ctx.lineWidth = 3; ctx.stroke();
+                ctx.fillStyle = PALETTE.BRIDGE_WOOD_DARK;
+                ctx.fillRect(-20, -40, 5, 50); ctx.fillRect(15, -45, 5, 55); // Masts
+                ctx.fillStyle = PALETTE.TEXT_COLOR; // Beige sails
+                ctx.beginPath(); ctx.moveTo(-18, -35); ctx.lineTo(-18, -10); ctx.lineTo(0, -10); ctx.lineTo(0, -35); ctx.closePath();
+                ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(17, -40); ctx.lineTo(17, -10); ctx.lineTo(30, -10); ctx.lineTo(30, -40); ctx.closePath();
+                ctx.fill(); ctx.stroke();
+                ctx.fillStyle = 'black'; ctx.fillRect(15, -48, 10, 8); // Flag base
+                ctx.fillStyle = 'white'; // Skull
+                ctx.beginPath(); ctx.arc(20, -44, 2, 0, Math.PI * 2); ctx.fill(); // Head
+                ctx.fillRect(18.5, -42, 1, 2); ctx.fillRect(20.5, -42, 1, 2); // Eyes
+                ctx.fillRect(19.5, -40, 1, 1); // Mouth dot
+            }
+        }
+
+        class Projectile extends Entity {
+            constructor(x, y, target, damage, speed, radius, color, trailColor) {
+                super(x, y);
+                this.target = target; // Enemy instance
+                this.damage = damage;
+                this.speed = speed; // pixels/second
+                this.radius = radius;
+                this.color = color;
+                this.trailColor = trailColor;
+                this.trail = [];
+                this.maxTrailLength = 10;
+                this.isSplash = false;
+                this.splashRadius = 0;
+                this.onImpact = null;
+            }
+
+            update(deltaTime) {
+                if (!this.active) return;
+
+                if (!this.target || !this.target.active || this.target.health <= 0) {
+                    this.active = false;
+                    return;
+                }
+
+                const direction = Vector2.sub(this.target.position, this.position);
+                direction.normalize();
+
+                this.position.x += direction.x * this.speed * deltaTime;
+                this.position.y += direction.y * this.speed * deltaTime;
+
+                this.trail.unshift(new Vector2(this.position.x, this.position.y));
+                if (this.trail.length > this.maxTrailLength) this.trail.pop();
+
+                if (this.position.distance(this.target.position) < (this.radius + this.target.collisionRadius)) {
+                    this.target.takeDamage(this.damage);
+                    if (this.isSplash && this.onImpact) this.onImpact(this.position.x, this.position.y);
+                    this.active = false;
+                }
+
+                if (this.position.x < -10 || this.position.x > CANVAS_WIDTH + 10 ||
+                    this.position.y < -10 || this.position.y > CANVAS_HEIGHT + 10) {
+                    this.active = false; // Out of bounds
+                }
+            }
+
+            draw(ctx) {
+                if (!this.active) return;
+
+                if (this.trail.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for (let i = 1; i < this.trail.length; i++) ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    ctx.strokeStyle = this.trailColor; ctx.lineWidth = this.radius * 2; ctx.stroke();
+                }
+
+                ctx.fillStyle = this.color; ctx.beginPath();
+                ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+        class Tower extends Entity {
+            constructor(x, y, type) {
+                super(x, y);
+                this.type = type;
+                this.level = 1;
+                this.upgradeCost = 0;
+                this.sellValue = 0;
+                this.basePrice = 0;
+                this.fireTimer = 0;
+                this.target = null;
+                this.rotation = 0; // For barrel/arm
+                this.muzzleFlashTimer = 0;
+
+                this.setupStats();
+            }
+
+            setupStats() {
+                switch (this.type) {
+                    case 'archer':
+                        this.basePrice = 100; this.range = 150; this.fireRate = 0.8; this.damage = 10;
+                        this.projectileSpeed = 300; this.projectileRadius = 4;
+                        this.projectileColor = PALETTE.BRIDGE_WOOD_DARK; this.projectileTrail = PALETTE.SHORE_SAND;
+                        break;
+                    case 'catapult':
+                        this.basePrice = 250; this.range = 250; this.fireRate = 3; this.damage = 60;
+                        this.projectileSpeed = 150; this.projectileRadius = 10;
+                        this.projectileColor = PALETTE.TOWER_STONE; this.projectileTrail = PALETTE.BRIDGE_WOOD_DARK;
+                        this.splashRadius = 40; break;
+                    case 'cannon':
+                        this.basePrice = 300; this.range = 180; this.fireRate = 1.5; this.damage = 40;
+                        this.projectileSpeed = 250; this.projectileRadius = 7;
+                        this.projectileColor = 'black'; this.projectileTrail = PALETTE.DANGER_RED;
+                        this.splashRadius = 20; break;
+                }
+                this.updateCosts();
+            }
+
+            updateCosts() {
+                if (this.level < 3) this.upgradeCost = Math.round(this.basePrice * (0.7 + (this.level - 1) * 0.2));
+                else this.upgradeCost = 0;
+                let spent = this.basePrice;
+                if (this.level >= 2) spent += Math.round(this.basePrice * 0.7);
+                if (this.level === 3) spent += Math.round(this.basePrice * 0.9);
+                this.sellValue = Math.round(spent * 0.5);
+            }
+
+            upgrade() {
+                if (this.level >= 3) return false;
+                this.level++;
+                this.range *= 1.1; this.fireRate *= 0.85; this.damage *= 1.3; this.projectileSpeed *= 1.1;
+                this.updateCosts();
+                return true;
+            }
+
+            update(deltaTime) {
+                if (this.muzzleFlashTimer > 0) this.muzzleFlashTimer -= deltaTime;
+                this.fireTimer -= deltaTime;
+                if (!this.target || !this.target.active || this.target.health <= 0 || this.position.distance(this.target.position) > this.range) {
+                    this.target = null;
+                    let closestEnemy = null; let minDistance = this.range + 1;
+                    for (const enemy of game.enemies) {
+                        if (enemy.active) {
+                            const dist = this.position.distance(enemy.position);
+                            if (dist < this.range && dist < minDistance) { minDistance = dist; closestEnemy = enemy; }
+                        }
+                    }
+                    this.target = closestEnemy;
+                }
+                if (this.target) {
+                    const direction = Vector2.sub(this.target.position, this.position);
+                    this.rotation = Math.atan2(direction.y, direction.x);
+                    if (this.fireTimer <= 0) { this.fire(); this.fireTimer = this.fireRate; }
+                }
+            }
+
+            fire() {
+                this.muzzleFlashTimer = 0.1;
+                const projectileStartOffset = 25;
+                const startX = this.position.x + Math.cos(this.rotation) * projectileStartOffset;
+                const startY = this.position.y + Math.sin(this.rotation) * projectileStartOffset;
+
+                const projectile = new Projectile(startX, startY, this.target, this.damage, this.projectileSpeed, this.projectileRadius, this.projectileColor, this.projectileTrail);
+                game.projectiles.push(projectile);
+
+                if ((this.type === 'catapult' || this.type === 'cannon') && this.splashRadius > 0) {
+                    projectile.isSplash = true; projectile.splashRadius = this.splashRadius;
+                    projectile.onImpact = (impactX, impactY) => {
+                        for (const enemy of game.enemies) {
+                            if (enemy.active && new Vector2(impactX, impactY).distance(enemy.position) < this.splashRadius) {
+                                enemy.takeDamage(this.damage / 2);
+                            }
+                        }
+                        game.spawnParticles(impactX, impactY, 5, PALETTE.DANGER_RED);
+                    };
+                }
+            }
+
+            draw(ctx) {
+                ctx.save(); ctx.translate(this.position.x, this.position.y);
+                ctx.shadowColor = PALETTE.RIVER_DEEP; ctx.shadowBlur = 8;
+                switch (this.type) {
+                    case 'archer': this.drawArcherTower(ctx); break;
+                    case 'catapult': this.drawCatapult(ctx); break;
+                    case 'cannon': this.drawCannon(ctx); break;
+                }
+                if (this.muzzleFlashTimer > 0) {
+                    ctx.restore(); ctx.save();
+                    ctx.translate(this.position.x, this.position.y); ctx.rotate(this.rotation);
+                    const flashSize = 10 + Math.sin(this.muzzleFlashTimer * 100) * 3;
+                    ctx.fillStyle = PALETTE.GOLD; ctx.shadowColor = PALETTE.GOLD; ctx.shadowBlur = 15;
+                    ctx.beginPath(); ctx.arc(35, 0, flashSize, 0, Math.PI * 2); ctx.fill();
+                    ctx.restore();
+                } else { ctx.restore(); }
+
+                if (game.selectedTower === this) {
+                    ctx.save(); ctx.strokeStyle = PALETTE.GOLD; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.arc(this.position.x, this.position.y, this.range, 0, Math.PI * 2); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(this.position.x, this.position.y, 25, 0, Math.PI * 2); ctx.stroke();
+                    ctx.restore();
+                }
+            }
+            drawArcherTower(ctx) {
+                ctx.fillStyle = PALETTE.BRIDGE_WOOD_DARK; ctx.fillRect(-20, -15, 40, 30);
+                ctx.strokeStyle = PALETTE.BRIDGE_WOOD_LIGHT; ctx.lineWidth = 2; ctx.strokeRect(-20, -15, 40, 30);
+                ctx.fillStyle = PALETTE.BRIDGE_WOOD_DARK; ctx.beginPath();
+                ctx.arc(0, -15, 20, Math.PI, 0, false); ctx.lineTo(20, -40); ctx.arc(0, -40, 20, 0, Math.PI, false);
+                ctx.lineTo(-20, -15); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = PALETTE.SHORE_SAND; ctx.fillRect(-5, -50, 10, 15);
+                ctx.beginPath(); ctx.arc(0, -55, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.rotate(this.rotation); ctx.strokeStyle = 'black'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(10, -45); ctx.lineTo(15, -55); ctx.lineTo(10, -60); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(10, -55); ctx.lineTo(25, -55); ctx.stroke();
+            }
+            drawCatapult(ctx) {
+                ctx.fillStyle = PALETTE.TOWER_STONE; ctx.fillRect(-25, -10, 50, 20);
+                ctx.strokeStyle = PALETTE.RIVER_DEEP; ctx.lineWidth = 2; ctx.strokeRect(-25, -10, 50, 20);
+                ctx.rotate(this.rotation);
+                ctx.fillStyle = PALETTE.BRIDGE_WOOD_DARK; ctx.fillRect(-5, -20, 10, 30); ctx.fillRect(-15, -15, 30, 5);
+                ctx.fillStyle = PALETTE.BRIDGE_WOOD_LIGHT; ctx.beginPath();
+                ctx.moveTo(0, -25); ctx.lineTo(5, -25); ctx.lineTo(35, -5); ctx.lineTo(30, -5); ctx.closePath();
+                ctx.fill(); ctx.stroke();
+                ctx.fillStyle = PALETTE.DANGER_RED; ctx.beginPath();
+                ctx.arc(32, -10, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            }
+            drawCannon(ctx) {
+                ctx.fillStyle = PALETTE.TOWER_STONE; ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI * 2);
+                ctx.fill(); ctx.strokeStyle = PALETTE.RIVER_DEEP; ctx.lineWidth = 2; ctx.stroke();
+                ctx.rotate(this.rotation);
+                ctx.fillStyle = 'black'; ctx.fillRect(0, -8, 35, 16);
+                ctx.strokeStyle = PALETTE.BRIDGE_WOOD_DARK; ctx.lineWidth = 2; ctx.strokeRect(0, -8, 35, 16);
+                ctx.fillStyle = PALETTE.TOWER_DETAIL; ctx.fillRect(35, -5, 5, 10); ctx.strokeRect(35, -5, 5, 10);
+            }
+        }
+
+
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.setCanvasSize();
+
+                this.health = 100; this.gold = 200; this.score = 0;
+                this.wave = 0; this.maxWaves = 8;
+                this.gamePhase = "menu"; // "menu", "playing", "wave_break", "gameOver", "win"
+                this.lastTime = 0; this.deltaTime = 0; this.animationFrameId = null;
+
+                this.towers = []; this.enemies = []; this.projectiles = [];
+                this.particles = []; this.floatingTexts = []; this.bridgePlanks = [];
+
+                this.placementSpots = []; this.selectedTowerType = null;
+                this.placementPreview = { x: 0, y: 0, active: false, valid: false };
+                this.selectedTower = null;
+
+                this.waveEnemies = []; this.enemiesSpawnedInWave = 0;
+                this.waveSpawnTimer = 0;
+                this.waveDelayTimer = 0; this.waveDelayDuration = 5;
+
+                this.initPathAndBridge();
+                this.initPlacementSpots();
+                // Previous error: `this.setupUI();` was here, removed as per instructions.
+                this.addEventListeners();
+                this.updateUI();
+
+                window.OYUN_DURUMU.altin = this.gold;
+            }
+
+            setCanvasSize() { this.canvas.width = CANVAS_WIDTH; this.canvas.height = CANVAS_HEIGHT; }
+
+            initPathAndBridge() {
+                this.path = [
+                    new Vector2(0, CANVAS_HEIGHT / 2), new Vector2(200, CANVAS_HEIGHT / 2),
+                    new Vector2(300, CANVAS_HEIGHT / 2 - 50), new Vector2(400, CANVAS_HEIGHT / 2 - 50),
+                    new Vector2(800, CANVAS_HEIGHT / 2 - 50), new Vector2(900, CANVAS_HEIGHT / 2),
+                    new Vector2(CANVAS_WIDTH, CANVAS_HEIGHT / 2)
+                ];
+                const bridgeStartY = CANVAS_HEIGHT / 2 - 50 - 20;
+                const plankWidth = 50; const plankHeight = 40;
+                for (let x = 400; x < 800; x += plankWidth) {
+                    this.bridgePlanks.push(new BridgePlank(x, bridgeStartY, plankWidth, plankHeight));
+                }
+            }
+
+            initPlacementSpots() {
+                this.placementSpots = [
+                    { x: 450, y: CANVAS_HEIGHT / 2 - 100, occupied: false }, { x: 550, y: CANVAS_HEIGHT / 2 - 100, occupied: false },
+                    { x: 650, y: CANVAS_HEIGHT / 2 - 100, occupied: false }, { x: 750, y: CANVAS_HEIGHT / 2 - 100, occupied: false },
+                    { x: 450, y: CANVAS_HEIGHT / 2 + 0, occupied: false }, { x: 550, y: CANVAS_HEIGHT / 2 + 0, occupied: false },
+                    { x: 650, y: CANVAS_HEIGHT / 2 + 0, occupied: false }, { x: 750, y: CANVAS_HEIGHT / 2 + 0, occupied: false }
+                ];
+            }
+
+            addEventListeners() {
+                document.getElementById('baslaBtn').addEventListener('click', () => this.startGame());
+                document.getElementById('restartBtn').addEventListener('click', () => this.restartGame());
+                document.getElementById('towerPanel').querySelectorAll('.kule-btn').forEach(button => {
+                    button.addEventListener('click', (e) => this.selectTowerForPlacement(e.target.dataset.type, parseInt(e.target.dataset.price)));
+                });
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.canvas.addEventListener('click', (e) => this.handleClick(e));
+                this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+                this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+            }
+
+            handleMouseMove(e) {
+                if (this.gamePhase !== "playing" && this.gamePhase !== "wave_break") return;
+                const rect = this.canvas.getBoundingClientRect();
+                const scaleX = this.canvas.width / rect.width; const scaleY = this.canvas.height / rect.height;
+                const mouseX = (e.clientX - rect.left) * scaleX; const mouseY = (e.clientY - rect.top) * scaleY;
+                if (this.selectedTowerType) {
+                    this.placementPreview.x = mouseX; this.placementPreview.y = mouseY;
+                    this.placementPreview.active = true;
+                    this.placementPreview.valid = this.isValidPlacement(mouseX, mouseY);
+                }
+            }
+            handleTouchMove(e) { e.preventDefault(); this.handleMouseMove(e.touches[0]); }
+
+            handleClick(e) {
+                if (this.gamePhase !== "playing" && this.gamePhase !== "wave_break") return;
+                const rect = this.canvas.getBoundingClientRect();
+                const scaleX = this.canvas.width / rect.width; const scaleY = this.canvas.height / rect.height;
+                const clickX = (e.clientX - rect.left) * scaleX; const clickY = (e.clientY - rect.top) * scaleY;
+
+                if (this.selectedTowerType) {
+                    if (this.isValidPlacement(clickX, clickY)) {
+                        const spot = this.getClosestPlacementSpot(clickX, clickY);
+                        this.placeTower(this.selectedTowerType, spot.x, spot.y);
+                        spot.occupied = true;
+                        this.selectedTowerType = null; this.placementPreview.active = false;
+                    }
+                } else {
+                    this.selectedTower = null;
+                    for (const tower of this.towers) {
+                        if (tower.position.distance(new Vector2(clickX, clickY)) < 30) {
+                            this.selectedTower = tower;
+                            this.showTowerInfoPanel(tower); break;
+                        }
+                    }
+                    if (!this.selectedTower) this.hideTowerInfoPanel();
+                }
+            }
+            handleTouchStart(e) { e.preventDefault(); this.handleClick(e.touches[0]); }
+
+            isValidPlacement(x, y) {
+                const spot = this.getClosestPlacementSpot(x, y);
+                const tempTower = new Tower(0, 0, this.selectedTowerType);
+                return spot && !spot.occupied && this.gold >= tempTower.basePrice;
+            }
+
+            getClosestPlacementSpot(x, y) {
+                let closestSpot = null; let minDist = Infinity;
+                for (const spot of this.placementSpots) {
+                    const dist = new Vector2(x, y).distance(new Vector2(spot.x, spot.y));
+                    if (dist < minDist && dist < TILE_SIZE * 1.5) { minDist = dist; closestSpot = spot; }
+                }
+                return closestSpot;
+            }
+
+            selectTowerForPlacement(type, price) {
+                if (this.gold >= price) {
+                    this.selectedTowerType = type; this.placementPreview.active = true;
+                    this.hideTowerInfoPanel();
+                } else {
+                    game.floatingTexts.push(new FloatingText(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, "Yetersiz Altın!", PALETTE.DANGER_RED, -100, 2));
+                }
+            }
+
+            placeTower(type, x, y) {
+                const newTower = new Tower(x, y, type);
+                if (this.gold >= newTower.basePrice) {
+                    this.towers.push(newTower); this.gold -= newTower.basePrice; this.updateUI();
+                } else { game.floatingTexts.push(new FloatingText(x, y, "Yetersiz Altın!", PALETTE.DANGER_RED)); }
+            }
+
+            showTowerInfoPanel(tower) {
+                this.hideTowerInfoPanel();
+                const panel = document.createElement('div');
+                panel.id = 'towerInfoPanel';
+                panel.className = 'ui-panel absolute bg-gray-700 bg-opacity-90 p-4 rounded-lg flex flex-col items-center';
+                panel.style.left = `${tower.position.x - 75}px`; panel.style.top = `${tower.position.y - 120}px`;
+                panel.innerHTML = `
+                    <h3 class="text-xl font-bold mb-2">${tower.type.charAt(0).toUpperCase() + tower.type.slice(1)} Kulesi (Seviye ${tower.level})</h3>
+                    <p>Hasar: ${Math.round(tower.damage)}</p>
+                    <p>Menzil: ${Math.round(tower.range)}</p>
+                    <p>Atış Hızı: ${tower.fireRate.toFixed(1)}s</p>
+                    <div class="flex mt-4 space-x-2">
+                        <button id="upgradeBtn" class="btn btn-green">${tower.level < 3 ? `Yükselt (${tower.upgradeCost} Altın)` : 'Maks Seviye'}</button>
+                        <button id="sellBtn" class="btn btn-red">Sat (${tower.sellValue} Altın)</button>
+                    </div>`;
+                document.getElementById('gameUI').appendChild(panel);
+
+                const upgradeBtn = document.getElementById('upgradeBtn');
+                if (tower.level >= 3 || this.gold < tower.upgradeCost) upgradeBtn.disabled = true;
+                upgradeBtn.addEventListener('click', () => this.upgradeTower(tower));
+                document.getElementById('sellBtn').addEventListener('click', () => this.sellTower(tower));
+            }
+            hideTowerInfoPanel() { const panel = document.getElementById('towerInfoPanel'); if (panel) panel.remove(); }
+
+            upgradeTower(tower) {
+                if (this.gold >= tower.upgradeCost && tower.level < 3) {
+                    if (tower.upgrade()) {
+                        this.gold -= tower.upgradeCost; this.updateUI(); this.showTowerInfoPanel(tower);
+                    }
+                } else if (tower.level >= 3) {
+                    game.floatingTexts.push(new FloatingText(tower.position.x, tower.position.y, "Maks Seviye!", PALETTE.TEXT_COLOR));
+                } else {
+                    game.floatingTexts.push(new FloatingText(tower.position.x, tower.position.y, "Yetersiz Altın!", PALETTE.DANGER_RED));
+                }
+            }
+
+            sellTower(tower) {
+                this.gold += tower.sellValue;
+                this.towers = this.towers.filter(t => t !== tower);
+                for (const spot of this.placementSpots) {
+                    if (spot.x === tower.position.x && spot.y === tower.position.y) {
+                        spot.occupied = false; break;
+                    }
+                }
+                this.selectedTower = null; this.hideTowerInfoPanel(); this.updateUI();
+            }
+
+            startGame() {
+                document.getElementById('mainMenu').classList.add('hidden');
+                document.getElementById('towerPanel').classList.remove('hidden');
+                this.gamePhase = "wave_break";
+                this.waveDelayTimer = this.waveDelayDuration;
+                this.lastTime = performance.now();
+                this.animationFrameId = requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+                this.updateGlobalState();
+            }
+
+            restartGame() {
+                this.health = 100; this.gold = 200; this.score = 0; this.wave = 0;
+                this.enemies = []; this.towers = []; this.projectiles = [];
+                this.particles = []; this.floatingTexts = [];
+                this.selectedTower = null; this.selectedTowerType = null; this.placementPreview.active = false;
+                this.waveEnemies = []; this.enemiesSpawnedInWave = 0; this.waveSpawnTimer = 0; this.waveDelayTimer = 0;
+                for (const plank of this.bridgePlanks) plank.health = plank.maxHealth;
+                for (const spot of this.placementSpots) spot.occupied = false;
+
+                document.getElementById('endGameScreen').classList.add('hidden');
+                document.getElementById('mainMenu').classList.remove('hidden');
+                document.getElementById('towerPanel').classList.add('hidden');
+
+                cancelAnimationFrame(this.animationFrameId);
+                this.gamePhase = "menu"; this.updateUI(); this.updateGlobalState();
+            }
+
+            gameOver(won) {
+                this.gamePhase = won ? "win" : "gameOver";
+                cancelAnimationFrame(this.animationFrameId);
+                document.getElementById('endGameScreen').classList.remove('hidden');
+                document.getElementById('towerPanel').classList.add('hidden');
+                document.getElementById('finalScoreDisplay').textContent = this.score;
+
+                const endGameTitle = document.getElementById('endGameTitle');
+                const endGameMessage = document.getElementById('endGameMessage');
+                endGameTitle.textContent = won ? "Tebrikler!" : "Oyun Bitti!";
+                endGameMessage.textContent = won ? `Köprüyü Savundunuz! Skorunuz: ${this.score}` : `Canınız Bitti! Skorunuz: ${this.score}`;
+                this.updateGlobalState();
+            }
+
+            addGold(amount) { this.gold += amount; this.updateUI(); }
+
+            updateUI() {
+                document.getElementById('healthDisplay').textContent = this.health;
+                document.getElementById('goldDisplay').textContent = this.gold;
+                document.getElementById('scoreDisplay').textContent = this.score;
+                document.getElementById('waveDisplay').textContent = this.wave;
+                document.getElementById('maxWaveDisplay').textContent = this.maxWaves;
+                document.querySelectorAll('.kule-btn').forEach(button => {
+                    button.disabled = this.gold < parseInt(button.dataset.price);
+                });
+            }
+
+            updateGlobalState() {
+                window.OYUN_DURUMU.asama = this.gamePhase;
+                window.OYUN_DURUMU.dalga = this.wave;
+                window.OYUN_DURUMU.can = this.health;
+                window.OYUN_DURUMU.skor = this.score;
+                window.OYUN_DURUMU.altin = this.gold;
+            }
+
+            gameLoop(timestamp) {
+                this.deltaTime = (timestamp - this.lastTime) / 1000;
+                this.lastTime = timestamp;
+
+                this.update(this.deltaTime);
+                this.draw();
+
+                this.animationFrameId = requestAnimationFrame((ts) => this.gameLoop(ts));
+                if (this.health <= 0) this.gameOver(false);
+            }
+
+            update(deltaTime) {
+                this.updateGlobalState();
+                if (this.gamePhase === "menu" || this.gamePhase === "gameOver" || this.gamePhase === "win") return;
+
+                if (this.gamePhase === "wave_break") {
+                    this.waveDelayTimer -= deltaTime;
+                    if (this.waveDelayTimer <= 0) {
+                        this.wave++;
+                        if (this.wave > this.maxWaves) { this.gameOver(true); return; }
+                        this.gamePhase = "playing";
+                        this.enemies = [];
+                        this.waveEnemies = this.generateWave(this.wave);
+                        this.enemiesSpawnedInWave = 0; this.waveSpawnTimer = 0.5;
+                    }
+                }
+
+                if (this.gamePhase === "playing") {
+                    if (this.enemiesSpawnedInWave < this.waveEnemies.length) {
+                        this.waveSpawnTimer -= deltaTime;
+                        if (this.waveSpawnTimer <= 0) {
+                            const enemyType = this.waveEnemies[this.enemiesSpawnedInWave];
+                            const newEnemy = new Enemy(this.path[0].x, this.path[0].y, enemyType, this.path, this.bridgePlanks);
+                            newEnemy.baseHealth *= (1 + (this.wave - 1) * 0.25);
+                            newEnemy.health = newEnemy.baseHealth; newEnemy.maxHealth = newEnemy.baseHealth;
+                            this.enemies.push(newEnemy); this.enemiesSpawnedInWave++; this.waveSpawnTimer = 1.0;
+                        }
+                    }
+                    this.towers.forEach(tower => tower.update(deltaTime));
+                    this.enemies.forEach(enemy => enemy.update(deltaTime));
+                    this.projectiles.forEach(projectile => projectile.update(deltaTime));
+                    this.particles.forEach(particle => particle.update(deltaTime));
+                    this.floatingTexts.forEach(text => text.update(deltaTime));
+
+                    this.enemies = this.enemies.filter(enemy => enemy.active);
+                    this.projectiles = this.projectiles.filter(proj => proj.active);
+                    this.particles = this.particles.filter(part => part.active);
+                    this.floatingTexts = this.floatingTexts.filter(text => text.active);
+
+                    if (this.enemiesSpawnedInWave >= this.waveEnemies.length && this.enemies.length === 0) {
+                        this.gamePhase = "wave_break"; this.waveDelayTimer = this.waveDelayDuration;
+                        this.selectedTower = null; this.hideTowerInfoPanel();
+                    }
+                }
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                this.drawBackground();
+                this.drawPath();
+                this.drawBridgePlanks();
+
+                this.towers.forEach(tower => tower.draw(this.ctx));
+                this.enemies.forEach(enemy => enemy.draw(this.ctx));
+                this.projectiles.forEach(projectile => projectile.draw(this.ctx));
+                this.particles.forEach(particle => particle.draw(this.ctx));
+                this.floatingTexts.forEach(text => text.draw(this.ctx));
+
+                this.drawTowerPlacementPreview();
+                this.drawGameTitle();
+                if (this.gamePhase === "wave_break") this.drawWaveBreakUI();
+            }
+
+            drawWaveBreakUI() {
+                this.ctx.save(); this.ctx.fillStyle = `rgba(0, 0, 0, 0.6)`; this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                this.ctx.fillStyle = PALETTE.TEXT_COLOR; this.ctx.font = '48px Arial';
+                this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(`Dalga ${this.wave} Tamamlandı!`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 50);
+                if (this.wave < this.maxWaves) {
+                    this.ctx.fillText(`Sonraki Dalga: ${Math.ceil(this.waveDelayTimer)}s`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
+                } else {
+                    this.ctx.fillText(`Tüm Dalgala Bitti!`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
+                }
+                this.ctx.restore();
+            }
+
+            drawBackground() {
+                const skyGradient = this.ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT / 2);
+                skyGradient.addColorStop(0, PALETTE.SKY_TOP); skyGradient.addColorStop(1, PALETTE.SKY_MID);
+                this.ctx.fillStyle = skyGradient; this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT / 2);
+                const riverGradient = this.ctx.createLinearGradient(0, CANVAS_HEIGHT / 2, 0, CANVAS_HEIGHT);
+                riverGradient.addColorStop(0, PALETTE.RIVER_SURFACE); riverGradient.addColorStop(1, PALETTE.RIVER_DEEP);
+                this.ctx.fillStyle = riverGradient; this.ctx.fillRect(0, CANVAS_HEIGHT / 2, CANVAS_WIDTH, CANVAS_HEIGHT / 2);
+                this.ctx.fillStyle = PALETTE.SHORE_SAND;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, CANVAS_HEIGHT / 2); this.ctx.lineTo(200, CANVAS_HEIGHT / 2); this.ctx.lineTo(300, CANVAS_HEIGHT / 2 - 50);
+                this.ctx.lineTo(400, CANVAS_HEIGHT / 2 - 50); this.ctx.lineTo(400, CANVAS_HEIGHT / 2 - 10);
+                this.ctx.lineTo(300, CANVAS_HEIGHT / 2 + 40); this.ctx.lineTo(0, CANVAS_HEIGHT / 2 + 40); this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.beginPath();
+                this.ctx.moveTo(800, CANVAS_HEIGHT / 2 - 50); this.ctx.lineTo(900, CANVAS_HEIGHT / 2); this.ctx.lineTo(CANVAS_WIDTH, CANVAS_HEIGHT / 2);
+                this.ctx.lineTo(CANVAS_WIDTH, CANVAS_HEIGHT / 2 + 40); this.ctx.lineTo(900, CANVAS_HEIGHT / 2 + 40);
+                this.ctx.lineTo(800, CANVAS_HEIGHT / 2 - 10); this.ctx.closePath(); this.ctx.fill();
+                this.ctx.fillStyle = PALETTE.RIVER_DEEP; // Distant trees/mountains
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, CANVAS_HEIGHT / 2 - 80); this.ctx.lineTo(50, CANVAS_HEIGHT / 2 - 120); this.ctx.lineTo(100, CANVAS_HEIGHT / 2 - 80);
+                this.ctx.lineTo(150, CANVAS_HEIGHT / 2 - 100); this.ctx.lineTo(200, CANVAS_HEIGHT / 2 - 60); this.ctx.lineTo(250, CANVAS_HEIGHT / 2 - 90);
+                this.ctx.lineTo(CANVAS_WIDTH, CANVAS_HEIGHT / 2 - 80); this.ctx.lineTo(CANVAS_WIDTH, CANVAS_HEIGHT / 2);
+                this.ctx.lineTo(0, CANVAS_HEIGHT / 2); this.ctx.closePath(); this.ctx.fill();
+            }
+
+            drawPath() {
+                this.ctx.save();
+                this.ctx.strokeStyle = PALETTE.BRIDGE_WOOD_DARK; this.ctx.lineWidth = 4;
+                this.ctx.lineJoin = 'round'; this.ctx.lineCap = 'round';
+                this.ctx.beginPath(); this.ctx.moveTo(this.path[0].x, this.path[0].y);
+                for (let i = 1; i < this.path.length; i++) this.ctx.lineTo(this.path[i].x, this.path[i].y);
+                this.ctx.stroke();
+                this.ctx.fillStyle = PALETTE.SHORE_SAND;
+                this.ctx.beginPath(); this.ctx.moveTo(this.path[0].x, this.path[0].y - 20); this.ctx.lineTo(this.path[2].x, this.path[2].y - 20);
+                this.ctx.lineTo(this.path[2].x, this.path[2].y + 20); this.ctx.lineTo(this.path[0].x, this.path[0].y + 20); this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.beginPath(); this.ctx.moveTo(this.path[4].x, this.path[4].y - 20); this.ctx.lineTo(this.path[6].x, this.path[6].y - 20);
+                this.ctx.lineTo(this.path[6].x, this.path[6].y + 20); this.ctx.lineTo(this.path[4].x, this.path[4].y + 20); this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.restore();
+            }
+
+            drawBridgePlanks() {
+                this.ctx.save();
+                this.ctx.fillStyle = PALETTE.RIVER_SURFACE;
+                this.ctx.fillRect(400, CANVAS_HEIGHT / 2 - 50 - 20, 400, 40);
+                const flowOffset = (performance.now() / 100) % 20;
+                this.ctx.strokeStyle = PALETTE.SKY_MID; this.ctx.lineWidth = 1;
+                for (let i = 0; i < 400; i += 15) {
+                    this.ctx.beginPath(); this.ctx.moveTo(400 + i - flowOffset, CANVAS_HEIGHT / 2 - 50 - 20);
+                    this.ctx.lineTo(400 + i + 10 - flowOffset, CANVAS_HEIGHT / 2 - 50 + 20); this.ctx.stroke();
+                }
+                this.ctx.restore();
+                for (const plank of this.bridgePlanks) plank.draw(this.ctx);
+            }
+
+            drawTowerPlacementPreview() {
+                if (!this.selectedTowerType || !this.placementPreview.active) return;
+                this.ctx.save(); this.ctx.globalAlpha = 0.6;
+                this.ctx.translate(this.placementPreview.x, this.placementPreview.y);
+                switch (this.selectedTowerType) {
+                    case 'archer': this.drawArcherTowerPreview(this.ctx); break;
+                    case 'catapult': this.drawCatapultPreview(this.ctx); break;
+                    case 'cannon': this.drawCannonPreview(this.ctx); break;
+                }
+                const tempTower = new Tower(0,0,this.selectedTowerType);
+                this.ctx.beginPath(); this.ctx.arc(0, 0, tempTower.range, 0, Math.PI * 2);
+                this.ctx.strokeStyle = this.placementPreview.valid ? PALETTE.GOLD : PALETTE.DANGER_RED;
+                this.ctx.lineWidth = 2; this.ctx.stroke();
+                this.ctx.beginPath(); this.ctx.arc(0, 0, 20, 0, Math.PI * 2);
+                this.ctx.fillStyle = this.placementPreview.valid ? 'rgba(0, 255, 0, 0.3)' : 'rgba(255, 0, 0, 0.3)';
+                this.ctx.fill(); this.ctx.restore();
+            }
+            drawArcherTowerPreview(ctx) {
+                ctx.fillStyle = PALETTE.BRIDGE_WOOD_DARK; ctx.fillRect(-15, -10, 30, 20);
+                ctx.fillStyle = PALETTE.BRIDGE_WOOD_LIGHT; ctx.beginPath(); ctx.arc(0, -10, 15, Math.PI, 0, false);
+                ctx.lineTo(15, -30); ctx.arc(0, -30, 15, 0, Math.PI, false); ctx.lineTo(-15, -10); ctx.closePath(); ctx.fill();
+            }
+            drawCatapultPreview(ctx) {
+                ctx.fillStyle = PALETTE.TOWER_STONE; ctx.fillRect(-20, -5, 40, 10);
+                ctx.fillStyle = PALETTE.BRIDGE_WOOD_LIGHT; ctx.fillRect(-10, -15, 20, 20);
+                ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(5, -20); ctx.lineTo(25, -5); ctx.lineTo(20, -5); ctx.closePath(); ctx.fill();
+            }
+            drawCannonPreview(ctx) {
+                ctx.fillStyle = PALETTE.TOWER_STONE; ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'black'; ctx.fillRect(0, -7, 30, 14);
+            }
+
+            drawGameTitle() {
+                this.ctx.save(); this.ctx.fillStyle = PALETTE.GOLD; this.ctx.font = '30px Arial';
+                this.ctx.textAlign = 'left'; this.ctx.textBaseline = 'top';
+                this.ctx.shadowColor = 'black'; this.ctx.shadowBlur = 5;
+                this.ctx.fillText("Nehir Geçidi Savunması", 20, 20); this.ctx.restore();
+            }
+
+            spawnParticles(x, y, count, color) {
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 50 + 20;
+                    const dx = Math.cos(angle) * speed; const dy = Math.sin(angle) * speed;
+                    this.particles.push(new Particle(x, y, dx, dy, color, Math.random() * 5 + 2, Math.random() * 0.8 + 0.3));
+                }
+            }
+
+            generateWave(waveNumber) {
+                const waveConfig = []; let totalEnemies = 5 + waveNumber * 3; let numBosses = 0;
+
+                if (waveNumber % 4 === 0) {
+                    numBosses = Math.floor(waveNumber / 4);
+                    for (let i = 0; i < numBosses; i++) waveConfig.push('Korsan Gemisi');
+                    totalEnemies -= numBosses; if (totalEnemies < 0) totalEnemies = 0;
+                }
+                for (let i = 0; i < totalEnemies; i++) {
+                    const rand = Math.random();
+                    if (waveNumber < 3) waveConfig.push('Küçük Tekne');
+                    else if (waveNumber < 6) {
+                        if (rand < 0.7) waveConfig.push('Küçük Tekne');
+                        else waveConfig.push('Sal');
+                    } else {
+                        if (rand < 0.4) waveConfig.push('Küçük Tekne');
+                        else waveConfig.push('Sal');
+                    }
+                }
+                return waveConfig;
+            }
+        }
+
+        const game = new Game();
+
+        function resizeCanvas() {
+            const container = document.body;
+            const containerWidth = container.offsetWidth;
+            const containerHeight = container.offsetHeight;
+
+            let targetWidth = CANVAS_WIDTH;
+            let targetHeight = CANVAS_HEIGHT;
+
+            const aspectRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
+            if (containerWidth / containerHeight > aspectRatio) {
+                targetWidth = containerHeight * aspectRatio;
+                targetHeight = containerHeight;
+            } else {
+                targetWidth = containerWidth;
+                targetHeight = containerWidth / aspectRatio;
+            }
+
+            game.canvas.style.width = `${targetWidth}px`;
+            game.canvas.style.height = `${targetHeight}px`;
+
+            // Adjust UI panel positions if they are tied to canvas coordinates
+            const towerInfoPanel = document.getElementById('towerInfoPanel');
+            if (towerInfoPanel && game.selectedTower) {
+                const rect = game.canvas.getBoundingClientRect();
+                const scaleX = rect.width / game.canvas.width;
+                const scaleY = rect.height / game.canvas.height;
+                towerInfoPanel.style.left = `${rect.left + game.selectedTower.position.x * scaleX - 75}px`;
+                towerInfoPanel.style.top = `${rect.top + game.selectedTower.position.y * scaleY - 120}px`;
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+    </script>
+</body>
+</html>
