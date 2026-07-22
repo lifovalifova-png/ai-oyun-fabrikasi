@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kutup İstasyonu Savunması</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            overflow: hidden;
+            margin: 0;
+            background-color: #1a202c; /* Dark background for overall page */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        #gameCanvas {
+            background-color: #0d121c; /* Darker background for canvas area */
+            display: block;
+            margin: auto;
+            border: 2px solid #2F4858;
+            border-radius: 8px;
+            max-width: 95vw;
+            max-height: 95vh;
+            touch-action: none; /* Prevent browser gestures like pull-to-refresh */
+        }
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allows clicks to pass through to canvas by default */
+        }
+        .ui-element {
+            pointer-events: auto; /* Re-enable pointer events for specific UI elements */
+        }
+    </style>
+</head>
+<body class="font-mono text-white">
+
+    <div id="game-container" class="relative w-full h-full flex justify-center items-center">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="main-menu" class="ui-element absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-70 z-50 transition-opacity duration-500 hidden">
+            <h1 class="text-6xl font-extrabold mb-8 text-white drop-shadow-lg" style="text-shadow: 0 0 10px #A7D9EB;">Kutup İstasyonu Savunması</h1>
+            <button id="baslaBtn" class="px-10 py-4 bg-gradient-to-r from-blue-500 to-teal-500 text-white text-2xl font-bold rounded-full shadow-lg hover:from-blue-600 hover:to-teal-600 transition-all transform hover:scale-105">
+                Oyunu Başlat
+            </button>
+        </div>
+
+        <div id="game-over-screen" class="ui-element absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-70 z-50 transition-opacity duration-500 hidden">
+            <h2 class="text-5xl font-extrabold mb-4 text-red-500 drop-shadow-lg">Oyun Bitti!</h2>
+            <p id="final-score" class="text-3xl mb-8 text-white">Skor: 0</p>
+            <button id="restartBtn" class="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xl font-bold rounded-full shadow-lg hover:from-green-600 hover:to-emerald-600 transition-all transform hover:scale-105">
+                Yeniden Başlat
+            </button>
+        </div>
+
+        <div id="game-win-screen" class="ui-element absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-70 z-50 transition-opacity duration-500 hidden">
+            <h2 class="text-5xl font-extrabold mb-4 text-yellow-400 drop-shadow-lg">TEBRİKLER! KAZANDINIZ!</h2>
+            <p id="win-score" class="text-3xl mb-8 text-white">Skor: 0</p>
+            <button id="winRestartBtn" class="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xl font-bold rounded-full shadow-lg hover:from-green-600 hover:to-emerald-600 transition-all transform hover:scale-105">
+                Yeniden Başlat
+            </button>
+        </div>
+
+        <div id="in-game-ui" class="ui-container hidden">
+            <!-- Top Stats Overlay -->
+            <div class="absolute top-4 left-1/2 -translate-x-1/2 flex space-x-8 p-3 bg-gray-900 bg-opacity-70 rounded-full shadow-lg ui-element z-10">
+                <div class="flex items-center text-lg">
+                    <span class="mr-2 text-red-400">❤️</span> Can: <span id="player-health" class="ml-1 font-bold">100</span>
+                </div>
+                <div class="flex items-center text-lg">
+                    <span class="mr-2 text-yellow-400">💰</span> Altın: <span id="player-gold" class="ml-1 font-bold">200</span>
+                </div>
+                <div class="flex items-center text-lg">
+                    <span class="mr-2 text-blue-400">✨</span> Skor: <span id="player-score" class="ml-1 font-bold">0</span>
+                </div>
+                <div class="flex items-center text-lg">
+                    <span class="mr-2 text-white">🌊</span> Dalga: <span id="wave-number" class="ml-1 font-bold">1 / 8</span>
+                </div>
+            </div>
+
+            <!-- Tower Selection Panel -->
+            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-4 p-4 bg-gray-900 bg-opacity-70 rounded-lg shadow-lg ui-element z-10">
+                <button class="kule-btn px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md transition-all transform hover:scale-105" data-tower-type="0">
+                    Buz Topu <br> <span class="text-sm">(100 Altın)</span>
+                </button>
+                <button class="kule-btn px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-md transition-all transform hover:scale-105" data-tower-type="1">
+                    Hızlı Atıcı <br> <span class="text-sm">(150 Altın)</span>
+                </button>
+                <button class="kule-btn px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-md transition-all transform hover:scale-105" data-tower-type="2">
+                    Alan Savunma <br> <span class="text-sm">(250 Altın)</span>
+                </button>
+            </div>
+
+            <!-- Tower Upgrade/Sell Panel -->
+            <div id="tower-panel" class="absolute bottom-4 right-4 p-4 bg-gray-900 bg-opacity-70 rounded-lg shadow-lg ui-element hidden z-10">
+                <h3 class="text-xl font-bold mb-3 text-white">Kule Seçenekleri</h3>
+                <div class="flex flex-col space-y-2">
+                    <button id="upgrade-btn" class="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-md transition-all transform hover:scale-105">
+                        Yükselt (100 Altın)
+                    </button>
+                    <button id="sell-btn" class="px-6 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-md transition-all transform hover:scale-105">
+                        Sat (50 Altın)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Elements
+        const mainMenu = document.getElementById('main-menu');
+        const baslaBtn = document.getElementById('baslaBtn');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const restartBtn = document.getElementById('restartBtn');
+        const gameWinScreen = document.getElementById('game-win-screen');
+        const winScoreDisplay = document.getElementById('win-score');
+        const winRestartBtn = document.getElementById('winRestartBtn');
+        const inGameUI = document.getElementById('in-game-ui');
+        const playerHealthEl = document.getElementById('player-health');
+        const playerGoldEl = document.getElementById('player-gold');
+        const playerScoreEl = document.getElementById('player-score');
+        const waveNumberEl = document.getElementById('wave-number');
+        const towerPanel = document.getElementById('tower-panel');
+        const upgradeBtn = document.getElementById('upgrade-btn');
+        const sellBtn = document.getElementById('sell-btn');
+        const kuleBtns = document.querySelectorAll('.kule-btn');
+
+        // Game Constants
+        const TILE_SIZE = 50; // Base size for drawing elements
+        let CANVAS_WIDTH = 1000;
+        let CANVAS_HEIGHT = 700;
+
+        // Color Palette
+        const COLORS = {
+            ICE_BLUE_LIGHT: '#E0F7FA', // Light snow, sky highlight
+            ICE_BLUE_MID: '#A7D9EB',   // Main sky, water elements
+            ICE_BLUE_DARK: '#6B94A4',  // Ice structures, path borders
+            STATION_GREY_DARK: '#2F4858', // Station elements, enemy base, text
+            SNOW_WHITE: '#F8F8F8',    // Actual snow, highlights
+            ENEMY_RED: '#F05454',      // Enemy health bars, damage
+            GOLD_YELLOW: '#F7B84B',    // Currency, tower accents
+            PROJECTILE_GREEN: '#8EDF8E', // Projectile trails
+            PATH_GREY: '#3A4B5C',      // Path
+            SNOW_ALPHA: 'rgba(248, 248, 248, 0.7)' // Semi-transparent snow
+        };
+
+        // Game State
+        let gameState = {
+            currentScene: 'menu', // 'menu', 'game', 'gameOver', 'win'
+            playerHealth: 100,
+            gold: 200,
+            score: 0,
+            waveNumber: 0,
+            totalWaves: 8,
+            enemies: [],
+            towers: [],
+            projectiles: [],
+            particles: [],
+            damageTexts: [],
+            path: [],
+            wavePrepTimer: 0, // In seconds
+            isWaveActive: false,
+            selectedTowerToPlace: null, // Stores the type of tower being placed
+            selectedTower: null, // Stores the tower clicked for upgrade/sell
+        };
+
+        // Global exposed game state for debugging/testing
+        window.OYUN_DURUMU = {};
+
+        // Game Loop Variables
+        let lastTime = 0;
+        let deltaTime = 0;
+
+        // Utility Functions
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function getDistance(x1, y1, x2, y2) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function normalizeCoords(event) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = event.clientX || event.touches[0].clientX;
+            const clientY = event.clientY || event.touches[0].clientY;
+            return {
+                x: ((clientX - rect.left) / rect.width) * canvas.width,
+                y: ((clientY - rect.top) / rect.height) * canvas.height
+            };
+        }
+
+        // Path Definition (coordinates in game units)
+        function generatePath() {
+            const pathSegments = [
+                { x: 0, y: 150 }, { x: 100, y: 150 }, { x: 100, y: 350 }, { x: 300, y: 350 },
+                { x: 300, y: 100 }, { x: 500, y: 100 }, { x: 500, y: 450 }, { x: 700, y: 450 },
+                { x: 700, y: 200 }, { x: 900, y: 200 }, { x: 900, y: 600 }, { x: CANVAS_WIDTH, y: 600 }
+            ];
+            gameState.path = pathSegments;
+        }
+
+        // Tower Definitions
+        const TOWER_TYPES = [
+            {
+                name: "Buz Topu Kulesi",
+                cost: 100,
+                levels: [
+                    { damage: 15, range: 150, fireRate: 1000, upgradeCost: 100, sellValue: 50 },
+                    { damage: 25, range: 180, fireRate: 800, upgradeCost: 150, sellValue: 100 },
+                    { damage: 40, range: 220, fireRate: 600, upgradeCost: 0, sellValue: 150 }
+                ]
+            },
+            {
+                name: "Hızlı Atıcı Kulesi",
+                cost: 150,
+                levels: [
+                    { damage: 8, range: 120, fireRate: 300, upgradeCost: 150, sellValue: 75 },
+                    { damage: 15, range: 140, fireRate: 200, upgradeCost: 200, sellValue: 125 },
+                    { damage: 25, range: 160, fireRate: 150, upgradeCost: 0, sellValue: 200 }
+                ]
+            },
+            {
+                name: "Alan Savunma Kulesi",
+                cost: 250,
+                levels: [
+                    { damage: 10, range: 100, fireRate: 1500, upgradeCost: 200, sellValue: 125, isAOE: true },
+                    { damage: 18, range: 120, fireRate: 1200, upgradeCost: 250, sellValue: 200, isAOE: true },
+                    { damage: 28, range: 140, fireRate: 900, upgradeCost: 0, sellValue: 275, isAOE: true }
+                ]
+            }
+        ];
+
+        // Enemy Definitions
+        const ENEMY_TYPES = [
+            { name: "Snow Crawler", health: 50, speed: 0.1, reward: 10, score: 10 },
+            { name: "Ice Golem", health: 150, speed: 0.05, reward: 25, score: 25 },
+            { name: "Frost Yeti", health: 80, speed: 0.08, reward: 15, score: 15 }
+        ];
+        const BOSS_ENEMY_TYPE = { name: "Ice Behemoth", health: 1000, speed: 0.03, reward: 150, score: 100, isBoss: true };
+
+        // Wave Configurations
+        const WAVE_CONFIGS = [
+            { enemies: [{ type: 0, count: 5 }], healthMultiplier: 1 },
+            { enemies: [{ type: 0, count: 8 }, { type: 2, count: 2 }], healthMultiplier: 1.2 },
+            { enemies: [{ type: 0, count: 10 }, { type: 2, count: 5 }], healthMultiplier: 1.5 },
+            { enemies: [{ type: 0, count: 5 }, { type: 1, count: 3 }, { type: 2, count: 5 }, { type: 'BOSS', count: 1 }], healthMultiplier: 1.8 }, // BOSS wave
+            { enemies: [{ type: 0, count: 15 }, { type: 1, count: 5 }], healthMultiplier: 2.2 },
+            { enemies: [{ type: 1, count: 8 }, { type: 2, count: 10 }], healthMultiplier: 2.5 },
+            { enemies: [{ type: 0, count: 10 }, { type: 1, count: 10 }, { type: 2, count: 10 }], healthMultiplier: 3 },
+            { enemies: [{ type: 1, count: 8 }, { type: 2, count: 12 }, { type: 'BOSS', count: 2 }], healthMultiplier: 3.5 } // Final BOSS wave
+        ];
+
+
+        // --- Drawing Functions ---
+
+        function drawBackground() {
+            // Sky Gradient
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT * 0.7);
+            skyGradient.addColorStop(0, COLORS.ICE_BLUE_LIGHT);
+            skyGradient.addColorStop(1, COLORS.ICE_BLUE_MID);
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // Horizon Line (Mountains/Ice Formations)
+            ctx.beginPath();
+            ctx.moveTo(0, CANVAS_HEIGHT * 0.6);
+            for (let i = 0; i < CANVAS_WIDTH; i += 50) {
+                ctx.lineTo(i, CANVAS_HEIGHT * 0.6 + Math.sin(i * 0.05 + performance.now() * 0.0001) * 20);
+            }
+            ctx.lineTo(CANVAS_WIDTH, CANVAS_HEIGHT * 0.6);
+            ctx.fillStyle = COLORS.ICE_BLUE_DARK;
+            ctx.fill();
+
+            // Ground Snow
+            ctx.fillStyle = COLORS.SNOW_WHITE;
+            ctx.fillRect(0, CANVAS_HEIGHT * 0.65, CANVAS_WIDTH, CANVAS_HEIGHT * 0.35);
+
+            // Path
+            ctx.strokeStyle = COLORS.PATH_GREY;
+            ctx.lineWidth = 40;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(gameState.path[0].x, gameState.path[0].y);
+            for (let i = 1; i < gameState.path.length; i++) {
+                ctx.lineTo(gameState.path[i].x, gameState.path[i].y);
+            }
+            ctx.stroke();
+
+            // Path Inner (lighter snow)
+            ctx.strokeStyle = COLORS.SNOW_WHITE;
+            ctx.lineWidth = 30;
+            ctx.beginPath();
+            ctx.moveTo(gameState.path[0].x, gameState.path[0].y);
+            for (let i = 1; i < gameState.path.length; i++) {
+                ctx.lineTo(gameState.path[i].x, gameState.path[i].y);
+            }
+            ctx.stroke();
+
+            // Station elements (subtle, in the distance)
+            ctx.fillStyle = COLORS.STATION_GREY_DARK;
+            ctx.beginPath();
+            ctx.ellipse(CANVAS_WIDTH * 0.85, CANVAS_HEIGHT * 0.65, 80, 40, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillRect(CANVAS_WIDTH * 0.82, CANVAS_HEIGHT * 0.5, 60, 150);
+            ctx.beginPath();
+            ctx.arc(CANVAS_WIDTH * 0.85, CANVAS_HEIGHT * 0.5, 30, 0, Math.PI * 2);
+            ctx.fill(); // Dome top
+
+            // Snow texture (subtle dots/specks)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            for (let i = 0; i < 50; i++) {
+                ctx.beginPath();
+                ctx.arc(Math.random() * CANVAS_WIDTH, Math.random() * CANVAS_HEIGHT, Math.random() * 1.5 + 0.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawEnemy(enemy) {
+            ctx.save();
+            ctx.translate(enemy.x, enemy.y + Math.sin(enemy.animationFrame * 0.1) * 5); // Walking animation
+
+            // Common shadow
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+            ctx.shadowBlur = 5;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 3;
+
+            if (enemy.isBoss) {
+                // Ice Behemoth (Boss) - More complex
+                const bodyWidth = 80;
+                const bodyHeight = 100;
+
+                // Main body
+                ctx.fillStyle = COLORS.STATION_GREY_DARK;
+                ctx.fillRect(-bodyWidth / 2, -bodyHeight, bodyWidth, bodyHeight);
+
+                // Spikes on shoulders
+                ctx.fillStyle = COLORS.ICE_BLUE_DARK;
+                ctx.beginPath();
+                ctx.moveTo(-bodyWidth / 2 - 10, -bodyHeight + 20);
+                ctx.lineTo(-bodyWidth / 2 + 10, -bodyHeight - 10);
+                ctx.lineTo(-bodyWidth / 2 + 20, -bodyHeight + 20);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(bodyWidth / 2 + 10, -bodyHeight + 20);
+                ctx.lineTo(bodyWidth / 2 - 10, -bodyHeight - 10);
+                ctx.lineTo(bodyWidth / 2 - 20, -bodyHeight + 20);
+                ctx.fill();
+
+                // Head
+                ctx.fillStyle = COLORS.STATION_GREY_DARK;
+                ctx.beginPath();
+                ctx.arc(0, -bodyHeight - 20, 30, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Glowing eyes
+                ctx.fillStyle = COLORS.ENEMY_RED;
+                ctx.shadowColor = COLORS.ENEMY_RED;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(-10, -bodyHeight - 25, 5, 0, Math.PI * 2);
+                ctx.arc(10, -bodyHeight - 25, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0; // Reset shadow for health bar
+                ctx.shadowColor = 'transparent';
+
+            } else if (enemy.type === 0) {
+                // Snow Crawler: Oval body, 4 small "legs", small head
+                const bodyRx = 20;
+                const bodyRy = 15;
+                ctx.fillStyle = COLORS.ICE_BLUE_DARK;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, bodyRx, bodyRy, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Legs
+                ctx.fillStyle = COLORS.STATION_GREY_DARK;
+                ctx.fillRect(-15, bodyRy - 5, 5, 10);
+                ctx.fillRect(10, bodyRy - 5, 5, 10);
+                ctx.fillRect(-20, bodyRy - 8, 5, 10);
+                ctx.fillRect(15, bodyRy - 8, 5, 10);
+
+                // Head
+                ctx.fillStyle = COLORS.ICE_BLUE_LIGHT;
+                ctx.beginPath();
+                ctx.arc(bodyRx - 10, -5, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else if (enemy.type === 1) {
+                // Ice Golem: Large block body, two arm blocks, smaller head block
+                const bodyWidth = 30;
+                const bodyHeight = 40;
+                ctx.fillStyle = COLORS.STATION_GREY_DARK;
+                ctx.fillRect(-bodyWidth / 2, -bodyHeight, bodyWidth, bodyHeight); // Body
+
+                ctx.fillStyle = COLORS.ICE_BLUE_DARK;
+                ctx.fillRect(-bodyWidth / 2 - 10, -bodyHeight + 10, 10, 20); // Left arm
+                ctx.fillRect(bodyWidth / 2, -bodyHeight + 10, 10, 20);     // Right arm
+
+                ctx.fillStyle = COLORS.ICE_BLUE_LIGHT;
+                ctx.fillRect(-10, -bodyHeight - 15, 20, 15); // Head
+
+            } else if (enemy.type === 2) {
+                // Frost Yeti: Pear-shaped body, two arm-shapes, round head, small horns
+                const bodyRx = 25;
+                const bodyRy = 35;
+                ctx.fillStyle = COLORS.ICE_BLUE_DARK;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, bodyRx, bodyRy, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Arms (rounded rectangles)
+                ctx.fillStyle = COLORS.STATION_GREY_DARK;
+                ctx.beginPath();
+                ctx.ellipse(-bodyRx - 5, -bodyRy / 2, 10, 20, Math.PI / 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(bodyRx + 5, -bodyRy / 2, 10, 20, -Math.PI / 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Head
+                ctx.fillStyle = COLORS.ICE_BLUE_LIGHT;
+                ctx.beginPath();
+                ctx.arc(0, -bodyRy - 10, 15, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Horns
+                ctx.fillStyle = COLORS.STATION_GREY_DARK;
+                ctx.beginPath();
+                ctx.moveTo(-10, -bodyRy - 20);
+                ctx.lineTo(-15, -bodyRy - 30);
+                ctx.lineTo(-5, -bodyRy - 25);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(10, -bodyRy - 20);
+                ctx.lineTo(15, -bodyRy - 30);
+                ctx.lineTo(5, -bodyRy - 25);
+                ctx.fill();
+            }
+
+            ctx.restore();
+
+            // Health Bar
+            ctx.shadowBlur = 0; // Reset shadow for health bar
+            ctx.fillStyle = 'gray';
+            ctx.fillRect(enemy.x - 20, enemy.y - 45, 40, 5);
+            ctx.fillStyle = COLORS.ENEMY_RED;
+            ctx.fillRect(enemy.x - 20, enemy.y - 45, (enemy.health / enemy.maxHealth) * 40, 5);
+        }
+
+        function drawTower(tower) {
+            ctx.save();
+            ctx.translate(tower.x, tower.y);
+
+            // Common shadow
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+            ctx.shadowBlur = 5;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 3;
+
+            // Base
+            ctx.fillStyle = COLORS.STATION_GREY_DARK;
+            ctx.beginPath();
+            ctx.arc(0, 0, 25, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (tower.type === 0) { // Buz Topu Kulesi
+                // Body
+                ctx.fillStyle = COLORS.ICE_BLUE_DARK;
+                ctx.fillRect(-15, -35, 30, 40);
+
+                // Barrel
+                ctx.fillStyle = COLORS.ICE_BLUE_MID;
+                ctx.rotate(tower.rotation);
+                ctx.fillRect(-8, -45, 16, 20); // main barrel
+                ctx.fillRect(-4, -55, 8, 10); // tip of barrel
+                if (tower.muzzleFlash > 0) {
+                    ctx.shadowColor = COLORS.ICE_BLUE_LIGHT;
+                    ctx.shadowBlur = 15;
+                    ctx.fillStyle = COLORS.SNOW_WHITE;
+                    ctx.beginPath();
+                    ctx.arc(0, -55, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+                ctx.rotate(-tower.rotation); // Rotate back
+
+            } else if (tower.type === 1) { // Hızlı Atıcı Kulesi
+                // Body (Hexagonal)
+                ctx.fillStyle = COLORS.ICE_BLUE_DARK;
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    ctx.lineTo(18 * Math.cos(i * Math.PI / 3), 18 * Math.sin(i * Math.PI / 3) - 20);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                // Twin barrels
+                ctx.fillStyle = COLORS.STATION_GREY_DARK;
+                ctx.rotate(tower.rotation);
+                ctx.fillRect(-12, -35, 8, 15); // left barrel
+                ctx.fillRect(4, -35, 8, 15);  // right barrel
+                if (tower.muzzleFlash > 0) {
+                    ctx.shadowColor = COLORS.PROJECTILE_GREEN;
+                    ctx.shadowBlur = 10;
+                    ctx.fillStyle = COLORS.SNOW_WHITE;
+                    ctx.beginPath();
+                    ctx.arc(-8, -35, 5, 0, Math.PI * 2);
+                    ctx.arc(8, -35, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+                ctx.rotate(-tower.rotation);
+
+            } else if (tower.type === 2) { // Alan Savunma Kulesi
+                // Wide, flat base (part of main base drawing)
+                ctx.fillStyle = COLORS.STATION_GREY_DARK;
+                ctx.beginPath();
+                ctx.arc(0, 0, 30, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Central crystal
+                ctx.fillStyle = COLORS.ICE_BLUE_LIGHT;
+                ctx.shadowColor = COLORS.ICE_BLUE_LIGHT;
+                ctx.shadowBlur = tower.muzzleFlash > 0 ? 15 : 5; // Pulse glow
+                ctx.beginPath();
+                ctx.moveTo(0, -35);
+                ctx.lineTo(-15, -15);
+                ctx.lineTo(15, -15);
+                ctx.closePath();
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = 'transparent';
+
+            // Snow accumulation
+            if (tower.snowLevel > 0) {
+                ctx.fillStyle = COLORS.SNOW_ALPHA;
+                ctx.beginPath();
+                // Bottom mound
+                ctx.arc(0, 0, 25 * tower.snowLevel, 0, Math.PI * 2);
+                ctx.fill();
+                // Top mound
+                if (tower.snowLevel > 0.3) {
+                    ctx.beginPath();
+                    ctx.arc(0, -20, 15 * (tower.snowLevel - 0.3) * 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                if (tower.snowLevel > 0.6) {
+                    ctx.beginPath();
+                    ctx.arc(-15, -10, 10 * (tower.snowLevel - 0.6) * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(15, -10, 10 * (tower.snowLevel - 0.6) * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Outline if selected
+            if (gameState.selectedTower === tower) {
+                ctx.strokeStyle = COLORS.GOLD_YELLOW;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, 30, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // Range circle
+            if (gameState.selectedTower === tower) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(tower.x, tower.y, tower.range, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        function drawProjectile(proj) {
+            ctx.save();
+            ctx.translate(proj.x, proj.y);
+
+            ctx.shadowColor = COLORS.PROJECTILE_GREEN;
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = COLORS.PROJECTILE_GREEN;
+            ctx.beginPath();
+            ctx.arc(0, 0, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Trail
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            for (let i = 0; i < proj.trail.length; i++) {
+                const p = proj.trail[i];
+                ctx.lineTo(p.x - proj.x, p.y - proj.y);
+            }
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = COLORS.PROJECTILE_GREEN;
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+
+        function drawParticle(particle) {
+            ctx.fillStyle = particle.color;
+            ctx.beginPath();
+            ctx.arc(particle.x, particle.y, particle.size * particle.life, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawDamageText(text) {
+            ctx.fillStyle = text.color;
+            ctx.font = `${text.size * text.life}px Arial`;
+            ctx.fillText(text.text, text.x, text.y);
+        }
+
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+
+            gameState.path.forEach((point, index) => {
+                ctx.fillStyle = COLORS.STATION_GREY_DARK;
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            gameState.towers.forEach(drawTower);
+            gameState.projectiles.forEach(drawProjectile);
+            gameState.enemies.forEach(drawEnemy);
+            gameState.particles.forEach(drawParticle);
+            gameState.damageTexts.forEach(drawDamageText);
+
+            // Draw tower being placed
+            if (gameState.selectedTowerToPlace !== null) {
+                ctx.globalAlpha = 0.5;
+                const towerType = TOWER_TYPES[gameState.selectedTowerToPlace];
+                const tempTower = {
+                    x: currentMousePos.x,
+                    y: currentMousePos.y,
+                    type: gameState.selectedTowerToPlace,
+                    rotation: 0,
+                    muzzleFlash: 0,
+                    snowLevel: 0,
+                    range: towerType.levels[0].range,
+                };
+                drawTower(tempTower);
+                ctx.globalAlpha = 1;
+
+                // Draw placement area validity
+                const isOnPath = checkCollisionWithPath(currentMousePos.x, currentMousePos.y, 30);
+                ctx.strokeStyle = isOnPath ? COLORS.ENEMY_RED : COLORS.PROJECTILE_GREEN;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(currentMousePos.x, currentMousePos.y, 30, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Game Title Overlay
+            ctx.fillStyle = COLORS.SNOW_WHITE;
+            ctx.font = "bold 30px Arial";
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 5;
+            ctx.fillText("Kutup İstasyonu Savunması", 20, 40);
+            ctx.shadowBlur = 0;
+
+            if (gameState.wavePrepTimer > 0) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, CANVAS_HEIGHT / 2 - 50, CANVAS_WIDTH, 100);
+                ctx.fillStyle = COLORS.SNOW_WHITE;
+                ctx.font = "bold 48px Arial";
+                ctx.textAlign = 'center';
+                ctx.fillText(`Dalga ${gameState.waveNumber + 1} Başlayacak: ${Math.ceil(gameState.wavePrepTimer)}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 15);
+                ctx.textAlign = 'left';
+            }
+        }
+
+        // --- Game Logic Classes ---
+
+        class Enemy {
+            constructor(typeIndex, healthMultiplier, path) {
+                const baseType = ENEMY_TYPES[typeIndex] || BOSS_ENEMY_TYPE;
+                this.type = typeIndex;
+                this.isBoss = baseType.isBoss || false;
+                this.name = baseType.name;
+                this.maxHealth = baseType.health * healthMultiplier;
+                this.health = this.maxHealth;
+                this.speed = baseType.speed;
+                this.reward = baseType.reward;
+                this.score = baseType.score;
+                this.path = path;
+                this.pathIndex = 0;
+                this.x = this.path[0].x;
+                this.y = this.path[0].y;
+                this.radius = this.isBoss ? 40 : 20; // Collision radius
+                this.animationFrame = 0;
+                this.alive = true;
+            }
+
+            update(deltaTime) {
+                if (!this.alive) return;
+
+                this.animationFrame += deltaTime * 0.01;
+
+                if (this.pathIndex < this.path.length - 1) {
+                    const nextPoint = this.path[this.pathIndex + 1];
+                    const distToNext = getDistance(this.x, this.y, nextPoint.x, nextPoint.y);
+                    const moveAmount = this.speed * deltaTime;
+
+                    if (distToNext <= moveAmount) {
+                        this.x = nextPoint.x;
+                        this.y = nextPoint.y;
+                        this.pathIndex++;
+                    } else {
+                        const ratio = moveAmount / distToNext;
+                        this.x += (nextPoint.x - this.x) * ratio;
+                        this.y += (nextPoint.y - this.y) * ratio;
+                    }
+                } else {
+                    // Reached end of path
+                    gameState.playerHealth -= this.isBoss ? 10 : 1; // Bosses deal more damage
+                    this.alive = false;
+                    if (gameState.playerHealth <= 0) {
+                        endGame('lose');
+                    }
+                }
+            }
+
+            takeDamage(amount) {
+                if (!this.alive) return;
+                this.health -= amount;
+                gameState.damageTexts.push(new DamageText(this.x, this.y, Math.round(amount), COLORS.ENEMY_RED));
+                if (this.health <= 0) {
+                    this.alive = false;
+                    gameState.gold += this.reward;
+                    gameState.score += this.score;
+                    // Explosion particles
+                    for (let i = 0; i < getRandomInt(8, 12); i++) {
+                        gameState.particles.push(new Particle(this.x, this.y, COLORS.SNOW_WHITE));
+                    }
+                }
+            }
+        }
+
+        class Tower {
+            constructor(x, y, typeIndex) {
+                this.x = x;
+                this.y = y;
+                this.type = typeIndex;
+                this.level = 0;
+                this.upgrade(); // Set initial stats
+                this.target = null;
+                this.lastShotTime = 0;
+                this.rotation = 0;
+                this.muzzleFlash = 0; // Timer for muzzle flash effect
+                this.snowLevel = 0; // 0 (clear) to 1 (fully covered)
+                this.snowMax = 1;
+                this.snowAccumulationRate = 0.000005; // Base snow accumulation rate
+                this.baseRadius = 25; // For collision/selection
+            }
+
+            upgrade() {
+                if (this.level < TOWER_TYPES[this.type].levels.length - 1) {
+                    this.level++;
+                    const levelStats = TOWER_TYPES[this.type].levels[this.level - 1];
+                    this.damage = levelStats.damage;
+                    this.range = levelStats.range;
+                    this.fireRate = levelStats.fireRate;
+                    this.isAOE = levelStats.isAOE || false;
+                    this.upgradeCost = levelStats.upgradeCost;
+                    this.sellValue = levelStats.sellValue;
+                    return true;
+                }
+                return false;
+            }
+
+            getEffectiveFireRate() {
+                let currentFireRate = this.fireRate;
+                if (this.snowLevel > 0.5) {
+                    currentFireRate *= (1 + (this.snowLevel - 0.5) * 2); // Slows down fire rate more as snow increases
+                }
+                return currentFireRate;
+            }
+
+            getEffectiveRange() {
+                let currentRange = this.range;
+                if (this.snowLevel > 0.5) {
+                    currentRange *= (1 - (this.snowLevel - 0.5) * 0.5); // Reduces range more as snow increases
+                }
+                return Math.max(currentRange, 50); // Minimum range
+            }
+
+            isSnowDisabled() {
+                return this.snowLevel >= 0.9;
+            }
+
+            clearSnow() {
+                this.snowLevel = 0;
+            }
+
+            update(deltaTime, enemies) {
+                this.muzzleFlash = Math.max(0, this.muzzleFlash - deltaTime * 0.002); // Fade muzzle flash
+
+                // Snow accumulation
+                if (!this.isSnowDisabled()) {
+                    this.snowLevel = Math.min(this.snowMax, this.snowLevel + this.snowAccumulationRate * deltaTime);
+                }
+
+                if (this.isSnowDisabled()) {
+                    this.target = null; // Cannot fire if disabled
+                    return;
+                }
+
+                // Targeting
+                let bestTarget = null;
+                let furthestDistance = -1;
+
+                for (const enemy of enemies) {
+                    if (!enemy.alive) continue;
+                    const dist = getDistance(this.x, this.y, enemy.x, enemy.y);
+                    if (dist <= this.getEffectiveRange()) {
+                        // Target furthest along the path
+                        if (enemy.pathIndex > furthestDistance) {
+                            furthestDistance = enemy.pathIndex;
+                            bestTarget = enemy;
+                        } else if (enemy.pathIndex === furthestDistance && dist < getDistance(this.x, this.y, bestTarget.x, bestTarget.y)) {
+                            // If same path index, target closest
+                            bestTarget = enemy;
+                        }
+                    }
+                }
+                this.target = bestTarget;
+
+                if (this.target) {
+                    // Rotate towards target
+                    this.rotation = Math.atan2(this.target.y - this.y, this.target.x - this.x) + Math.PI / 2;
+
+                    // Firing
+                    if (performance.now() - this.lastShotTime > this.getEffectiveFireRate()) {
+                        this.lastShotTime = performance.now();
+                        this.muzzleFlash = 1; // Trigger muzzle flash
+
+                        if (this.isAOE) {
+                            // AOE tower - find all enemies in a small radius around target
+                            for (const enemy of enemies) {
+                                if (enemy.alive && getDistance(this.target.x, this.target.y, enemy.x, enemy.y) < 50) { // Small AOE splash
+                                    enemy.takeDamage(this.damage);
+                                }
+                            }
+                            // Spawn a single projectile to represent the attack
+                            gameState.projectiles.push(new Projectile(this.x, this.y, this.target, this.damage, this.type, true));
+                        } else {
+                            gameState.projectiles.push(new Projectile(this.x, this.y, this.target, this.damage, this.type));
+                        }
+                    }
+                }
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, target, damage, towerType, isAOE = false) {
+                this.x = x;
+                this.y = y;
+                this.target = target; // Can be an enemy object
+                this.targetX = target.x; // Store initial target position
+                this.targetY = target.y;
+                this.damage = damage;
+                this.speed = 0.4;
+                this.radius = 5;
+                this.alive = true;
+                this.isAOE = isAOE;
+                this.trail = []; // For trail effect
+                this.trailLength = 10;
+            }
+
+            update(deltaTime) {
+                if (!this.alive) return;
+
+                // Update trail
+                this.trail.unshift({ x: this.x, y: this.y });
+                if (this.trail.length > this.trailLength) {
+                    this.trail.pop();
+                }
+
+                // Move towards current target position (not fixed target.x, target.y)
+                const targetX = this.target.x;
+                const targetY = this.target.y;
+
+                const distToTarget = getDistance(this.x, this.y, targetX, targetY);
+                const moveAmount = this.speed * deltaTime;
+
+                if (distToTarget <= moveAmount) {
+                    // Hit target
+                    if (this.target.alive) { // Only deal damage if target is still alive
+                        this.target.takeDamage(this.damage);
+                    }
+                    this.alive = false;
+                } else {
+                    const ratio = moveAmount / distToTarget;
+                    this.x += (targetX - this.x) * ratio;
+                    this.y += (targetY - this.y) * ratio;
+                }
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.velX = (Math.random() - 0.5) * 5;
+                this.velY = (Math.random() - 0.5) * 5 - 2; // Upwards bias
+                this.size = Math.random() * 3 + 1;
+                this.life = 1; // 1 (full life) to 0 (dead)
+                this.decayRate = 0.002;
+                this.color = color;
+            }
+
+            update(deltaTime) {
+                this.x += this.velX * deltaTime * 0.1;
+                this.y += this.velY * deltaTime * 0.1;
+                this.life -= this.decayRate * deltaTime;
+                if (this.life <= 0) {
+                    this.alive = false;
+                }
+            }
+        }
+
+        class DamageText {
+            constructor(x, y, text, color) {
+                this.x = x;
+                this.y = y;
+                this.text = text;
+                this.color = color;
+                this.life = 1;
+                this.velY = -0.05; // Floats upwards
+                this.size = 16;
+                this.decayRate = 0.003;
+                this.alive = true;
+            }
+
+            update(deltaTime) {
+                this.y += this.velY * deltaTime;
+                this.life -= this.decayRate * deltaTime;
+                if (this.life <= 0) {
+                    this.alive = false;
+                }
+            }
+        }
+
+        // --- Game State Management ---
+
+        function startGame() {
+            gameState.currentScene = 'game';
+            resetGame();
+            startWave();
+            mainMenu.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            gameWinScreen.classList.add('hidden');
+            inGameUI.classList.remove('hidden');
+        }
+
+        function resetGame() {
+            gameState.playerHealth = 100;
+            gameState.gold = 200;
+            gameState.score = 0;
+            gameState.waveNumber = 0;
+            gameState.enemies = [];
+            gameState.towers = [];
+            gameState.projectiles = [];
+            gameState.particles = [];
+            gameState.damageTexts = [];
+            gameState.wavePrepTimer = 0;
+            gameState.isWaveActive = false;
+            gameState.selectedTowerToPlace = null;
+            gameState.selectedTower = null;
+            hideTowerPanel();
+            updateUI();
+        }
+
+        function startWave() {
+            if (gameState.waveNumber >= gameState.totalWaves) {
+                endGame('win');
+                return;
+            }
+
+            gameState.isWaveActive = false;
+            gameState.wavePrepTimer = 5; // 5 seconds prep time
+            gameState.waveNumber++;
+            gameState.enemies = []; // Clear remaining enemies (if any, shouldn't be)
+            gameState.projectiles = []; // Clear projectiles
+            updateUI();
+
+            const prepInterval = setInterval(() => {
+                gameState.wavePrepTimer--;
+                if (gameState.wavePrepTimer <= 0) {
+                    clearInterval(prepInterval);
+                    spawnWaveEnemies(gameState.waveNumber - 1); // Use 0-indexed wave config
+                    gameState.isWaveActive = true;
+                }
+            }, 1000);
+        }
+
+        function spawnWaveEnemies(waveIndex) {
+            const config = WAVE_CONFIGS[waveIndex];
+            if (!config) return;
+
+            let delay = 0;
+            config.enemies.forEach(enemyDef => {
+                for (let i = 0; i < enemyDef.count; i++) {
+                    setTimeout(() => {
+                        let enemyTypeIndex;
+                        if (enemyDef.type === 'BOSS') {
+                            enemyTypeIndex = 'BOSS'; // Special indicator for Boss
+                        } else {
+                            enemyTypeIndex = enemyDef.type;
+                        }
+                        gameState.enemies.push(new Enemy(enemyTypeIndex, config.healthMultiplier, gameState.path));
+                    }, delay);
+                    delay += 500; // Spawn every 0.5 seconds
+                }
+            });
+        }
+
+        function endGame(outcome) {
+            gameState.currentScene = outcome === 'win' ? 'win' : 'gameOver';
+            inGameUI.classList.add('hidden');
+            if (outcome === 'win') {
+                winScoreDisplay.textContent = `Skor: ${gameState.score}`;
+                gameWinScreen.classList.remove('hidden');
+            } else {
+                finalScoreDisplay.textContent = `Skor: ${gameState.score}`;
+                gameOverScreen.classList.remove('hidden');
+            }
+        }
+
+        function updateUI() {
+            playerHealthEl.textContent = gameState.playerHealth;
+            playerGoldEl.textContent = gameState.gold;
+            playerScoreEl.textContent = gameState.score;
+            waveNumberEl.textContent = `${gameState.waveNumber} / ${gameState.totalWaves}`;
+
+            if (gameState.selectedTower) {
+                const tower = gameState.selectedTower;
+                const nextLevel = TOWER_TYPES[tower.type].levels[tower.level];
+                if (nextLevel && nextLevel.upgradeCost > 0) {
+                    upgradeBtn.textContent = `Yükselt (${nextLevel.upgradeCost} Altın)`;
+                    upgradeBtn.disabled = gameState.gold < nextLevel.upgradeCost;
+                } else {
+                    upgradeBtn.textContent = `Yükselt (Maksimum Seviye)`;
+                    upgradeBtn.disabled = true;
+                }
+                sellBtn.textContent = `Sat (${tower.sellValue} Altın)`;
+                towerPanel.classList.remove('hidden');
+            } else {
+                towerPanel.classList.add('hidden');
+            }
+        }
+
+        function showTowerPanel(tower) {
+            gameState.selectedTower = tower;
+            updateUI();
+        }
+
+        function hideTowerPanel() {
+            gameState.selectedTower = null;
+            updateUI();
+        }
+
+        // --- Game Loop ---
+        function animate(timestamp) {
+            requestAnimationFrame(animate);
+
+            if (!lastTime) lastTime = timestamp;
+            deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+
+            // Update global test state
+            window.OYUN_DURUMU = {
+                asama: gameState.currentScene,
+                dalga: gameState.waveNumber,
+                can: gameState.playerHealth,
+                skor: gameState.score
+            };
+
+            switch (gameState.currentScene) {
+                case 'menu':
+                    drawScene(); // Draw background for menu
+                    // UI handled by HTML/Tailwind
+                    break;
+                case 'game':
+                    // Update Game Objects
+                    gameState.enemies.forEach(enemy => enemy.update(deltaTime));
+                    gameState.towers.forEach(tower => tower.update(deltaTime, gameState.enemies));
+                    gameState.projectiles.forEach(proj => proj.update(deltaTime));
+                    gameState.particles.forEach(particle => particle.update(deltaTime));
+                    gameState.damageTexts.forEach(text => text.update(deltaTime));
+
+                    // Filter out dead/inactive objects
+                    gameState.enemies = gameState.enemies.filter(e => e.alive);
+                    gameState.projectiles = gameState.projectiles.filter(p => p.alive);
+                    gameState.particles = gameState.particles.filter(p => p.alive);
+                    gameState.damageTexts = gameState.damageTexts.filter(t => t.alive);
+
+                    // Check for wave end
+                    if (gameState.isWaveActive && gameState.enemies.length === 0) {
+                        if (gameState.waveNumber < gameState.totalWaves) {
+                            startWave(); // Start next wave after prep time
+                        } else {
+                            endGame('win');
+                        }
+                    }
+
+                    drawScene();
+                    updateUI();
+                    break;
+                case 'gameOver':
+                case 'win':
+                    drawScene(); // Keep drawing the last game scene
+                    // UI handled by HTML/Tailwind
+                    break;
+            }
+        }
+
+        // --- Event Listeners ---
+        let currentMousePos = { x: 0, y: 0 }; // For tower placement preview
+
+        canvas.addEventListener('mousemove', (e) => {
+            currentMousePos = normalizeCoords(e);
+        });
+
+        canvas.addEventListener('mousedown', handleClick);
+        canvas.addEventListener('touchstart', handleTouch);
+
+        function handleClick(e) {
+            if (e.button === 2) { // Right click to cancel tower placement
+                gameState.selectedTowerToPlace = null;
+                e.preventDefault();
+                return;
+            }
+            handleInteraction(normalizeCoords(e));
+        }
+
+        function handleTouch(e) {
+            e.preventDefault(); // Prevent default touch actions like scrolling
+            handleInteraction(normalizeCoords(e));
+        }
+
+        function handleInteraction(coords) {
+            if (gameState.currentScene !== 'game') return;
+
+            // 1. Tower placement
+            if (gameState.selectedTowerToPlace !== null) {
+                const towerType = TOWER_TYPES[gameState.selectedTowerToPlace];
+                const collisionRadius = 30; // Radius for checking path collision
+                const isOnPath = checkCollisionWithPath(coords.x, coords.y, collisionRadius);
+                const isTooCloseToOtherTowers = gameState.towers.some(t => getDistance(coords.x, coords.y, t.x, t.y) < (t.baseRadius + collisionRadius));
+
+                if (!isOnPath && !isTooCloseToOtherTowers) {
+                    if (gameState.gold >= towerType.cost) {
+                        gameState.gold -= towerType.cost;
+                        gameState.towers.push(new Tower(coords.x, coords.y, gameState.selectedTowerToPlace));
+                        updateUI();
+                        // Keep selected for placing multiple of the same type
+                        // gameState.selectedTowerToPlace = null;
+                    } else {
+                        alert('Yeterli altınınız yok!');
+                    }
+                } else {
+                    alert('Kuleyi buraya yerleştiremezsiniz (yol üzerinde veya başka bir kuleye çok yakın)!');
+                }
+                return; // Interaction handled, stop here
+            }
+
+            // 2. Tower selection / snow clearing
+            let clickedOnTower = false;
+            for (const tower of gameState.towers) {
+                if (getDistance(coords.x, coords.y, tower.x, tower.y) < tower.baseRadius) {
+                    if (gameState.selectedTower === tower) {
+                        // If already selected, clear snow
+                        tower.clearSnow();
+                        hideTowerPanel(); // Close panel after clearing snow
+                        // Animate snow clearing
+                        for (let i = 0; i < getRandomInt(5, 8); i++) {
+                            gameState.particles.push(new Particle(tower.x, tower.y, COLORS.SNOW_WHITE));
+                        }
+                    } else {
+                        showTowerPanel(tower);
+                    }
+                    clickedOnTower = true;
+                    break;
+                }
+            }
+            if (!clickedOnTower) {
+                hideTowerPanel(); // Deselect tower if clicking elsewhere
+            }
+        }
+
+        function checkCollisionWithPath(x, y, radius) {
+            for (let i = 0; i < gameState.path.length - 1; i++) {
+                const p1 = gameState.path[i];
+                const p2 = gameState.path[i + 1];
+
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const lenSq = dx * dx + dy * dy;
+                let t = 0;
+                if (lenSq !== 0) {
+                    t = ((x - p1.x) * dx + (y - p1.y) * dy) / lenSq;
+                    t = Math.max(0, Math.min(1, t));
+                }
+
+                const closestX = p1.x + t * dx;
+                const closestY = p1.y + t * dy;
+
+                if (getDistance(x, y, closestX, closestY) < radius + (30 / 2)) { // Path width is 30, so radius + half path width
+                    return true;
+                }
+            }
+            return false;
+        }
+
+
+        // UI Button Handlers
+        baslaBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+        winRestartBtn.addEventListener('click', startGame);
+
+        kuleBtns.forEach(button => {
+            button.addEventListener('click', () => {
+                const towerTypeIndex = parseInt(button.dataset.towerType);
+                gameState.selectedTowerToPlace = towerTypeIndex;
+                hideTowerPanel(); // Close upgrade/sell panel
+            });
+        });
+
+        upgradeBtn.addEventListener('click', () => {
+            if (gameState.selectedTower) {
+                const currentLevel = gameState.selectedTower.level;
+                const nextLevelStats = TOWER_TYPES[gameState.selectedTower.type].levels[currentLevel];
+                if (nextLevelStats && gameState.gold >= nextLevelStats.upgradeCost && nextLevelStats.upgradeCost > 0) {
+                    gameState.gold -= nextLevelStats.upgradeCost;
+                    gameState.selectedTower.upgrade();
+                    updateUI();
+                }
+            }
+        });
+
+        sellBtn.addEventListener('click', () => {
+            if (gameState.selectedTower) {
+                gameState.gold += gameState.selectedTower.sellValue;
+                gameState.towers = gameState.towers.filter(t => t !== gameState.selectedTower);
+                hideTowerPanel();
+                updateUI();
+            }
+        });
+
+        // Initial setup
+        function setupGame() {
+            function resizeCanvas() {
+                const container = document.getElementById('game-container');
+                const aspectRatio = 1000 / 700; // Original canvas aspect ratio
+                let newWidth = container.offsetWidth;
+                let newHeight = container.offsetHeight;
+
+                if (newWidth / newHeight > aspectRatio) {
+                    newWidth = newHeight * aspectRatio;
+                } else {
+                    newHeight = newWidth / aspectRatio;
+                }
+
+                canvas.style.width = `${newWidth}px`;
+                canvas.style.height = `${newHeight}px`;
+
+                // Set internal canvas resolution for crisp drawing
+                canvas.width = CANVAS_WIDTH;
+                canvas.height = CANVAS_HEIGHT;
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas(); // Initial resize
+
+            generatePath();
+            animate(0); // Start the game loop
+            mainMenu.classList.remove('hidden');
+        }
+
+        document.addEventListener('DOMContentLoaded', setupGame);
+    </script>
+</body>
+</html>
