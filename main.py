@@ -170,6 +170,33 @@ Kod:
     return None, api_cagrisi, " | ".join(deneme_ozetleri)
 
 
+def kod_cilala(fikir, kod, client):
+    """Testleri geçmiş çalışan oyunu BOZMADAN görsel ve oynanış cilası yapar.
+    Döner: cilalı kod veya None (çıktı eksikse)."""
+    prompt = f"""Sen uzman bir Oyun Geliştiricisisin. Aşağıda TÜM TESTLERİ GEÇMİŞ, çalışan bir savunma oyunu var. Görevin: OYUNU BOZMADAN aşağıdaki cilaları eklemek. Çalışan mantığa dokunma, üzerine inşa et.
+
+GÖRSEL CİLA:
+- Arka planı sahneye çevir: temaya uygun 3-5 dekor öğesi ve hafif animasyonlu detaylar (yıldız parlaması, dalga kıpırtısı, bulut süzülmesi gibi).
+- Düşman ve kulelere 1-2 ek çizim katmanı: kontur, gölge, küçük detaylar.
+- Vuruş anında kısa beyaz flaş; ölümde daha dolgun parçacık patlaması; oyuncu hasar alınca ekran kenarında kırmızı vinyet.
+- HUD'u şık panele çevir: yarı saydam koyu arka plan, yuvarlak köşeler, düzenli hizalanmış can/altın/dalga göstergeleri.
+
+OYNANIŞ CİLASI:
+- Dalga sayısını 10'a çıkar; 5. ve 10. dalga BOSS olsun (büyük boyut + can barı).
+- Kule seçiliyken menzil çemberi görünsün.
+- Dalga arasında "Dalga N geliyor!" uyarısı ve isteğe bağlı "Erken Başlat" butonu (erken başlatana bonus altın).
+- Art arda öldürmelerde skor çarpanı (combo) ve ekranda kısa "x2! x3!" göstergesi.
+
+DEĞİŞMEZ KURALLAR: Konsept aynı kalacak: "{fikir}". window.OYUN_DURUMU ve id="baslaBtn" yapısı korunacak. Tek dosya, dış kaynak yok, Türkçe arayüz. Kod 1400 satırı geçmeyecek. ÇIKTI: SADECE SAF KOD; <!DOCTYPE html> ile başla, KESİNLİKLE </html> ile bitir. Markdown kullanma.
+
+MEVCUT ÇALIŞAN KOD:
+{kod}"""
+    cevap = gemini_cagir(client, MODEL, prompt)
+    yeni = re.sub(r'^```html\s*|^```\s*|```$', '', cevap.text.strip(),
+                  flags=re.MULTILINE).strip()
+    return yeni if yeni.endswith("</html>") else None
+
+
 # ================== KAYIT + GALERİ ==================
 def kaydet_ve_galeriyi_guncelle(oyun_adi, html_icerik):
     """Oyunu apps/slug/index.html'e kaydeder, manifest ve kök galeriyi günceller."""
@@ -319,6 +346,30 @@ def main():
             sebep = rapor if isinstance(rapor, str) else "Sebep kaydedilemedi"
             log_yaz(log_sekmesi, oyun_adi, api_cagrisi, "FAILED", sebep[:250])
             return
+
+        # 2.5 CİLA: Testleri geçen oyunu bozmadan güzelleştir.
+        # Cilalı sürüm de testten geçerse ve puanı düşmezse o yayınlanır;
+        # aksi halde orijinal kalır. Risk yok, en kötü durumda orijinal yayınlanır.
+        try:
+            print("✨ Cila aşaması: grafik ve oynanış geliştiriliyor...")
+            cilali = kod_cilala(fikir, kod, client)
+            api_cagrisi += 1
+            if cilali:
+                os.makedirs("temp_test", exist_ok=True)
+                cila_yolu = os.path.join("temp_test", "cila.html")
+                with open(cila_yolu, "w", encoding="utf-8") as f:
+                    f.write(cilali)
+                cila_rapor = oyunu_test_et(cila_yolu, client, MODEL, fikir)
+                api_cagrisi += cila_rapor["api_cagrisi"]
+                if cila_rapor["gecti"] and cila_rapor["puan"] >= rapor["puan"]:
+                    kod, rapor = cilali, cila_rapor
+                    print(f"✨ Cilalı sürüm kabul edildi! Puan: {rapor['puan']}/10")
+                else:
+                    print("✨ Cilalı sürüm barajı geçemedi, orijinal yayınlanacak.")
+            else:
+                print("✨ Cila çıktısı eksik geldi, orijinal yayınlanacak.")
+        except Exception as cila_hata:
+            print(f"✨ Cila aşaması atlandı ({cila_hata}), orijinal yayınlanacak.")
 
         # 3. Kaydet + galeri + push
         slug = kaydet_ve_galeriyi_guncelle(oyun_adi, kod)
