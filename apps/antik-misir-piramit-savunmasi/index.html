@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kum Fırtınası Kule Savunması</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #game-container { position: relative; width: 100%; max-width: 1280px; aspect-ratio: 16 / 9; background-color: #000; overflow: hidden; }
+        canvas { display: block; width: 100%; height: 100%; }
+        #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .ui-element { pointer-events: auto; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="bg-gradient-to-b from-blue-700 to-gray-900 text-white">
+    <div id="game-container" class="relative bg-gray-900 shadow-2xl rounded-lg overflow-hidden">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-overlay" class="absolute inset-0 flex flex-col justify-between p-4">
+            <!-- Main Menu / Game Over Screen -->
+            <div id="menuScreen" class="ui-element absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center space-y-8 z-50">
+                <h1 class="text-6xl font-extrabold text-yellow-300 drop-shadow-lg text-center">Kum Fırtınası Kule Savunması</h1>
+                <p class="text-xl text-gray-300 text-center max-w-xl">Antik Mısır'da kum fırtınalarına karşı piramitlerinizi koruyun! Düşman dalgalarını durdurmak için stratejik olarak kuleler inşa edin ve yükseltin.</p>
+                <button id="baslaBtn" class="px-12 py-6 bg-yellow-600 hover:bg-yellow-700 text-white text-3xl font-bold rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105">
+                    Oyunu Başlat
+                </button>
+            </div>
+
+            <!-- Tower Placement & Selection UI -->
+            <div id="gameUI" class="hidden flex flex-col h-full">
+                <div class="flex-grow"></div>
+                <div id="towerPanel" class="ui-element bg-gray-800 bg-opacity-80 p-3 rounded-t-lg shadow-xl flex justify-center items-end space-x-4">
+                    <button id="buyObelisk" class="kule-btn relative flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200" data-tower-type="Obelisk">
+                        <span class="text-yellow-400 font-bold text-xl">Obelisk</span>
+                        <span class="text-sm text-gray-300">Hasar: Orta, Hız: Orta, Menzil: Orta</span>
+                        <span class="text-md text-white mt-1">100 Altın</span>
+                        <div class="absolute inset-0 border-2 border-transparent hover:border-yellow-500 rounded-lg"></div>
+                    </button>
+                    <button id="buyScorpion" class="kule-btn relative flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200" data-tower-type="Scorpion">
+                        <span class="text-yellow-400 font-bold text-xl">Akrep</span>
+                        <span class="text-sm text-gray-300">Hasar: Yüksek, Hız: Yavaş, Alan Etkili</span>
+                        <span class="text-md text-white mt-1">200 Altın</span>
+                        <div class="absolute inset-0 border-2 border-transparent hover:border-yellow-500 rounded-lg"></div>
+                    </button>
+                    <button id="buyEyeOfRa" class="kule-btn relative flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200" data-tower-type="EyeOfRa">
+                        <span class="text-yellow-400 font-bold text-xl">Ra'nın Gözü</span>
+                        <span class="text-sm text-gray-300">Hasar: Düşük, Hız: Hızlı, Menzil: Uzun</span>
+                        <span class="text-md text-white mt-1">150 Altın</span>
+                        <div class="absolute inset-0 border-2 border-transparent hover:border-yellow-500 rounded-lg"></div>
+                    </button>
+                </div>
+
+                <!-- Tower Upgrade/Sell Panel -->
+                <div id="towerActionPanel" class="ui-element hidden absolute bottom-1/2 left-1/2 -translate-x-1/2 translate-y-1/2 bg-gray-900 bg-opacity-90 p-4 rounded-lg shadow-2xl z-40 flex flex-col space-y-3 items-center">
+                    <h3 id="towerActionTitle" class="text-2xl font-bold text-yellow-300">Kule Seçildi</h3>
+                    <p id="towerActionLevel" class="text-md text-gray-300">Seviye: 1</p>
+                    <button id="upgradeTowerBtn" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow transition-colors duration-200">Yükselt (150 Altın)</button>
+                    <button id="sellTowerBtn" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow transition-colors duration-200">Sat (50 Altın)</button>
+                    <button id="closeTowerActionPanel" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors duration-200">Kapat</button>
+                </div>
+            </div>
+
+            <!-- Game Over / Win Screen -->
+            <div id="gameOverScreen" class="ui-element absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center space-y-8 z-50 hidden">
+                <h2 id="gameOverTitle" class="text-6xl font-extrabold text-red-500 drop-shadow-lg text-center">Oyun Bitti!</h2>
+                <p id="gameOverScore" class="text-4xl text-gray-300 font-bold">Skorunuz: 0</p>
+                <button id="restartBtn" class="px-12 py-6 bg-yellow-600 hover:bg-yellow-700 text-white text-3xl font-bold rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105">
+                    Yeniden Başlat
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.OYUN_DURUMU = { asama: "menu", dalga: 0, can: 0, skor: 0 };
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('game-container');
+        const menuScreen = document.getElementById('menuScreen'); const baslaBtn = document.getElementById('baslaBtn'); const gameUI = document.getElementById('gameUI');
+        const towerPanel = document.getElementById('towerPanel'); const towerActionPanel = document.getElementById('towerActionPanel');
+        const towerActionTitle = document.getElementById('towerActionTitle'); const towerActionLevel = document.getElementById('towerActionLevel');
+        const upgradeTowerBtn = document.getElementById('upgradeTowerBtn'); const sellTowerBtn = document.getElementById('sellTowerBtn');
+        const closeTowerActionPanel = document.getElementById('closeTowerActionPanel'); const gameOverScreen = document.getElementById('gameOverScreen');
+        const gameOverTitle = document.getElementById('gameOverTitle'); const gameOverScore = document.getElementById('gameOverScore');
+        const restartBtn = document.getElementById('restartBtn');
+
+        const GAME_WIDTH = 1280; const GAME_HEIGHT = 720;
+        const COLORS = {
+            SAND_LIGHT: '#F5DEB3', SAND_MEDIUM: '#D2B48C', SAND_DARK: '#8B4513', GOLD: '#DAA520',
+            SKY_BLUE: '#4682B4', DETAILS_DARK: '#2F4F4F', DANGER_RED: '#8B0000', PYRAMID_STONE: '#BDB76B',
+            MUMMY_WHITE: '#F8F8F8', SCARAB_GREEN: '#556B2F', ANUBIS_BLACK: '#1E1E1E', PROJECTILE_LIGHT: '#FFFF00',
+            PATH_BORDER: '#6B4226', SANDSTORM_COLOR: 'rgba(210, 180, 140, 0.05)'
+        };
+
+        let gameRunning = false; let lastTime = 0; let deltaTime = 0;
+        let health = 10; let gold = 300; let score = 0; let wave = 0;
+        let waveIntervalId = null; let prepTimer = 0; let prepping = false;
+        let towers = []; let enemies = []; let projectiles = []; let particles = []; let floatingTexts = [];
+        let placingTower = null; let activeTowerForUpgrade = null;
+        let sandstormIntensity = 0; let sandstormTimer = 0;
+        const SANDSTORM_CYCLE_TIME = 20000; const SANDSTORM_PEAK_DURATION = 5000; const SANDSTORM_FADE_DURATION = 5000;
+
+        const PATH_POINTS_RAW = [
+            { x: 0, y: 360 }, { x: 100, y: 360 }, { x: 150, y: 250 }, { x: 250, y: 200 },
+            { x: 350, y: 250 }, { x: 400, y: 350 }, { x: 500, y: 400 }, { x: 600, y: 300 },
+            { x: 700, y: 200 }, { x: 800, y: 300 }, { x: 900, y: 450 }, { x: 1000, y: 500 },
+            { x: 1280, y: 500 } // Pyramid defense zone is near the end
+        ];
+        let PATH_POINTS = [];
+
+        const TOWER_DEFS = {
+            Obelisk: {
+                name: "Obelisk", price: 100, range: 150, damage: 20, fireRate: 0.8, splash: 0,
+                upgrades: [{ price: 75, range: 170, damage: 25, fireRate: 0.7 }, { price: 150, range: 190, damage: 35, fireRate: 0.6 }], sellValue: 50
+            },
+            Scorpion: {
+                name: "Akrep Fırlatıcı", price: 200, range: 120, damage: 40, fireRate: 1.5, splash: 50,
+                upgrades: [{ price: 150, range: 140, damage: 55, fireRate: 1.3, splash: 60 }, { price: 300, range: 160, damage: 75, fireRate: 1.1, splash: 70 }], sellValue: 100
+            },
+            EyeOfRa: {
+                name: "Ra'nın Gözü", price: 150, range: 200, damage: 10, fireRate: 0.3, splash: 0,
+                upgrades: [{ price: 100, range: 220, damage: 15, fireRate: 0.25 }, { price: 200, range: 250, damage: 20, fireRate: 0.2 }], sellValue: 75
+            }
+        };
+
+        const ENEMY_DEFS = {
+            Mummy: { name: "Mummy", health: 100, speed: 0.05, gold: 10, score: 5, size: 20, type: 'normal' },
+            AnubisWarrior: { name: "Anubis Savaşçısı", health: 250, speed: 0.07, gold: 20, score: 10, size: 25, type: 'normal' },
+            ScarabLord: { name: "Skarab Lordu", health: 1000, speed: 0.04, gold: 100, score: 50, size: 40, type: 'boss' }
+        };
+
+        const WAVES = [
+            { enemies: [{ type: 'Mummy', count: 5 }] }, { enemies: [{ type: 'Mummy', count: 7 }] },
+            { enemies: [{ type: 'Mummy', count: 5 }, { type: 'AnubisWarrior', count: 2 }] },
+            { enemies: [{ type: 'Mummy', count: 5 }, { type: 'AnubisWarrior', count: 3 }, { type: 'ScarabLord', count: 1 }] },
+            { enemies: [{ type: 'Mummy', count: 8 }, { type: 'AnubisWarrior', count: 4 }] },
+            { enemies: [{ type: 'Mummy', count: 7 }, { type: 'AnubisWarrior', count: 6 }] },
+            { enemies: [{ type: 'Mummy', count: 10 }, { type: 'AnubisWarrior', count: 7 }] },
+            { enemies: [{ type: 'Mummy', count: 10 }, { type: 'AnubisWarrior', count: 8 }, { type: 'ScarabLord', count: 1 }] },
+            { enemies: [{ type: 'Mummy', count: 12 }, { type: 'AnubisWarrior', count: 10 }, { type: 'ScarabLord', count: 1 }] },
+            { enemies: [{ type: 'Mummy', count: 15 }, { type: 'AnubisWarrior', count: 12 }, { type: 'ScarabLord', count: 2 }] },
+            { enemies: [{ type: 'Mummy', count: 20 }, { type: 'AnubisWarrior', count: 15 }, { type: 'ScarabLord', count: 2 }] },
+            { enemies: [{ type: 'Mummy', count: 25 }, { type: 'AnubisWarrior', count: 20 }, { type: 'ScarabLord', count: 3 }] },
+        ];
+
+        function getDistance(x1, y1, x2, y2) { const dx = x2 - x1; const dy = y2 - y1; return Math.sqrt(dx * dx + dy * dy); }
+        function getAngle(x1, y1, x2, y2) { return Math.atan2(y2 - y1, x2 - x1); }
+        function scaleX(x) { return (x / GAME_WIDTH) * canvas.width; }
+        function scaleY(y) { return (y / GAME_HEIGHT) * canvas.height; }
+        function scaleSize(size) { return (size / GAME_WIDTH) * canvas.width; }
+        function unscaleX(x) { return (x / canvas.width) * GAME_WIDTH; }
+        function unscaleY(y) { return (y / canvas.height) * GAME_HEIGHT; }
+
+        function resizeCanvas() {
+            const rect = gameContainer.getBoundingClientRect();
+            canvas.width = rect.width; canvas.height = rect.height;
+            PATH_POINTS = PATH_POINTS_RAW.map(p => ({ x: scaleX(p.x), y: scaleY(p.y) }));
+        }
+
+        function drawGameTitle(text, x, y, size, color) {
+            ctx.font = `${scaleSize(size)}px 'Segoe UI', sans-serif`; ctx.fillStyle = color;
+            ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.shadowColor = 'black';
+            ctx.shadowBlur = scaleSize(5); ctx.fillText(text, scaleX(x), scaleY(y)); ctx.shadowBlur = 0;
+        }
+
+        function drawInfoText(text, x, y, size, color = 'white', align = 'left') {
+            ctx.font = `${scaleSize(size)}px Arial`; ctx.fillStyle = color;
+            ctx.textAlign = align; ctx.textBaseline = 'top'; ctx.shadowColor = 'black';
+            ctx.shadowBlur = scaleSize(3); ctx.fillText(text, scaleX(x), scaleY(y)); ctx.shadowBlur = 0;
+        }
+
+        function drawPyramids(x, y, scale = 1) {
+            ctx.save(); ctx.translate(scaleX(x), scaleY(y)); ctx.scale(scaleSize(scale), scaleSize(scale));
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(50, -60); ctx.lineTo(100, 0); ctx.closePath();
+            ctx.fillStyle = COLORS.PYRAMID_STONE; ctx.fill(); ctx.strokeStyle = COLORS.DETAILS_DARK; ctx.lineWidth = 2; ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(50, -60); ctx.lineTo(30, -50); ctx.lineTo(-20, 0); ctx.closePath();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; ctx.fill();
+            ctx.beginPath(); ctx.moveTo(60, 10); ctx.lineTo(90, -30); ctx.lineTo(120, 10); ctx.closePath();
+            ctx.fillStyle = COLORS.PYRAMID_STONE; ctx.fill(); ctx.strokeStyle = COLORS.DETAILS_DARK; ctx.lineWidth = 1; ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawBackground() {
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGradient.addColorStop(0, COLORS.SKY_BLUE); skyGradient.addColorStop(0.7, COLORS.SAND_LIGHT);
+            ctx.fillStyle = skyGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = COLORS.SAND_MEDIUM;
+            ctx.beginPath(); ctx.moveTo(0, scaleY(GAME_HEIGHT * 0.5)); ctx.lineTo(canvas.width, scaleY(GAME_HEIGHT * 0.5));
+            ctx.lineTo(canvas.width, canvas.height); ctx.lineTo(0, canvas.height); ctx.closePath(); ctx.fill();
+            drawPyramids(1000, 400, 0.8); drawPyramids(900, 450, 0.5); drawPyramids(800, 380, 0.6);
+            ctx.beginPath(); ctx.moveTo(0, scaleY(GAME_HEIGHT * 0.6));
+            ctx.quadraticCurveTo(scaleX(GAME_WIDTH * 0.2), scaleY(GAME_HEIGHT * 0.55), scaleX(GAME_WIDTH * 0.4), scaleY(GAME_HEIGHT * 0.65));
+            ctx.quadraticCurveTo(scaleX(GAME_WIDTH * 0.6), scaleY(GAME_HEIGHT * 0.7), scaleX(GAME_WIDTH * 0.8), scaleY(GAME_HEIGHT * 0.6));
+            ctx.quadraticCurveTo(scaleX(GAME_WIDTH * 0.9), scaleY(GAME_HEIGHT * 0.58), canvas.width, scaleY(GAME_HEIGHT * 0.6));
+            ctx.lineTo(canvas.width, canvas.height); ctx.lineTo(0, canvas.height); ctx.closePath();
+            ctx.fillStyle = COLORS.SAND_DARK; ctx.fill();
+        }
+
+        function drawPath() {
+            if (PATH_POINTS.length < 2) return;
+            ctx.beginPath(); ctx.moveTo(PATH_POINTS[0].x, PATH_POINTS[0].y);
+            for (let i = 1; i < PATH_POINTS.length; i++) ctx.lineTo(PATH_POINTS[i].x, PATH_POINTS[i].y);
+            ctx.lineWidth = scaleSize(50); ctx.strokeStyle = COLORS.SAND_DARK; ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(PATH_POINTS[0].x, PATH_POINTS[0].y);
+            for (let i = 1; i < PATH_POINTS.length; i++) ctx.lineTo(PATH_POINTS[i].x, PATH_POINTS[i].y);
+            ctx.lineWidth = scaleSize(54); ctx.strokeStyle = COLORS.PATH_BORDER; ctx.stroke();
+        }
+
+        function drawSandstormOverlay() {
+            if (sandstormIntensity <= 0) return;
+            ctx.save(); ctx.globalAlpha = sandstormIntensity * 0.4;
+            ctx.fillStyle = COLORS.SANDSTORM_COLOR; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = sandstormIntensity * 0.2;
+            const waveOffset = Math.sin(Date.now() * 0.0005) * scaleSize(20) * sandstormIntensity;
+            ctx.beginPath(); ctx.moveTo(0, canvas.height * 0.3 + waveOffset);
+            ctx.quadraticCurveTo(canvas.width * 0.25, canvas.height * 0.4 + waveOffset, canvas.width * 0.5, canvas.height * 0.35 + waveOffset);
+            ctx.quadraticCurveTo(canvas.width * 0.75, canvas.height * 0.3 + waveOffset, canvas.width, canvas.height * 0.4 + waveOffset);
+            ctx.lineTo(canvas.width, 0); ctx.lineTo(0, 0); ctx.closePath();
+            ctx.fillStyle = 'rgba(210, 180, 140, 0.1)'; ctx.fill(); ctx.restore();
+        }
+
+        class Enemy {
+            constructor(type, path) {
+                this.type = type; this.def = ENEMY_DEFS[type];
+                this.health = this.def.health; this.maxHealth = this.def.health;
+                this.speed = this.def.speed; this.goldValue = this.def.gold; this.scoreValue = this.def.score;
+                this.size = scaleSize(this.def.size); this.path = path; this.pathIndex = 0;
+                this.x = path[0].x; this.y = path[0].y; this.reachedEnd = false;
+                this.animOffset = Math.random() * Math.PI * 2; this.isBoss = this.def.type === 'boss';
+                this.hitEffect = false; this.hitTimer = 0;
+            }
+            update(deltaTime) {
+                if (this.pathIndex < this.path.length - 1) {
+                    const nextPoint = this.path[this.pathIndex + 1]; const distToNext = getDistance(this.x, this.y, nextPoint.x, nextPoint.y);
+                    const moveAmount = this.speed * deltaTime * scaleSize(1);
+                    if (distToNext <= moveAmount) {
+                        this.x = nextPoint.x; this.y = nextPoint.y; this.pathIndex++;
+                    } else {
+                        const angle = getAngle(this.x, this.y, nextPoint.x, nextPoint.y);
+                        this.x += Math.cos(angle) * moveAmount; this.y += Math.sin(angle) * moveAmount;
+                    }
+                } else { this.reachedEnd = true; }
+                if (this.hitEffect && this.hitTimer > 0) { this.hitTimer -= deltaTime; if (this.hitTimer <= 0) this.hitEffect = false; }
+            }
+            draw() {
+                ctx.save(); ctx.translate(this.x, this.y);
+                const animY = Math.sin((Date.now() * 0.005) + this.animOffset) * scaleSize(2);
+                ctx.translate(0, animY);
+                if (this.type === 'Mummy') {
+                    ctx.fillStyle = this.hitEffect ? COLORS.DANGER_RED : COLORS.MUMMY_WHITE;
+                    ctx.fillRect(-this.size / 4, -this.size / 2, this.size / 2, this.size);
+                    ctx.beginPath(); ctx.moveTo(-this.size / 2.5, this.size / 2); ctx.lineTo(this.size / 2.5, this.size / 2);
+                    ctx.lineTo(this.size / 4, this.size / 2 + this.size / 4); ctx.lineTo(-this.size / 4, this.size / 2 + this.size / 4); ctx.closePath(); ctx.fill();
+                    ctx.beginPath(); ctx.arc(0, -this.size / 2 - this.size / 8, this.size / 4, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = COLORS.DETAILS_DARK; ctx.beginPath();
+                    ctx.arc(-this.size / 8, -this.size / 2 - this.size / 8, this.size / 16, 0, Math.PI * 2);
+                    ctx.arc(this.size / 8, -this.size / 2 - this.size / 8, this.size / 16, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = COLORS.DETAILS_DARK; ctx.lineWidth = scaleSize(1); ctx.beginPath();
+                    ctx.moveTo(-this.size / 4, -this.size / 4); ctx.lineTo(this.size / 4, this.size / 4);
+                    ctx.moveTo(-this.size / 4, this.size / 4); ctx.lineTo(this.size / 4, -this.size / 4); ctx.stroke();
+                } else if (this.type === 'AnubisWarrior') {
+                    ctx.fillStyle = this.hitEffect ? COLORS.DANGER_RED : COLORS.ANUBIS_BLACK;
+                    ctx.beginPath(); ctx.moveTo(-this.size / 2, this.size / 2); ctx.lineTo(this.size / 2, this.size / 2);
+                    ctx.lineTo(this.size / 4, -this.size / 2); ctx.lineTo(-this.size / 4, -this.size / 2); ctx.closePath(); ctx.fill();
+                    ctx.fillRect(-this.size / 4, -this.size / 2, this.size / 2, this.size / 2);
+                    ctx.beginPath(); ctx.moveTo(0, -this.size / 2 - this.size / 2);
+                    ctx.lineTo(this.size / 2, -this.size / 2 - this.size / 4); ctx.lineTo(this.size / 4, -this.size / 2 - this.size / 2);
+                    ctx.lineTo(0, -this.size / 2 - this.size / 2); ctx.lineTo(-this.size / 4, -this.size / 2 - this.size / 2);
+                    ctx.lineTo(-this.size / 2, -this.size / 2 - this.size / 4); ctx.closePath(); ctx.fill();
+                    ctx.fillRect(-this.size / 8, -this.size / 2 - this.size / 4, this.size / 4, this.size / 4);
+                    ctx.fillStyle = COLORS.DETAILS_DARK; ctx.beginPath();
+                    ctx.arc(-this.size / 8, -this.size / 2 - this.size / 6, this.size / 20, 0, Math.PI * 2);
+                    ctx.arc(this.size / 8, -this.size / 2 - this.size / 6, this.size / 20, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = COLORS.DETAILS_DARK; ctx.lineWidth = scaleSize(2); ctx.beginPath();
+                    ctx.moveTo(this.size / 2, 0); ctx.lineTo(this.size / 2 + this.size, -this.size); ctx.stroke();
+                    ctx.fillStyle = COLORS.GOLD; ctx.beginPath(); ctx.moveTo(this.size / 2 + this.size, -this.size);
+                    ctx.lineTo(this.size / 2 + this.size + this.size / 4, -this.size - this.size / 4);
+                    ctx.lineTo(this.size / 2 + this.size + this.size / 4, -this.size + this.size / 4); ctx.closePath(); ctx.fill();
+                } else if (this.type === 'ScarabLord') {
+                    ctx.fillStyle = this.hitEffect ? COLORS.DANGER_RED : COLORS.SCARAB_GREEN;
+                    ctx.beginPath(); ctx.ellipse(0, 0, this.size / 2, this.size / 1.5, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(0, -this.size / 1.5, this.size / 3, this.size / 4, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = COLORS.PYRAMID_STONE; ctx.beginPath();
+                    ctx.moveTo(0, -this.size / 2); ctx.quadraticCurveTo(-this.size * 0.7, -this.size * 0.4, -this.size * 0.5, this.size * 0.2);
+                    ctx.quadraticCurveTo(-this.size * 0.3, this.size * 0.4, 0, this.size / 2); ctx.closePath(); ctx.fill(); ctx.beginPath();
+                    ctx.moveTo(0, -this.size / 2); ctx.quadraticCurveTo(this.size * 0.7, -this.size * 0.4, this.size * 0.5, this.size * 0.2);
+                    ctx.quadraticCurveTo(this.size * 0.3, this.size * 0.4, 0, this.size / 2); ctx.closePath(); ctx.fill();
+                    ctx.strokeStyle = COLORS.DETAILS_DARK; ctx.lineWidth = scaleSize(2); ctx.beginPath();
+                    ctx.moveTo(-this.size / 2.5, -this.size / 2); ctx.lineTo(-this.size / 1.5, -this.size / 2 - this.size / 4);
+                    ctx.moveTo(this.size / 2.5, -this.size / 2); ctx.lineTo(this.size / 1.5, -this.size / 2 - this.size / 4);
+                    ctx.moveTo(-this.size / 2.5, 0); ctx.lineTo(-this.size / 1.5, 0);
+                    ctx.moveTo(this.size / 2.5, 0); ctx.lineTo(this.size / 1.5, 0);
+                    ctx.moveTo(-this.size / 2.5, this.size / 2); ctx.lineTo(-this.size / 1.5, this.size / 2 + this.size / 4);
+                    ctx.moveTo(this.size / 2.5, this.size / 2); ctx.lineTo(this.size / 1.5, this.size / 2 + this.size / 4); ctx.stroke();
+                }
+                const barWidth = this.size * 1.5; const barHeight = scaleSize(5); const barX = -barWidth / 2; const barY = -this.size - barHeight - scaleSize(5);
+                ctx.fillStyle = COLORS.DANGER_RED; ctx.fillRect(barX, barY, barWidth, barHeight);
+                ctx.fillStyle = '#00FF00'; ctx.fillRect(barX, barY, barWidth * (this.health / this.maxHealth), barHeight);
+                ctx.strokeStyle = COLORS.DETAILS_DARK; ctx.lineWidth = scaleSize(1); ctx.strokeRect(barX, barY, barWidth, barHeight);
+                if (this.isBoss) { ctx.font = `${scaleSize(15)}px Arial`; ctx.fillStyle = COLORS.GOLD; ctx.textAlign = 'center'; ctx.fillText(this.def.name, 0, barY - scaleSize(10)); }
+                ctx.restore();
+            }
+            takeDamage(amount) {
+                this.health -= amount; this.hitEffect = true; this.hitTimer = 100;
+                floatingTexts.push(new FloatingText(amount.toString(), this.x, this.y - this.size, 'red'));
+                return this.health <= 0;
+            }
+        }
+
+        class Tower {
+            constructor(type, x, y) {
+                this.type = type; this.def = TOWER_DEFS[type];
+                this.x = x; this.y = y; this.level = 0;
+                this.range = scaleSize(this.def.range); this.damage = this.def.damage; this.fireRate = this.def.fireRate;
+                this.cost = this.def.price; this.sellValue = this.def.sellValue;
+                this.target = null; this.angle = 0; this.lastShotTime = 0;
+                this.size = scaleSize(40); this.muzzleFlashTimer = 0;
+            }
+            update(deltaTime) {
+                if (this.target && this.target.health <= 0) this.target = null;
+                if (!this.target || getDistance(this.x, this.y, this.target.x, this.target.y) > this.range) this.findTarget();
+                if (this.target) {
+                    this.angle = getAngle(this.x, this.y, this.target.x, this.target.y);
+                    if ((Date.now() - this.lastShotTime) / 1000 > this.fireRate) {
+                        this.shoot(); this.lastShotTime = Date.now(); this.muzzleFlashTimer = 100;
+                    }
+                }
+                if (this.muzzleFlashTimer > 0) { this.muzzleFlashTimer -= deltaTime; if (this.muzzleFlashTimer <= 0) this.muzzleFlashTimer = 0; }
+            }
+            findTarget() {
+                let closestEnemy = null; let minDistance = Infinity;
+                for (const enemy of enemies) {
+                    const dist = getDistance(this.x, this.y, enemy.x, enemy.y);
+                    if (dist < minDistance && dist <= this.range) { minDistance = dist; closestEnemy = enemy; }
+                }
+                this.target = closestEnemy;
+            }
+            shoot() { if (this.target) projectiles.push(new Projectile(this.x, this.y, this.target, this.damage, 0.5, this.def.splash, COLORS.PROJECTILE_LIGHT)); }
+            upgrade() {
+                if (this.level < this.def.upgrades.length) {
+                    const upgradeDef = this.def.upgrades[this.level];
+                    if (gold >= upgradeDef.price) {
+                        gold -= upgradeDef.price; this.level++;
+                        this.range = scaleSize(upgradeDef.range); this.damage = upgradeDef.damage; this.fireRate = upgradeDef.fireRate;
+                        this.cost += upgradeDef.price; this.sellValue = this.def.sellValue + (this.level > 0 ? this.def.upgrades[this.level - 1].price * 0.5 : 0);
+                        return true;
+                    }
+                } return false;
+            }
+            getUpgradePrice() { return (this.level < this.def.upgrades.length) ? this.def.upgrades[this.level].price : 0; }
+            draw() {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+                if (this.type === 'Obelisk') {
+                    ctx.fillStyle = COLORS.DETAILS_DARK; ctx.fillRect(-this.size / 2, this.size * 0.3, this.size, this.size * 0.2);
+                    ctx.fillStyle = COLORS.PYRAMID_STONE; ctx.beginPath();
+                    ctx.moveTo(-this.size / 3, this.size * 0.3); ctx.lineTo(this.size / 3, this.size * 0.3);
+                    ctx.lineTo(this.size / 4, -this.size * 0.8); ctx.lineTo(-this.size / 4, -this.size * 0.8); ctx.closePath(); ctx.fill();
+                    ctx.strokeStyle = COLORS.DETAILS_DARK; ctx.lineWidth = scaleSize(2); ctx.stroke();
+                    ctx.fillStyle = COLORS.GOLD; ctx.beginPath();
+                    ctx.moveTo(0, -this.size * 0.8); ctx.lineTo(this.size / 4, -this.size * 0.8);
+                    ctx.lineTo(0, -this.size * 1.1); ctx.lineTo(-this.size / 4, -this.size * 0.8); ctx.closePath(); ctx.fill();
+                    if (this.level >= 1) { ctx.fillStyle = COLORS.PROJECTILE_LIGHT; ctx.shadowColor = COLORS.PROJECTILE_LIGHT; ctx.shadowBlur = scaleSize(10);
+                        ctx.beginPath(); ctx.arc(0, -this.size * 0.95, this.size / 8, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; }
+                    if (this.muzzleFlashTimer > 0) { ctx.fillStyle = 'rgba(255, 255, 0, 0.8)'; ctx.beginPath(); ctx.arc(this.size / 4 + scaleSize(5), -this.size * 0.8, scaleSize(5), 0, Math.PI * 2); ctx.fill(); }
+                } else if (this.type === 'Scorpion') {
+                    ctx.fillStyle = COLORS.DETAILS_DARK; ctx.beginPath(); ctx.arc(0, 0, this.size / 1.5, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillRect(-this.size / 1.8, -this.size / 1.8, this.size / 0.9, this.size / 0.9);
+                    ctx.fillStyle = COLORS.PYRAMID_STONE; ctx.fillRect(0, -this.size * 0.7, this.size / 4, this.size * 0.8);
+                    ctx.beginPath(); ctx.arc(0, 0, this.size / 6, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = COLORS.SAND_DARK; ctx.beginPath();
+                    ctx.moveTo(-this.size / 3, -this.size * 0.7 - this.size / 4); ctx.lineTo(this.size / 3, -this.size * 0.7 - this.size / 4);
+                    ctx.lineTo(this.size / 4, -this.size * 0.7); ctx.lineTo(-this.size / 4, -this.size * 0.7); ctx.closePath(); ctx.fill();
+                    ctx.strokeStyle = COLORS.DETAILS_DARK; ctx.lineWidth = scaleSize(1); ctx.stroke();
+                    if (this.level >= 1) { ctx.fillStyle = COLORS.SCARAB_GREEN; ctx.beginPath(); ctx.arc(0, -this.size * 0.7, this.size / 8, 0, Math.PI * 2); ctx.fill(); }
+                    if (this.level >= 2) { ctx.shadowColor = COLORS.SCARAB_GREEN; ctx.shadowBlur = scaleSize(8); ctx.beginPath(); ctx.arc(0, -this.size * 0.7, this.size / 10, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; }
+                    if (this.muzzleFlashTimer > 0) { ctx.fillStyle = 'rgba(255, 165, 0, 0.8)'; ctx.beginPath(); ctx.arc(0, -this.size * 0.7 - this.size / 4, scaleSize(8), 0, Math.PI * 2); ctx.fill(); }
+                } else if (this.type === 'EyeOfRa') {
+                    ctx.fillStyle = COLORS.PYRAMID_STONE; ctx.beginPath();
+                    ctx.moveTo(-this.size / 2, this.size / 2); ctx.lineTo(this.size / 2, this.size / 2);
+                    ctx.lineTo(this.size / 3, -this.size / 4); ctx.lineTo(-this.size / 3, -this.size / 4); ctx.closePath(); ctx.fill();
+                    ctx.strokeStyle = COLORS.DETAILS_DARK; ctx.lineWidth = scaleSize(2); ctx.stroke();
+                    ctx.fillStyle = COLORS.GOLD; ctx.beginPath(); ctx.ellipse(0, -this.size / 4, this.size / 3, this.size / 6, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = COLORS.DETAILS_DARK; ctx.stroke();
+                    ctx.fillStyle = COLORS.DETAILS_DARK; ctx.beginPath(); ctx.arc(0, -this.size / 4, this.size / 10, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = COLORS.GOLD; ctx.beginPath();
+                    ctx.moveTo(0, -this.size / 4); ctx.lineTo(this.size / 2.5, -this.size / 4 - this.size / 3);
+                    ctx.lineTo(this.size / 3, -this.size / 4 - this.size / 2); ctx.closePath(); ctx.fill(); ctx.beginPath();
+                    ctx.moveTo(0, -this.size / 4); ctx.lineTo(-this.size / 2.5, -this.size / 4 - this.size / 3);
+                    ctx.lineTo(-this.size / 3, -this.size / 4 - this.size / 2); ctx.closePath(); ctx.fill();
+                    if (this.level >= 1) { ctx.shadowColor = COLORS.GOLD; ctx.shadowBlur = scaleSize(10); ctx.beginPath();
+                        ctx.ellipse(0, -this.size / 4, this.size / 3, this.size / 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; }
+                    if (this.level >= 2) { ctx.shadowColor = COLORS.PROJECTILE_LIGHT; ctx.shadowBlur = scaleSize(15); ctx.beginPath();
+                        ctx.ellipse(0, -this.size / 4, this.size / 2.5, this.size / 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; }
+                    if (this.muzzleFlashTimer > 0) { ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.beginPath(); ctx.arc(scaleSize(10), -this.size / 4, scaleSize(5), 0, Math.PI * 2); ctx.fill(); }
+                }
+                ctx.restore();
+                if (placingTower === this.type || (activeTowerForUpgrade && activeTowerForUpgrade === this)) {
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'; ctx.lineWidth = scaleSize(2); ctx.stroke();
+                }
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, target, damage, speed, splashRadius = 0, color = 'white') {
+                this.x = x; this.y = y; this.target = target; this.damage = damage;
+                this.speed = speed; this.splashRadius = splashRadius; this.color = color;
+                this.size = scaleSize(5); this.history = [{ x, y }]; this.maxTrailLength = 5;
+            }
+            update(deltaTime) {
+                if (!this.target || this.target.health <= 0) return true;
+                const dist = getDistance(this.x, this.y, this.target.x, this.target.y);
+                const moveAmount = this.speed * deltaTime * scaleSize(1);
+                if (dist <= moveAmount) {
+                    if (this.splashRadius > 0) {
+                        for (const enemy of enemies) {
+                            if (getDistance(this.target.x, this.target.y, enemy.x, enemy.y) <= this.splashRadius) {
+                                if (enemy.takeDamage(this.damage)) { gold += enemy.goldValue; score += enemy.scoreValue; enemies = enemies.filter(e => e !== enemy); }
+                            }
+                        }
+                    } else {
+                        if (this.target.takeDamage(this.damage)) { gold += this.target.goldValue; score += this.target.scoreValue; enemies = enemies.filter(e => e !== this.target); }
+                    }
+                    for (let i = 0; i < 10; i++) particles.push(new Particle(this.target.x, this.target.y, Math.random() * 4 - 2, Math.random() * 4 - 2, scaleSize(3), this.color, 300));
+                    return true;
+                } else {
+                    const angle = getAngle(this.x, this.y, this.target.x, this.target.y);
+                    this.x += Math.cos(angle) * moveAmount; this.y += Math.sin(angle) * moveAmount;
+                    this.history.push({ x: this.x, y: this.y });
+                    if (this.history.length > this.maxTrailLength) this.history.shift();
+                } return false;
+            }
+            draw() {
+                ctx.strokeStyle = this.color; ctx.lineWidth = scaleSize(2); ctx.lineCap = 'round';
+                ctx.shadowColor = this.color; ctx.shadowBlur = scaleSize(5);
+                ctx.beginPath(); ctx.moveTo(this.history[0].x, this.history[0].y);
+                for (let i = 1; i < this.history.length; i++) ctx.lineTo(this.history[i].x, this.history[i].y);
+                ctx.stroke(); ctx.shadowBlur = 0;
+                ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, vx, vy, size, color, life) {
+                this.x = x; this.y = y; this.vx = vx * scaleSize(1); this.vy = vy * scaleSize(1);
+                this.size = size; this.color = color; this.life = life; this.maxLife = life;
+            }
+            update(deltaTime) {
+                this.x += this.vx * deltaTime / 1000; this.y += this.vy * deltaTime / 1000;
+                this.life -= deltaTime; return this.life <= 0;
+            }
+            draw() {
+                ctx.globalAlpha = this.life / this.maxLife; ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size * (this.life / this.maxLife), 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        class FloatingText {
+            constructor(text, x, y, color = 'white', speed = 0.05, life = 1500) {
+                this.text = text; this.x = x; this.y = y; this.color = color;
+                this.speed = speed * scaleSize(1); this.life = life; this.maxLife = life;
+            }
+            update(deltaTime) { this.y -= this.speed * deltaTime; this.life -= deltaTime; return this.life <= 0; }
+            draw() {
+                ctx.globalAlpha = this.life / this.maxLife; ctx.font = `${scaleSize(20)}px Arial`;
+                ctx.fillStyle = this.color; ctx.textAlign = 'center'; ctx.fillText(this.text, this.x, this.y);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function startGame() {
+            resetGame(); gameRunning = true; menuScreen.classList.add('hidden');
+            gameUI.classList.remove('hidden'); window.OYUN_DURUMU.asama = "oyunda";
+            startNextWave(); requestAnimationFrame(gameLoop);
+        }
+
+        function resetGame() {
+            health = 10; gold = 300; score = 0; wave = 0;
+            towers = []; enemies = []; projectiles = []; particles = []; floatingTexts = [];
+            placingTower = null; activeTowerForUpgrade = null; prepTimer = 0; prepping = false;
+            sandstormIntensity = 0; sandstormTimer = 0; gameOverScreen.classList.add('hidden');
+            if (waveIntervalId) { clearInterval(waveIntervalId); waveIntervalId = null; }
+            WAVES.forEach(w => { w.spawnedCount = 0; w.enemyList = []; }); // Reset wave state
+        }
+
+        function spawnEnemy() {
+            if (wave > 0 && wave <= WAVES.length) {
+                const currentWaveDef = WAVES[wave - 1];
+                if (currentWaveDef.spawnedCount === undefined || currentWaveDef.enemyList.length === 0) {
+                    currentWaveDef.spawnedCount = 0; currentWaveDef.enemyList = [];
+                    for (const group of currentWaveDef.enemies) for (let i = 0; i < group.count; i++) currentWaveDef.enemyList.push(group.type);
+                    for (let i = currentWaveDef.enemyList.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [currentWaveDef.enemyList[i], currentWaveDef.enemyList[j]] = [currentWaveDef.enemyList[j], currentWaveDef.enemyList[i]]; }
+                }
+                if (currentWaveDef.spawnedCount < currentWaveDef.enemyList.length) {
+                    const enemyType = currentWaveDef.enemyList[currentWaveDef.spawnedCount];
+                    const enemy = new Enemy(enemyType, PATH_POINTS);
+                    const healthMultiplier = 1 + (wave * 0.2);
+                    enemy.maxHealth *= healthMultiplier; enemy.health *= healthMultiplier;
+                    enemies.push(enemy); currentWaveDef.spawnedCount++;
+                } else { clearInterval(waveIntervalId); waveIntervalId = null; }
+            }
+        }
+
+        function startNextWave() {
+            wave++;
+            if (wave > WAVES.length) { gameRunning = false; showGameOverScreen(true); window.OYUN_DURUMU.asama = "kazandi"; return; }
+            prepping = true; prepTimer = 5000; window.OYUN_DURUMU.dalga = wave;
+            if (WAVES[wave - 1]) { WAVES[wave - 1].spawnedCount = 0; WAVES[wave - 1].enemyList = []; }
+        }
+
+        function endPrepTime() {
+            prepping = false;
+            const currentWaveDef = WAVES[wave - 1];
+            if (currentWaveDef) waveIntervalId = setInterval(spawnEnemy, 1000);
+        }
+
+        function checkGameEnd() {
+            if (health <= 0) { gameRunning = false; showGameOverScreen(false); window.OYUN_DURUMU.asama = "kaybetti"; }
+        }
+
+        function showGameOverScreen(won) {
+            gameOverScreen.classList.remove('hidden');
+            gameOverTitle.textContent = won ? "Tebrikler! Kazandınız!" : "Oyun Bitti! Kaybettiniz!";
+            gameOverTitle.classList.toggle('text-green-500', won);
+            gameOverTitle.classList.toggle('text-red-500', !won);
+            gameOverScore.textContent = `Skorunuz: ${score}`;
+        }
+
+        function updateSandstorm(deltaTime) {
+            sandstormTimer += deltaTime;
+            const cycleProgress = sandstormTimer % SANDSTORM_CYCLE_TIME;
+            if (cycleProgress < SANDSTORM_FADE_DURATION) sandstormIntensity = cycleProgress / SANDSTORM_FADE_DURATION;
+            else if (cycleProgress < SANDSTORM_FADE_DURATION + SANDSTORM_PEAK_DURATION) sandstormIntensity = 1;
+            else if (cycleProgress < SANDSTORM_CYCLE_TIME) sandstormIntensity = 1 - ((cycleProgress - (SANDSTORM_FADE_DURATION + SANDSTORM_PEAK_DURATION)) / SANDSTORM_FADE_DURATION);
+            else sandstormIntensity = 0;
+            sandstormIntensity = Math.max(0, Math.min(1, sandstormIntensity));
+        }
+
+        function gameLoop(currentTime) {
+            if (!gameRunning) return;
+            deltaTime = currentTime - lastTime; lastTime = currentTime; if (deltaTime > 100) deltaTime = 100;
+            window.OYUN_DURUMU.can = health; window.OYUN_DURUMU.skor = score;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            updateSandstorm(deltaTime);
+            if (prepping) { prepTimer -= deltaTime; if (prepTimer <= 0) endPrepTime(); }
+
+            towers.forEach(t => t.update(deltaTime));
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i]; enemy.update(deltaTime);
+                if (enemy.reachedEnd) { health--; floatingTexts.push(new FloatingText("-1 Can", enemy.x, enemy.y, 'red', 0.07, 1000)); enemies.splice(i, 1); checkGameEnd(); }
+            }
+            for (let i = projectiles.length - 1; i >= 0; i--) if (projectiles[i].update(deltaTime)) projectiles.splice(i, 1);
+            for (let i = particles.length - 1; i >= 0; i--) if (particles[i].update(deltaTime)) particles.splice(i, 1);
+            for (let i = floatingTexts.length - 1; i >= 0; i--) if (floatingTexts[i].update(deltaTime)) floatingTexts.splice(i, 1);
+            if (!prepping && enemies.length === 0 && waveIntervalId === null) startNextWave();
+
+            drawBackground(); drawPath();
+            towers.forEach(t => t.draw());
+            enemies.forEach(e => e.draw());
+            projectiles.forEach(p => p.draw());
+            particles.forEach(p => p.draw());
+            floatingTexts.forEach(t => t.draw());
+
+            drawGameTitle("Kum Fırtınası Kule Savunması", 20, 20, 30, COLORS.GOLD);
+            drawInfoText(`Can: ${health}`, 20, 60, 25, COLORS.DANGER_RED);
+            drawInfoText(`Altın: ${gold}`, 20, 90, 25, COLORS.GOLD);
+            drawInfoText(`Skor: ${score}`, 20, 120, 25, 'white');
+            drawInfoText(`Dalga: ${wave} / ${WAVES.length}`, GAME_WIDTH - 200, 60, 25, 'white', 'right');
+            if (prepping) drawInfoText(`Hazırlık: ${Math.ceil(prepTimer / 1000)}s`, GAME_WIDTH - 200, 90, 25, COLORS.GOLD, 'right');
+            drawSandstormOverlay();
+
+            if (placingTower) {
+                const def = TOWER_DEFS[placingTower]; const mouseX = unscaleX(currentMousePos.x); const mouseY = unscaleY(currentMousePos.y);
+                const scaledMouseX = scaleX(mouseX); const scaledMouseY = scaleY(mouseY);
+                const towerSize = scaleSize(40); const halfSize = towerSize / 2;
+                let canPlace = true;
+                for (let i = 0; i < PATH_POINTS.length - 1; i++) {
+                    const p1 = PATH_POINTS[i]; const p2 = PATH_POINTS[i + 1]; const pathSegmentLength = getDistance(p1.x, p1.y, p2.x, p2.y);
+                    const pathWidth = scaleSize(50); const dot = (((scaledMouseX - p1.x) * (p2.x - p1.x)) + ((scaledMouseY - p1.y) * (p2.y - p1.y))) / (pathSegmentLength * pathSegmentLength);
+                    const projectionX = p1.x + (dot * (p2.x - p1.x)); const projectionY = p1.y + (dot * (p2.y - p1.y));
+                    const onSegment = dot >= 0 && dot <= 1;
+                    if (onSegment) { if (getDistance(scaledMouseX, scaledMouseY, projectionX, projectionY) < pathWidth / 2 + halfSize) { canPlace = false; break; }
+                    } else { if (getDistance(scaledMouseX, scaledMouseY, p1.x, p1.y) < pathWidth / 2 + halfSize || getDistance(scaledMouseX, scaledMouseY, p2.x, p2.y) < pathWidth / 2 + halfSize) { canPlace = false; break; } }
+                }
+                for (const tower of towers) if (getDistance(scaledMouseX, scaledMouseY, tower.x, tower.y) < tower.size + halfSize) { canPlace = false; break; }
+                ctx.save(); ctx.globalAlpha = 0.5; ctx.translate(scaledMouseX, scaledMouseY);
+                ctx.fillStyle = canPlace ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 0, 0, 0.5)';
+                ctx.beginPath(); ctx.rect(-halfSize, -halfSize, towerSize, towerSize); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, scaleSize(def.range), 0, Math.PI * 2);
+                ctx.strokeStyle = canPlace ? 'rgba(0, 255, 0, 0.7)' : 'rgba(255, 0, 0, 0.7)';
+                ctx.lineWidth = scaleSize(2); ctx.stroke(); ctx.restore();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        let currentMousePos = { x: 0, y: 0 };
+        function getMousePos(event) {
+            const rect = canvas.getBoundingClientRect(); let x, y;
+            if (event.touches) { x = event.touches[0].clientX - rect.left; y = event.touches[0].clientY - rect.top; }
+            else { x = event.clientX - rect.left; y = event.clientY - rect.top; }
+            return { x, y };
+        }
+
+        function handleCanvasClick(event) {
+            const pos = getMousePos(event); const clickX = pos.x; const clickY = pos.y;
+            if (placingTower) {
+                const towerType = placingTower; const def = TOWER_DEFS[towerType];
+                const towerSize = scaleSize(40); const halfSize = towerSize / 2;
+                let canPlace = true;
+                for (let i = 0; i < PATH_POINTS.length - 1; i++) {
+                    const p1 = PATH_POINTS[i]; const p2 = PATH_POINTS[i + 1]; const pathSegmentLength = getDistance(p1.x, p1.y, p2.x, p2.y);
+                    const pathWidth = scaleSize(50); const dot = (((clickX - p1.x) * (p2.x - p1.x)) + ((clickY - p1.y) * (p2.y - p1.y))) / (pathSegmentLength * pathSegmentLength);
+                    const projectionX = p1.x + (dot * (p2.x - p1.x)); const projectionY = p1.y + (dot * (p2.y - p1.y));
+                    const onSegment = dot >= 0 && dot <= 1;
+                    if (onSegment) { if (getDistance(clickX, clickY, projectionX, projectionY) < pathWidth / 2 + halfSize) { canPlace = false; break; }
+                    } else { if (getDistance(clickX, clickY, p1.x, p1.y) < pathWidth / 2 + halfSize || getDistance(clickX, clickY, p2.x, p2.y) < pathWidth / 2 + halfSize) { canPlace = false; break; } }
+                }
+                for (const tower of towers) if (getDistance(clickX, clickY, tower.x, tower.y) < tower.size + halfSize) { canPlace = false; break; }
+                if (canPlace && gold >= def.price) {
+                    towers.push(new Tower(towerType, clickX, clickY)); gold -= def.price; placingTower = null;
+                    towerPanel.querySelectorAll('.kule-btn').forEach(btn => btn.classList.remove('border-yellow-500'));
+                } else floatingTexts.push(new FloatingText("Yerleştirilemez!", clickX, clickY, COLORS.DANGER_RED));
+            } else {
+                let clickedOnTower = false;
+                for (const tower of towers) {
+                    if (getDistance(clickX, clickY, tower.x, tower.y) < tower.size / 2) {
+                        activeTowerForUpgrade = tower;
+                        towerActionTitle.textContent = `${tower.def.name} Seviye ${tower.level + 1}`;
+                        towerActionLevel.textContent = `Seviye: ${tower.level + 1}`;
+                        if (tower.level < tower.def.upgrades.length) {
+                            upgradeTowerBtn.classList.remove('hidden'); upgradeTowerBtn.textContent = `Yükselt (${tower.getUpgradePrice()} Altın)`;
+                            upgradeTowerBtn.disabled = gold < tower.getUpgradePrice();
+                            upgradeTowerBtn.classList.toggle('opacity-50', gold < tower.getUpgradePrice());
+                            upgradeTowerBtn.classList.toggle('cursor-not-allowed', gold < tower.getUpgradePrice());
+                        } else upgradeTowerBtn.classList.add('hidden');
+                        sellTowerBtn.textContent = `Sat (${Math.floor(tower.cost * 0.7)} Altın)`;
+                        towerActionPanel.classList.remove('hidden'); clickedOnTower = true; break;
+                    }
+                }
+                if (!clickedOnTower) { activeTowerForUpgrade = null; towerActionPanel.classList.add('hidden'); }
+            }
+        }
+
+        canvas.addEventListener('mousedown', handleCanvasClick);
+        canvas.addEventListener('touchstart', handleCanvasClick);
+        canvas.addEventListener('mousemove', (event) => { currentMousePos = getMousePos(event); });
+        canvas.addEventListener('touchmove', (event) => { currentMousePos = getMousePos(event); event.preventDefault(); }, { passive: false });
+
+        baslaBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+        towerPanel.addEventListener('click', (event) => {
+            const button = event.target.closest('.kule-btn');
+            if (button) {
+                const towerType = button.dataset.towerType; const def = TOWER_DEFS[towerType];
+                if (gold >= def.price) {
+                    placingTower = towerType;
+                    towerPanel.querySelectorAll('.kule-btn').forEach(btn => btn.classList.remove('border-yellow-500'));
+                    button.classList.add('border-yellow-500');
+                    activeTowerForUpgrade = null; towerActionPanel.classList.add('hidden');
+                } else floatingTexts.push(new FloatingText("Yeterli altın yok!", currentMousePos.x, currentMousePos.y, COLORS.DANGER_RED));
+            }
+        });
+        upgradeTowerBtn.addEventListener('click', () => {
+            if (activeTowerForUpgrade && activeTowerForUpgrade.upgrade()) {
+                towerActionPanel.classList.add('hidden'); activeTowerForUpgrade = null;
+            } else floatingTexts.push(new FloatingText("Yükseltme başarısız!", activeTowerForUpgrade.x, activeTowerForUpgrade.y, COLORS.DANGER_RED));
+        });
+        sellTowerBtn.addEventListener('click', () => {
+            if (activeTowerForUpgrade) {
+                const sellAmount = Math.floor(activeTowerForUpgrade.cost * 0.7);
+                gold += sellAmount; floatingTexts.push(new FloatingText(`+${sellAmount} Altın`, activeTowerForUpgrade.x, activeTowerForUpgrade.y, COLORS.GOLD));
+                towers = towers.filter(t => t !== activeTowerForUpgrade);
+                activeTowerForUpgrade = null; towerActionPanel.classList.add('hidden');
+            }
+        });
+        closeTowerActionPanel.addEventListener('click', () => { activeTowerForUpgrade = null; towerActionPanel.classList.add('hidden'); });
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        lastTime = performance.now();
+    </script>
+</body>
+</html>
