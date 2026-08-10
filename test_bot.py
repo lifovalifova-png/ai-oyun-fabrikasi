@@ -131,7 +131,35 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
                 page.mouse.click(x, y)
                 page.wait_for_timeout(400)
 
-        page.wait_for_timeout(30000)  # ~30 sn oyunu izle
+        # TEST 4b: Oyun sırasında canvas'ı kapatan menü/overlay kalmış mı?
+        try:
+            engel = page.evaluate("""() => {
+                const c = document.querySelector('canvas');
+                if (!c) return null;
+                const r = c.getBoundingClientRect();
+                const el = document.elementFromPoint(r.x + r.width/2, r.y + r.height/2);
+                if (!el || el.tagName === 'CANVAS') return null;
+                const s = getComputedStyle(el);
+                if (s.pointerEvents === 'none' || s.visibility === 'hidden') return null;
+                return (el.innerText || el.tagName).slice(0, 40);
+            }""")
+            if engel:
+                sorunlar.append(f"Oyun sırasında canvas'ı kapatan panel açık kalmış: {engel}")
+        except Exception:
+            pass
+
+        # TEST 4c: Tempo ölçümü - 3 saniyede dalga/skor sıçraması makul mü?
+        tempo_once = _durum_oku(page) or {}
+        page.wait_for_timeout(3000)
+        tempo_sonra = _durum_oku(page) or {}
+        try:
+            dalga_farki = (tempo_sonra.get("dalga", 0) or 0) - (tempo_once.get("dalga", 0) or 0)
+            if dalga_farki >= 3:
+                sorunlar.append("Oyun aşırı hızlı: 3 saniyede 3+ dalga ilerledi.")
+        except Exception:
+            pass
+
+        page.wait_for_timeout(27000)  # Toplam ~30 sn oyunu izle
         ekranlar.append(page.screenshot())  # Oyun ortası ekranı
 
         son_durum = _durum_oku(page)
@@ -168,6 +196,8 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
             "puan EN FAZLA 4 olabilir. (2) Görseller konseptteki temayı yansıtıyor mu "
             "(korsan oyununda deniz/gemi, uzayda yıldız/metal gibi)? Tema hiç yansımıyorsa "
             "puan EN FAZLA 5 olabilir. (3) Yazılar Türkçe ve okunaklı mı, arayüz taşıyor mu? "
+            "(4) İkinci görselde oyunun üzerini kapatan menü/başlangıç paneli hala duruyor mu? "
+            "Duruyorsa bunu sorun olarak yaz ve puan EN FAZLA 4 olsun. "
             'SADECE şu JSON ile cevap ver, başka hiçbir şey yazma: '
             '{"puan": 1-10 arasi tam sayi, "yorum": "1-2 cümlelik Türkçe oyuncu yorumu", '
             '"sorunlar": ["varsa sorun listesi"]}'
@@ -188,7 +218,8 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
     # menüde takılıp kalma, 1. dalgada imkansızlık. "Görsel inceleme tamamlanamadı"
     # gibi geçici teknik aksaklıklar kritik sayılmaz.
     kritik_anahtarlar = ("konsol hatası", "ilerlemiyor", "menu' aşamasında",
-                         "çok zor", "tıklanamadı")
+                         "çok zor", "tıklanamadı", "panel açık kalmış",
+                         "aşırı hızlı", "hala duruyor")
     kritik_var = any(any(a in s.lower() for a in kritik_anahtarlar) for s in sorunlar)
     gecti = (not kritik_var) and puan >= 6
 
