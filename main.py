@@ -75,127 +75,181 @@ def havuzdan_fikir_al(havuz):
 
 
 # ================== ÜRETİM + KALİTE KONTROL ==================
-KOD_KURALLARI = """
-STRATEJİK VE KRİTİK KURALLAR:
-1. TEKNOLOJİ: Sadece HTML5 <canvas>, saf JavaScript (ES6) ve arayüz/menüler için Tailwind CSS (CDN) kullan. Dış kütüphane YOK.
-2. GRAFİKLER: Görsel/ses dosyası KULLANILMAYACAK. Emoji KULLANILMAYACAK. Her şey canvas üzerinde çizilecek.
-3. OYUN DERİNLİĞİ: Başlangıç/Menü ekranı, EN AZ 8 düşman dalgası (artan zorluk, her 4. dalga güçlü BOSS düşmanı), en az 3 FARKLI kule tipi (farklı fiyat/menzil/hız), kuleye tıklayınca YÜKSELTME (2 seviye) ve SATMA seçeneği, Can/Skor/Altın göstergesi, dalga arası 5 saniyelik hazırlık süresi, oyun sonu ekranı ve "Yeniden Başlat" butonu.
-4. KONTROLLER: Hem fare hem mobil dokunmatik (touch) desteklenecek. Kule seçimi için alt kısımda tıklanabilir panel olacak.
-5. PERFORMANS: requestAnimationFrame + deltaTime kullan. Ekran dışına çıkan mermiler ve ölen düşmanlar diziden silinecek.
-6. KOORDİNAT: Tıklama/dokunma konumları canvas.getBoundingClientRect() ile canvas'ın gerçek boyutuna oranlanacak. Canvas responsive olacak.
-7. DİL: Tüm oyun içi metinler Türkçe olacak.
-8. GÖRSEL KİMLİK (ÇOK ÖNEMLİ - basit şekiller YASAK):
-   - TEMA HER YERDE HİSSEDİLECEK: Arka plan, düşmanlar, kuleler ve yol, fikirdeki temaya özgü öğelerle tasarlanacak. Örn. korsan teması: deniz dokusu, ahşap güverte yolu, yelkenli düşmanlar, palmiyeler; ortaçağ: taş surlar, bayraklar, meşaleler; uzay: yıldızlı boşluk, metalik panel zemin, neon ışıklar. Temadan bağımsız jenerik kare/daire kullanımı REDDEDİLİR.
-   - Oyunun adı canvas üzerinde menüde ve oyun sırasında üst köşede görünecek.
-   - Temaya özel 5-6 renklik hex paleti tanımla ve sadece onu kullan.
-   - HER karakter (düşman, kule) en az 3-4 geometrik şeklin BİRLEŞİMİYLE çizilecek: örn. korsan gemisi düşmanı = gövde + yelken + direk + bayrak; kule = gövde + namlu + detay. Tek renkli tek kare/daire KESİNLİKLE YASAK.
-   - Arka plan sahne gibi tasarlanacak: gradient gökyüzü + temaya uygun dekor öğeleri + yol/patika belirgin dokulu çizilecek.
-   - Efektler: düşman ölümünde 8-12 parçacıklı patlama, mermilerde iz (trail), kule ateşlerken namlu parlaması, hasar alınca sayı uçuşması (floating damage text), BOSS'larda can barı.
-   - Animasyon: düşmanlar yürüme/salınım animasyonlu, kuleler hedefe dönerek ateş eder, ctx.shadowBlur ile parlama/derinlik kullanılır.
-9. DENGE: Dalga N'deki toplam düşman canı, mevcut kule gücüyle 20-30 saniyede eritilebilecek ve her dalgada %25-30 artacak şekilde formüle edilecek. Öldürülen düşman altın verir, altın ekonomisi yeni kule/yükseltme alımına yetecek şekilde dengelenir.
-10. LİMİT: Kod 1200 satırı GEÇMEYECEK ama görsel detay ve oyun derinliği için bu alanı sonuna kadar KULLAN. ÇIKTI: Sadece saf kod; <!DOCTYPE html> ile başla, KESİNLİKLE </html> ile bitir. Markdown kullanma.
-11. TEST ARAYÜZÜ: Global bir window.OYUN_DURUMU objesi tut ve her karede güncelle: {asama: "menu"|"oyunda"|"kazandi"|"kaybetti", dalga: sayı, can: sayı, skor: sayı}. Başlat butonuna id="baslaBtn" ver. Kule seçim panelindeki HER kule satın alma butonuna class="kule-btn" ver ve ilk kule tipi, başlangıç altınıyla satın alınabilir olsun.
+EKLENTI_KURALLARI = """
+Sen uzman bir oyun sanatçısı ve JavaScript geliştiricisisin. Tam bir oyun YAZMAYACAKSIN.
+Oyun motoru zaten hazır ve test edilmiş durumda (oyun döngüsü, dalgalar, kuleler, düşman
+hareketi, çarpışma, HUD, menüler, mobil destek hepsi motorda). Senin tek görevin, motora
+takılacak TEMA EKLENTİSİ yazmak: yani oyunun görünüşünü ve dengesini tanımlayan bir nesne.
+
+ÇIKTI FORMATI: SADECE aşağıdaki yapıda tek bir JavaScript nesnesi yaz. Açıklama, markdown,
+``` işareti KULLANMA. `const TEMA = {` ile başla ve `};` ile bitir. Sonuna `// SON` yaz.
+
+const TEMA = {
+  ad: "Oyunun Türkçe adı",
+  aciklama: "Tek cümlelik Türkçe tanıtım",
+  palet: { arka1:"#hex", arka2:"#hex", yol:"#hex", yolKenar:"#hex",
+           dusman:"#hex", dusman2:"#hex", kule:"#hex", mermi:"#hex", vurgu:"#hex" },
+  yol: [ {x:0,y:360}, {x:300,y:360}, ... , {x:1280,y:300} ],   // 1280x720 alanda 5-9 nokta,
+        // ilk nokta soldan (x=0) veya üstten girmeli, son nokta ekrandan çıkmalı
+  dusmanTipleri: [
+    {ad:"Türkçe ad", can:60, hiz:62, altin:12, yaricap:14, renk:"#hex"},
+    {ad:"Türkçe ad", can:42, hiz:96, altin:14, yaricap:12, renk:"#hex"},
+    {ad:"Türkçe ad", can:155, hiz:44, altin:23, yaricap:18, renk:"#hex"}
+  ],
+  kuleTipleri: [
+    {ad:"Türkçe ad", fiyat:50, menzil:150, hasar:18, atisHizi:1.2, mermiHizi:360, renk:"#hex"},
+    {ad:"Türkçe ad", fiyat:90, menzil:125, hasar:44, atisHizi:0.55, mermiHizi:270, renk:"#hex", alan:48},
+    {ad:"Türkçe ad", fiyat:70, menzil:135, hasar:8, atisHizi:0.9, mermiHizi:330, renk:"#hex", yavaslat:0.5}
+  ],
+  arkaplanCiz(c, W, H, t){ /* zorunlu */ },
+  yolCiz(c, yol, t){ /* zorunlu */ },
+  dusmanCiz(c, d, t){ /* zorunlu */ },
+  kuleCiz(c, k, t){ /* zorunlu */ }
+};
+// SON
+
+ÇİZİM KURALLARI (asıl işin bu, buraya yoğunlaş):
+- c = canvas 2d context, W=1280, H=720, t = geçen saniye (animasyon için kullan).
+- arkaplanCiz: KATMANLI sahne çiz. Gradient gökyüzü/zemin + uzak silüetler + orta katman dekor
+  + zemin dokusu. Temaya özgü en az 4 farklı dekor öğesi olsun. t ile hafif animasyon ver
+  (parlayan ışıklar, süzülen bulut, kıpırdayan su gibi). Sabit ve boş arka plan KABUL EDİLMEZ.
+- yolCiz: yolu dokulu çiz (kenar + iç dolgu + üzerine tema deseni). Verilen `yol` dizisini kullan.
+- dusmanCiz: d.x, d.y, d.yaricap, d.renk, d.bos (boss ise true), d.faz (animasyon fazı) verilir.
+  Düşmanı EN AZ 4 parçadan oluştur (gövde + baş/kanat + detay + gölge). Yürüme/salınım animasyonu
+  için t ve d.faz kullan. Tek daire/kare KESİNLİKLE YASAK.
+- kuleCiz: k.x, k.y, k.aci (hedefe bakış açısı), k.tip.renk, k.seviye (1-3), k.flas (ateş anı) verilir.
+  Kuleyi EN AZ 4 parçadan oluştur (taban + gövde + namlu + detay). Namluyu k.aci yönünde döndür
+  (c.rotate(k.aci) ile). k.flas>0 iken namlu ucunda parlama çiz.
+- Gölge, kontur ve c.shadowBlur ile derinlik ver. Renkler paletle uyumlu olsun.
+- Her çizim fonksiyonu c.save() ile başlayıp c.restore() ile bitmeli (dönüşüm sızmasın).
+
+DENGE KURALLARI: Yukarıdaki sayısal aralıkları koru (düşman hızı 40-100, kule menzili 110-160,
+mermi hızı 250-400). Sadece temaya uygun isim ve renk değiştir, aşırı değer verme.
+
+YASAKLAR: Dış dosya/kütüphane, emoji, resim, ses YOK. window/document'e dokunma, oyun döngüsü
+yazma, setInterval kullanma. Sadece yukarıdaki TEMA nesnesini üret.
 """
 
 
-def kod_uret_ve_test_et(fikir, client):
-    """Oyunu üretir, truncation + LLM QA + robot oyuncu kontrolü yapar.
-    Döner: (kod veya None, api_cagri_sayisi, rapor veya hata özeti metni)"""
+def motor_sablonu_oku():
+    with open("motor_sablon.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def oyun_olustur(eklenti_kodu, oyun_adi):
+    """Tema eklentisini test edilmiş motora enjekte edip tam oyun HTML'i üretir."""
+    sablon = motor_sablonu_oku()
+    return (sablon.replace("__TEMA_EKLENTISI__", eklenti_kodu)
+                  .replace("__OYUN_ADI__", oyun_adi))
+
+
+def eklenti_temizle(ham):
+    """Gemini çıktısındaki markdown ve fazlalıkları temizler."""
+    kod = re.sub(r'^```(?:javascript|js)?\s*|```$', '', ham.strip(), flags=re.MULTILINE).strip()
+    kod = kod.replace("// SON", "").strip()
+    bas = kod.find("const TEMA")
+    if bas > 0:
+        kod = kod[bas:]
+    return kod
+
+
+def eklenti_gecerli_mi(kod):
+    """Eklentinin yapısal olarak sağlam olup olmadığını kontrol eder."""
+    if not kod.startswith("const TEMA"):
+        return "Eklenti 'const TEMA' ile başlamıyor"
+    if kod.count("{") != kod.count("}"):
+        return "Süslü parantezler eşleşmiyor (kod yarıda kesilmiş olabilir)"
+    for zorunlu in ("arkaplanCiz", "yolCiz", "dusmanCiz", "kuleCiz",
+                    "dusmanTipleri", "kuleTipleri", "palet"):
+        if zorunlu not in kod:
+            return f"Zorunlu alan eksik: {zorunlu}"
+    for yasak in ("requestAnimationFrame", "setInterval", "document.", "window."):
+        if yasak in kod:
+            return f"Yasak ifade kullanılmış: {yasak}"
+    return None
+
+
+def eklenti_uret_ve_test_et(fikir, client):
+    """Tema eklentisi üretir, motora takar, robot oyuncuyla test eder.
+    Döner: (tam oyun kodu veya None, api_cagri_sayisi, rapor veya hata özeti)"""
     hata_gecmisi = ""
     api_cagrisi = 0
     deneme_ozetleri = []
 
     for deneme in range(1, MAX_DENEME + 1):
-        print(f"🛠️ Üretim/Test döngüsü: {deneme}/{MAX_DENEME}")
+        print(f"🛠️ Eklenti üretimi: {deneme}/{MAX_DENEME}")
 
-        kod_prompt = f"""Sen uzman bir Oyun Geliştiricisisin. Şu konsepti tek bir index.html dosyasında eksiksiz, oynanabilir bir oyuna dönüştür: "{fikir}"
+        prompt = f"""Oyun konsepti: "{fikir}"
 Önceki denemelerde alınan hatalar (varsa düzelt): {hata_gecmisi if hata_gecmisi else "Yok"}
-{KOD_KURALLARI}"""
+{EKLENTI_KURALLARI}"""
 
-        cevap = gemini_cagir(client, MODEL, kod_prompt)
+        cevap = gemini_cagir(client, MODEL, prompt)
         api_cagrisi += 1
+        eklenti = eklenti_temizle(cevap.text)
 
-        kod = cevap.text.strip()
-        kod = re.sub(r'^```html\s*|^```\s*|```$', '', kod, flags=re.MULTILINE).strip()
-
-        # TEST A: Truncation
-        if not kod.endswith("</html>"):
-            print("❌ TEST A: Kod </html> ile bitmiyor.")
-            deneme_ozetleri.append(f"D{deneme}:TRUNCATION")
-            hata_gecmisi += "\n- Kod yarıda kesildi; daha kısa ve öz yaz, </html> ile bitir."
+        # TEST A: Yapısal geçerlilik (API çağrısı harcamaz)
+        sorun = eklenti_gecerli_mi(eklenti)
+        if sorun:
+            print(f"❌ TEST A: {sorun}")
+            deneme_ozetleri.append(f"D{deneme}:YAPI {sorun[:40]}")
+            hata_gecmisi += f"\n- {sorun}. Formatı tam olarak istenen şekilde üret."
             continue
 
-        # TEST B: LLM QA
-        print("🔍 Kalite Kontrol Ajanı inceliyor...")
-        qa_prompt = f"""Aşağıdaki HTML/JS kodunda SyntaxError, ReferenceError veya oyun döngüsünü bozacak mantık hatası var mı?
-Kusursuzsa Türkçe karakter KULLANMADAN SADECE "TEMIZ" yaz. Hata varsa hatayı ve çözümünü yaz.
+        # TEST B: Motora tak ve robot oyuncuyla gerçek testten geçir
+        oyun_adi = fikirden_baslik(fikir)
+        tam_oyun = oyun_olustur(eklenti, oyun_adi)
+        os.makedirs("temp_test", exist_ok=True)
+        test_yolu = os.path.join("temp_test", "index.html")
+        with open(test_yolu, "w", encoding="utf-8") as f:
+            f.write(tam_oyun)
 
-Kod:
-{kod}"""
+        print("🤖 Robot oyuncu test ediyor...")
+        rapor = oyunu_test_et(test_yolu, client, MODEL, fikir)
+        api_cagrisi += rapor["api_cagrisi"]
 
-        cevap_qa = gemini_cagir(client, MODEL, qa_prompt)
-        api_cagrisi += 1
-        qa = cevap_qa.text.strip()
+        if rapor["gecti"]:
+            print(f"✅ Test geçildi! Puan: {rapor['puan']}/10")
+            rapor["eklenti"] = eklenti
+            return tam_oyun, api_cagrisi, rapor
 
-        if "TEMIZ" in qa.upper():
-            print("✅ TEST B: Kod onaylandı, robot oyuncu devreye giriyor...")
+        print(f"❌ Robot reddetti (Puan: {rapor['puan']}/10)")
+        for s in rapor["sorunlar"][:4]:
+            print(f"   - {s}")
+        ilk = rapor["sorunlar"][0][:60] if rapor["sorunlar"] else "?"
+        deneme_ozetleri.append(f"D{deneme}:ROBOT(p{rapor['puan']}) {ilk}")
+        hata_gecmisi += "\n- Test sonucu sorunlar (çizimleri düzelt): " \
+                        + "; ".join(rapor["sorunlar"][:4])
 
-            # TEST C: Robot oyuncu gerçekten oynuyor
-            os.makedirs("temp_test", exist_ok=True)
-            test_yolu = os.path.join("temp_test", "index.html")
-            with open(test_yolu, "w", encoding="utf-8") as f:
-                f.write(kod)
-
-            rapor = oyunu_test_et(test_yolu, client, MODEL, fikir)
-            api_cagrisi += rapor["api_cagrisi"]
-
-            if rapor["gecti"]:
-                print(f"✅ TEST C: Robot oyuncu onayladı! Puan: {rapor['puan']}/10")
-                return kod, api_cagrisi, rapor
-
-            print(f"❌ TEST C: Robot oyuncu reddetti (Puan: {rapor['puan']}/10)")
-            for s in rapor["sorunlar"][:5]:
-                print(f"   - {s}")
-            ilk_sorun = rapor["sorunlar"][0][:60] if rapor["sorunlar"] else "?"
-            deneme_ozetleri.append(f"D{deneme}:ROBOT(p{rapor['puan']}) {ilk_sorun}")
-            hata_gecmisi += "\n- Test oyuncusunun bulduğu sorunlar (düzelt): " \
-                            + "; ".join(rapor["sorunlar"][:5])
-            continue
-
-        print(f"❌ QA hatası bulundu:\n{qa[:300]}")
-        deneme_ozetleri.append(f"D{deneme}:QA {qa[:60]}")
-        hata_gecmisi += f"\n- QA hatası: {qa}"
-
-    print("🚨 Maksimum deneme aşıldı, geçerli kod üretilemedi.")
+    print("🚨 Maksimum deneme aşıldı.")
     return None, api_cagrisi, " | ".join(deneme_ozetleri)
 
 
-def kod_cilala(fikir, kod, client):
-    """Testleri geçmiş çalışan oyunu BOZMADAN görsel ve oynanış cilası yapar.
-    Döner: cilalı kod veya None (çıktı eksikse)."""
-    prompt = f"""Sen uzman bir Oyun Geliştiricisisin. Aşağıda TÜM TESTLERİ GEÇMİŞ, çalışan bir savunma oyunu var. Görevin: OYUNU BOZMADAN aşağıdaki cilaları eklemek. Çalışan mantığa dokunma, üzerine inşa et.
+def eklenti_cilala(fikir, eklenti_kodu, client):
+    """Testi geçen eklentinin SADECE çizim fonksiyonlarını zenginleştirir."""
+    prompt = f"""Aşağıda testleri geçmiş, çalışan bir oyun tema eklentisi var.
+Konsept: "{fikir}"
 
-GÖRSEL CİLA:
-- Arka planı sahneye çevir: temaya uygun 3-5 dekor öğesi ve hafif animasyonlu detaylar (yıldız parlaması, dalga kıpırtısı, bulut süzülmesi gibi).
-- Düşman ve kulelere 1-2 ek çizim katmanı: kontur, gölge, küçük detaylar.
-- Vuruş anında kısa beyaz flaş; ölümde daha dolgun parçacık patlaması; oyuncu hasar alınca ekran kenarında kırmızı vinyet.
-- HUD'u şık panele çevir: yarı saydam koyu arka plan, yuvarlak köşeler, düzenli hizalanmış can/altın/dalga göstergeleri.
+Görevin: YAPIYA VE SAYISAL DEĞERLERE HİÇ DOKUNMADAN, sadece çizim fonksiyonlarını
+(arkaplanCiz, yolCiz, dusmanCiz, kuleCiz) görsel olarak zenginleştirmek:
+- Arka plana bir katman daha ekle (uzak siluet, gökyüzü detayı, zemin dokusu) ve t ile
+  yumuşak animasyon ver.
+- Düşman ve kulelere ek detay katmanları koy (kontur, iç desen, ışık vurgusu, gölge).
+- Renk geçişleri (createLinearGradient / createRadialGradient) ve c.shadowBlur kullanarak
+  derinlik kat.
+- Kule seviyesine (k.seviye) göre görsel farklılık ekle.
 
-OYNANIŞ CİLASI:
-- Dalga sayısını 10'a çıkar; 5. ve 10. dalga BOSS olsun (büyük boyut + can barı).
-- Kule seçiliyken menzil çemberi görünsün.
-- Dalga arasında "Dalga N geliyor!" uyarısı ve isteğe bağlı "Erken Başlat" butonu (erken başlatana bonus altın).
-- Art arda öldürmelerde skor çarpanı (combo) ve ekranda kısa "x2! x3!" göstergesi.
+DEĞİŞMEZ: Nesne yapısı, alan isimleri, palet dışındaki sayısal değerler, yol dizisi,
+düşman/kule istatistikleri AYNI kalacak. Fonksiyonlar c.save()/c.restore() dengesini koruyacak.
+Dış kaynak, emoji, document/window kullanımı YOK.
 
-DEĞİŞMEZ KURALLAR: Konsept aynı kalacak: "{fikir}". window.OYUN_DURUMU ve id="baslaBtn" yapısı korunacak. Tek dosya, dış kaynak yok, Türkçe arayüz. Kod 1400 satırı geçmeyecek. ÇIKTI: SADECE SAF KOD; <!DOCTYPE html> ile başla, KESİNLİKLE </html> ile bitir. Markdown kullanma.
+ÇIKTI: SADECE güncellenmiş eklenti kodu. `const TEMA = {{` ile başla, `}};` ile bitir,
+sonuna `// SON` yaz. Markdown kullanma.
 
-MEVCUT ÇALIŞAN KOD:
-{kod}"""
+MEVCUT EKLENTİ:
+{eklenti_kodu}"""
     cevap = gemini_cagir(client, MODEL, prompt)
-    yeni = re.sub(r'^```html\s*|^```\s*|```$', '', cevap.text.strip(),
-                  flags=re.MULTILINE).strip()
-    return yeni if yeni.endswith("</html>") else None
-
+    yeni = eklenti_temizle(cevap.text)
+    return None if eklenti_gecerli_mi(yeni) else yeni
 
 # ================== KAYIT + GALERİ ==================
 def kaydet_ve_galeriyi_guncelle(oyun_adi, html_icerik):
@@ -340,34 +394,36 @@ def main():
         oyun_adi = fikirden_baslik(fikir)
         print(f"💡 Fikir: {fikir}")
 
-        # 2. Üret + test et (QA + robot oyuncu)
-        kod, api_cagrisi, rapor = kod_uret_ve_test_et(fikir, client)
+        # 2. Tema eklentisi üret + motora tak + robot oyuncuyla test et
+        kod, api_cagrisi, rapor = eklenti_uret_ve_test_et(fikir, client)
         if kod is None:
             sebep = rapor if isinstance(rapor, str) else "Sebep kaydedilemedi"
             log_yaz(log_sekmesi, oyun_adi, api_cagrisi, "FAILED", sebep[:250])
             return
 
-        # 2.5 CİLA: Testleri geçen oyunu bozmadan güzelleştir.
-        # Cilalı sürüm de testten geçerse ve puanı düşmezse o yayınlanır;
-        # aksi halde orijinal kalır. Risk yok, en kötü durumda orijinal yayınlanır.
+        # 2.5 CİLA: Çalışan eklentinin çizimlerini zenginleştir.
+        # Cilalı sürüm testi geçer ve puanı düşmezse o yayınlanır, yoksa orijinal kalır.
         try:
-            print("✨ Cila aşaması: grafik ve oynanış geliştiriliyor...")
-            cilali = kod_cilala(fikir, kod, client)
+            print("✨ Cila aşaması: grafikler zenginleştiriliyor...")
+            mevcut_eklenti = rapor.get("eklenti") or ""
+            cilali_eklenti = eklenti_cilala(fikir, mevcut_eklenti, client) \
+                if mevcut_eklenti else None
             api_cagrisi += 1
-            if cilali:
+            if cilali_eklenti:
+                cilali_oyun = oyun_olustur(cilali_eklenti, oyun_adi)
                 os.makedirs("temp_test", exist_ok=True)
                 cila_yolu = os.path.join("temp_test", "cila.html")
                 with open(cila_yolu, "w", encoding="utf-8") as f:
-                    f.write(cilali)
+                    f.write(cilali_oyun)
                 cila_rapor = oyunu_test_et(cila_yolu, client, MODEL, fikir)
                 api_cagrisi += cila_rapor["api_cagrisi"]
                 if cila_rapor["gecti"] and cila_rapor["puan"] >= rapor["puan"]:
-                    kod, rapor = cilali, cila_rapor
+                    kod, rapor = cilali_oyun, cila_rapor
                     print(f"✨ Cilalı sürüm kabul edildi! Puan: {rapor['puan']}/10")
                 else:
                     print("✨ Cilalı sürüm barajı geçemedi, orijinal yayınlanacak.")
             else:
-                print("✨ Cila çıktısı eksik geldi, orijinal yayınlanacak.")
+                print("✨ Cila çıktısı geçersiz, orijinal yayınlanacak.")
         except Exception as cila_hata:
             print(f"✨ Cila aşaması atlandı ({cila_hata}), orijinal yayınlanacak.")
 
