@@ -1,446 +1,247 @@
 # -*- coding: utf-8 -*-
 """
-AI OYUN FABRİKASI - main.py
-Günde 1 kez çalışır: Sheets'teki fikir havuzundan fikir alır,
-Gemini ile oyun üretir, test eder, GitHub'a push eder, loglar.
+test_bot.py - Robot Oyuncu
+Oyunu headless tarayıcıda gerçekten açar, oynar, ölçer ve Gemini'ye
+ekran görüntüleriyle yorumlatır. main.py içindeki üretim döngüsünden çağrılır.
 
-Gerekli ortam değişkenleri:
-  GEMINI_API_KEY : Google AI Studio API anahtarı
-  GITHUB_PAT     : GitHub Personal Access Token
-Gerekli dosya:
-  credentials.json : Google Hizmet Hesabı anahtarı (Actions'ta base64'ten üretilir)
+Döner: rapor sözlüğü
+  {"gecti": bool, "puan": int, "yorum": str, "sorunlar": [str, ...], "api_cagrisi": int}
 """
 
 import os
-import re
 import json
-from datetime import datetime
+import random
+import re
+import time
 
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from github import Github, Auth
-from github.GithubException import GithubException
-from google import genai
-
-from test_bot import oyunu_test_et, gemini_cagir
-
-# ================== AYARLAR ==================
-SHEET_ADI = "AI Uygulama Fabrikası"   # Google Sheets dosya adı
-LOG_SEKMESI = "Loglar"                # Log sekmesi (A:Tarih B:Oyun C:API D:Durum E:Not)
-HAVUZ_SEKMESI = "FikirHavuzu"         # Fikir havuzu (A:Fikir B:Durum)
-REPO_ADI = "ai-oyun-fabrikasi"        # GitHub repo adı
-MODEL = "gemini-2.5-flash"
-MAX_DENEME = 4
-ANALYTICS_ID = "G-XXXXXXXXXX"         # Google Analytics 4 Ölçüm Kimliği (kurulumda değiştir)
+from playwright.sync_api import sync_playwright
+from google.genai import types
+from google.genai import errors as genai_errors
 
 
-# ================== YARDIMCILAR ==================
-def slugify(text):
-    text = text.lower().strip()
-    for k, h in {'ğ': 'g', 'ü': 'u', 'ş': 's', 'ı': 'i', 'ö': 'o', 'ç': 'c'}.items():
-        text = text.replace(k, h)
-    text = re.sub(r'[^a-z0-9]+', '-', text)
-    return text.strip('-')[:60]
+def gemini_cagir(client, model, contents):
+    """Gemini çağrısı; geçici yoğunlukta (503/429) VEYA boş yanıtta bekleyip yeniden dener."""
+    son_hata = None
+    for bekleme in (0, 30, 90, 180):
+        if bekleme:
+            print(f"⏳ Gemini yanıt veremedi, {bekleme} sn bekleyip yeniden denenecek...")
+            time.sleep(bekleme)
+        try:
+            cevap = client.models.generate_content(model=model, contents=contents)
+            if cevap.text:  # Dolu yanıt geldiyse başarı
+                return cevap
+            son_hata = ValueError("Gemini boş yanıt döndürdü (yoğunluk/kesinti).")
+        except (genai_errors.ServerError, genai_errors.ClientError) as e:
+            kod = getattr(e, "status_code", None) or getattr(e, "code", None)
+            if kod not in (429, 500, 503):
+                raise  # Kalıcı hata (yanlış anahtar vb.) -> bekleme, direkt yüksel
+            son_hata = e
+    raise son_hata
 
 
-def fikirden_baslik(fikir):
-    """Fikrin ';' öncesindeki tema kısmını oyun adı yapar (kırpık kelime olmaz)."""
-    baslik = fikir.split(";")[0].strip().rstrip(".,")
-    return baslik[:60]
+def _durum_oku(page):
+    try:
+        return page.evaluate("window.OYUN_DURUMU || null")
+    except Exception:
+        return None
 
 
-def analytics_ekle(html):
-    """Sayfaya Google Analytics 4 kodunu enjekte eder (Gemini'ye güvenmeden)."""
-    if ANALYTICS_ID.startswith("G-X"):  # Kimlik henüz girilmemişse dokunma
-        return html
-    snippet = f"""<script async src="https://www.googletagmanager.com/gtag/js?id={ANALYTICS_ID}"></script>
-<script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}gtag('js',new Date());gtag('config','{ANALYTICS_ID}');</script>
-"""
-    if "</head>" in html:
-        return html.replace("</head>", snippet + "</head>", 1)
-    return html  # </head> yoksa (beklenmez) dosyayı bozma
-
-
-# ================== FİKİR HAVUZU ==================
-def havuzdan_fikir_al(havuz):
-    """B sütunu boş olan ilk fikri alır ve KULLANILDI işaretler."""
-    satirlar = havuz.get_all_values()
-    for i, satir in enumerate(satirlar, start=1):
-        fikir = satir[0].strip() if len(satir) > 0 else ""
-        durum = satir[1].strip() if len(satir) > 1 else ""
-        if fikir and durum == "":
-            havuz.update_cell(i, 2, "KULLANILDI")
-            return fikir
-    return None
-
-
-# ================== ÜRETİM + KALİTE KONTROL ==================
-EKLENTI_KURALLARI = """
-Sen uzman bir oyun sanatçısı ve JavaScript geliştiricisisin. Tam bir oyun YAZMAYACAKSIN.
-Oyun motoru zaten hazır ve test edilmiş durumda (oyun döngüsü, dalgalar, kuleler, düşman
-hareketi, çarpışma, HUD, menüler, mobil destek hepsi motorda). Senin tek görevin, motora
-takılacak TEMA EKLENTİSİ yazmak: yani oyunun görünüşünü ve dengesini tanımlayan bir nesne.
-
-ÇIKTI FORMATI: SADECE aşağıdaki yapıda tek bir JavaScript nesnesi yaz. Açıklama, markdown,
-``` işareti KULLANMA. `const TEMA = {` ile başla ve `};` ile bitir. Sonuna `// SON` yaz.
-
-const TEMA = {
-  ad: "Oyunun Türkçe adı",
-  aciklama: "Tek cümlelik Türkçe tanıtım",
-  palet: { arka1:"#hex", arka2:"#hex", yol:"#hex", yolKenar:"#hex",
-           dusman:"#hex", dusman2:"#hex", kule:"#hex", mermi:"#hex", vurgu:"#hex" },
-  yol: [ {x:0,y:360}, {x:300,y:360}, ... , {x:1280,y:300} ],   // 1280x720 alanda 5-9 nokta,
-        // ilk nokta soldan (x=0) veya üstten girmeli, son nokta ekrandan çıkmalı
-  dusmanTipleri: [
-    {ad:"Türkçe ad", can:60, hiz:62, altin:12, yaricap:14, renk:"#hex"},
-    {ad:"Türkçe ad", can:42, hiz:96, altin:14, yaricap:12, renk:"#hex"},
-    {ad:"Türkçe ad", can:155, hiz:44, altin:23, yaricap:18, renk:"#hex"}
-  ],
-  kuleTipleri: [
-    {ad:"Türkçe ad", fiyat:50, menzil:150, hasar:18, atisHizi:1.2, mermiHizi:360, renk:"#hex"},
-    {ad:"Türkçe ad", fiyat:90, menzil:125, hasar:44, atisHizi:0.55, mermiHizi:270, renk:"#hex", alan:48},
-    {ad:"Türkçe ad", fiyat:70, menzil:135, hasar:8, atisHizi:0.9, mermiHizi:330, renk:"#hex", yavaslat:0.5}
-  ],
-  arkaplanCiz(c, W, H, t){ /* zorunlu */ },
-  yolCiz(c, yol, t){ /* zorunlu */ },
-  dusmanCiz(c, d, t){ /* zorunlu */ },
-  kuleCiz(c, k, t){ /* zorunlu */ }
-};
-// SON
-
-ÇİZİM KURALLARI (asıl işin bu, buraya yoğunlaş):
-- c = canvas 2d context, W=1280, H=720, t = geçen saniye (animasyon için kullan).
-- arkaplanCiz: KATMANLI sahne çiz. Gradient gökyüzü/zemin + uzak silüetler + orta katman dekor
-  + zemin dokusu. Temaya özgü en az 4 farklı dekor öğesi olsun. t ile hafif animasyon ver
-  (parlayan ışıklar, süzülen bulut, kıpırdayan su gibi). Sabit ve boş arka plan KABUL EDİLMEZ.
-- yolCiz: yolu dokulu çiz (kenar + iç dolgu + üzerine tema deseni). Verilen `yol` dizisini kullan.
-- dusmanCiz: d.x, d.y, d.yaricap, d.renk, d.bos (boss ise true), d.faz (animasyon fazı) verilir.
-  Düşmanı EN AZ 4 parçadan oluştur (gövde + baş/kanat + detay + gölge). Yürüme/salınım animasyonu
-  için t ve d.faz kullan. Tek daire/kare KESİNLİKLE YASAK.
-- kuleCiz: k.x, k.y, k.aci (hedefe bakış açısı), k.tip.renk, k.seviye (1-3), k.flas (ateş anı) verilir.
-  Kuleyi EN AZ 4 parçadan oluştur (taban + gövde + namlu + detay). Namluyu k.aci yönünde döndür
-  (c.rotate(k.aci) ile). k.flas>0 iken namlu ucunda parlama çiz.
-- Gölge, kontur ve c.shadowBlur ile derinlik ver. Renkler paletle uyumlu olsun.
-- Her çizim fonksiyonu c.save() ile başlayıp c.restore() ile bitmeli (dönüşüm sızmasın).
-
-DENGE KURALLARI: Yukarıdaki sayısal aralıkları koru (düşman hızı 40-100, kule menzili 110-160,
-mermi hızı 250-400). Sadece temaya uygun isim ve renk değiştir, aşırı değer verme.
-
-YASAKLAR: Dış dosya/kütüphane, emoji, resim, ses YOK. window/document'e dokunma, oyun döngüsü
-yazma, setInterval kullanma. Sadece yukarıdaki TEMA nesnesini üret.
-"""
-
-
-def motor_sablonu_oku():
-    with open("motor_sablon.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-
-def oyun_olustur(eklenti_kodu, oyun_adi):
-    """Tema eklentisini test edilmiş motora enjekte edip tam oyun HTML'i üretir."""
-    sablon = motor_sablonu_oku()
-    return (sablon.replace("__TEMA_EKLENTISI__", eklenti_kodu)
-                  .replace("__OYUN_ADI__", oyun_adi))
-
-
-def eklenti_temizle(ham):
-    """Gemini çıktısındaki markdown ve fazlalıkları temizler."""
-    kod = re.sub(r'^```(?:javascript|js)?\s*|```$', '', ham.strip(), flags=re.MULTILINE).strip()
-    kod = kod.replace("// SON", "").strip()
-    bas = kod.find("const TEMA")
-    if bas > 0:
-        kod = kod[bas:]
-    return kod
-
-
-def eklenti_gecerli_mi(kod):
-    """Eklentinin yapısal olarak sağlam olup olmadığını kontrol eder."""
-    if not kod.startswith("const TEMA"):
-        return "Eklenti 'const TEMA' ile başlamıyor"
-    if kod.count("{") != kod.count("}"):
-        return "Süslü parantezler eşleşmiyor (kod yarıda kesilmiş olabilir)"
-    for zorunlu in ("arkaplanCiz", "yolCiz", "dusmanCiz", "kuleCiz",
-                    "dusmanTipleri", "kuleTipleri", "palet"):
-        if zorunlu not in kod:
-            return f"Zorunlu alan eksik: {zorunlu}"
-    for yasak in ("requestAnimationFrame", "setInterval", "document.", "window."):
-        if yasak in kod:
-            return f"Yasak ifade kullanılmış: {yasak}"
-    return None
-
-
-def eklenti_uret_ve_test_et(fikir, client):
-    """Tema eklentisi üretir, motora takar, robot oyuncuyla test eder.
-    Döner: (tam oyun kodu veya None, api_cagri_sayisi, rapor veya hata özeti)"""
-    hata_gecmisi = ""
+def oyunu_test_et(html_yolu, client, model, fikir=""):
+    sorunlar = []
+    hatalar = []
+    ekranlar = []
     api_cagrisi = 0
-    deneme_ozetleri = []
 
-    for deneme in range(1, MAX_DENEME + 1):
-        print(f"🛠️ Eklenti üretimi: {deneme}/{MAX_DENEME}")
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 900, "height": 700})
+        page.on("pageerror", lambda e: hatalar.append(str(e)))
+        page.on("console",
+                lambda m: hatalar.append(m.text) if m.type == "error" else None)
 
-        prompt = f"""Oyun konsepti: "{fikir}"
-Önceki denemelerde alınan hatalar (varsa düzelt): {hata_gecmisi if hata_gecmisi else "Yok"}
-{EKLENTI_KURALLARI}"""
+        page.goto("file://" + os.path.abspath(html_yolu))
+        page.wait_for_timeout(2500)
 
-        cevap = gemini_cagir(client, MODEL, prompt)
+        # Canvas hiç yoksa oyun yapısal olarak bozuk demektir
+        if page.locator("canvas").count() == 0:
+            browser.close()
+            return {"gecti": False, "puan": 0,
+                    "yorum": "Sayfada canvas bulunamadı, oyun yüklenmedi.",
+                    "sorunlar": ["Canvas yok: üretilen HTML bozuk."],
+                    "api_cagrisi": 0}
+
+        # --- TEST 1: Sayfa çökmeden açıldı mı? ---
+        if hatalar:
+            browser.close()
+            return {"gecti": False, "puan": 0,
+                    "yorum": "Oyun açılırken konsol hatası verdi.",
+                    "sorunlar": [f"Konsol hatası: {h}" for h in hatalar[:3]],
+                    "api_cagrisi": 0}
+
+        try:
+            ekranlar.append(page.screenshot(timeout=15000, animations="disabled"))
+        except Exception:
+            pass  # Menü ekranı alınamadı, devam
+
+        # --- TEST 2: Oyun başlatılabiliyor mu? ---
+        baslatildi = False
+        for secici in ["#baslaBtn", "button:has-text('Başla')",
+                       "button:has-text('Baslat')", "button:has-text('Oyna')",
+                       "button:has-text('BAŞLA')", "text=/başla|oyna|start/i"]:
+            try:
+                page.locator(secici).first.click(timeout=1200)
+                baslatildi = True
+                break
+            except Exception:
+                continue
+        if not baslatildi:
+            # Son çare: canvas'a tıkla (birçok oyun tıklamayla başlar)
+            try:
+                page.locator("canvas").first.click(timeout=2000)
+                baslatildi = True
+            except Exception:
+                pass
+        page.wait_for_timeout(1500)
+
+        durum = _durum_oku(page)
+        if durum is None:
+            sorunlar.append("window.OYUN_DURUMU objesi yok; kural 11 uygulanmamış.")
+        elif durum.get("asama") == "menu":
+            # Menüde kaldıysa bir kez daha canvas'a tıklayıp tekrar dene
+            try:
+                page.locator("canvas").first.click(timeout=1500)
+                page.wait_for_timeout(1500)
+                durum = _durum_oku(page)
+            except Exception:
+                pass
+            if durum and durum.get("asama") == "menu":
+                sorunlar.append("Başlat'a tıklandı ama oyun 'menu' aşamasında kaldı.")
+
+        # --- TEST 3: Pasif denge - önce kule kur, sonra düşman gelmesini bekle ---
+        # Not: Birçok oyunda ilk saniyeler hazırlık; bu yüzden erken kule kurup
+        # daha uzun bekliyoruz ki "düşman gelmiyor" yanlış alarmı azalsın.
+        baslangic_can = (durum or {}).get("can")
+        canvas0 = page.locator("canvas").first
+        try:
+            kutu0 = canvas0.bounding_box(timeout=5000)
+        except Exception:
+            kutu0 = None
+        if kutu0:
+            for _ in range(6):  # Erken birkaç kule kur
+                page.mouse.click(
+                    kutu0["x"] + random.uniform(0.2, 0.8) * kutu0["width"],
+                    kutu0["y"] + random.uniform(0.2, 0.8) * kutu0["height"])
+                page.wait_for_timeout(300)
+        page.wait_for_timeout(30000)  # Düşman dalgasının gelmesi için daha uzun süre
+        durum = _durum_oku(page)
+
+        # --- TEST 4: Aktif oynayış - canvas'a kule yerleştir, ilerlemeyi izle ---
+        canvas = page.locator("canvas").first
+        try:
+            kutu = canvas.bounding_box(timeout=5000)
+        except Exception:
+            kutu = None
+        if kutu:
+            for _ in range(12):  # Rastgele 12 noktaya kule yerleştirmeyi dene
+                x = kutu["x"] + random.uniform(0.15, 0.85) * kutu["width"]
+                y = kutu["y"] + random.uniform(0.15, 0.85) * kutu["height"]
+                page.mouse.click(x, y)
+                page.wait_for_timeout(400)
+
+        # TEST 4b: Oyun sırasında canvas'ı kapatan menü/overlay kalmış mı?
+        try:
+            engel = page.evaluate("""() => {
+                const c = document.querySelector('canvas');
+                if (!c) return null;
+                const r = c.getBoundingClientRect();
+                const el = document.elementFromPoint(r.x + r.width/2, r.y + r.height/2);
+                if (!el || el.tagName === 'CANVAS') return null;
+                const s = getComputedStyle(el);
+                if (s.pointerEvents === 'none' || s.visibility === 'hidden') return null;
+                return (el.innerText || el.tagName).slice(0, 40);
+            }""")
+            if engel:
+                sorunlar.append(f"Oyun sırasında canvas'ı kapatan panel açık kalmış: {engel}")
+        except Exception:
+            pass
+
+        # TEST 4c: Tempo ölçümü - 3 saniyede dalga/skor sıçraması makul mü?
+        tempo_once = _durum_oku(page) or {}
+        page.wait_for_timeout(3000)
+        tempo_sonra = _durum_oku(page) or {}
+        try:
+            dalga_farki = (tempo_sonra.get("dalga", 0) or 0) - (tempo_once.get("dalga", 0) or 0)
+            if dalga_farki >= 3:
+                sorunlar.append("Oyun aşırı hızlı: 3 saniyede 3+ dalga ilerledi.")
+        except Exception:
+            pass
+
+        page.wait_for_timeout(27000)  # Toplam ~30 sn oyunu izle
+        try:
+            ekranlar.append(page.screenshot(timeout=15000, animations="disabled"))
+        except Exception:
+            pass  # Oyun ortası ekranı alınamadı, devam
+
+        son_durum = _durum_oku(page)
+        if son_durum:
+            if son_durum.get("asama") == "kaybetti" and son_durum.get("dalga", 99) <= 1:
+                sorunlar.append("Bot kule yerleştirmesine rağmen daha 1. dalgada "
+                                "kaybetti: oyun çok zor.")
+            if son_durum.get("asama") == "kazandi":
+                sorunlar.append("Oyun 1 dakikadan kısa sürede kazanıldı: çok kolay/kısa.")
+            # Akıllı hareketsizlik kontrolü: ~60 sn boyunca can, dalga ve skorun
+            # ÜÇÜ DE hiç değişmediyse oyun gerçekten donmuş/boş demektir.
+            if baslangic_can is not None and son_durum.get("asama") == "oyunda":
+                degisti = (son_durum.get("can") != baslangic_can
+                           or (durum or {}).get("dalga") != son_durum.get("dalga")
+                           or (durum or {}).get("skor") != son_durum.get("skor"))
+                if not degisti:
+                    sorunlar.append("Oyun boyunca can, dalga ve skor hiç değişmedi: "
+                                    "oyun ilerlemiyor.")
+
+        if hatalar:
+            sorunlar.extend(f"Oyun sırasında konsol hatası: {h}" for h in hatalar[:3])
+
+        browser.close()
+
+    # --- TEST 5: Gemini görsel inceleme (sanal oyuncu yorumu) ---
+    puan, yorum = 5, "Görsel inceleme yapılamadı."
+    try:
+        icerik = [types.Part.from_bytes(data=e, mime_type="image/png") for e in ekranlar]
+        icerik.append(
+            "Sen titiz bir oyun test kullanıcısısın. İlk görsel oyunun menüsü, "
+            "ikincisi oyun ortası ekranı olmalı. Oyunun konsepti şu: \"" + fikir + "\". "
+            "Şunları değerlendir: (1) İkinci görselde GERÇEKTEN oynanan bir oyun mu var "
+            "(kuleler, düşmanlar, yol) yoksa hala menü/boş ekran mı? Oyun ekranı yoksa "
+            "puan EN FAZLA 4 olabilir. (2) Görseller konseptteki temayı yansıtıyor mu "
+            "(korsan oyununda deniz/gemi, uzayda yıldız/metal gibi)? Tema hiç yansımıyorsa "
+            "puan EN FAZLA 5 olabilir. (3) Yazılar Türkçe ve okunaklı mı, arayüz taşıyor mu? "
+            "(4) İkinci görselde oyunun üzerini kapatan menü/başlangıç paneli hala duruyor mu? "
+            "Duruyorsa bunu sorun olarak yaz ve puan EN FAZLA 4 olsun. "
+            'SADECE şu JSON ile cevap ver, başka hiçbir şey yazma: '
+            '{"puan": 1-10 arasi tam sayi, "yorum": "1-2 cümlelik Türkçe oyuncu yorumu", '
+            '"sorunlar": ["varsa sorun listesi"]}'
+        )
+        cevap = gemini_cagir(client, model, icerik)
         api_cagrisi += 1
-        eklenti = eklenti_temizle(cevap.text)
-
-        # TEST A: Yapısal geçerlilik (API çağrısı harcamaz)
-        sorun = eklenti_gecerli_mi(eklenti)
-        if sorun:
-            print(f"❌ TEST A: {sorun}")
-            deneme_ozetleri.append(f"D{deneme}:YAPI {sorun[:40]}")
-            hata_gecmisi += f"\n- {sorun}. Formatı tam olarak istenen şekilde üret."
-            continue
-
-        # TEST B: Motora tak ve robot oyuncuyla gerçek testten geçir
-        oyun_adi = fikirden_baslik(fikir)
-        tam_oyun = oyun_olustur(eklenti, oyun_adi)
-        os.makedirs("temp_test", exist_ok=True)
-        test_yolu = os.path.join("temp_test", "index.html")
-        with open(test_yolu, "w", encoding="utf-8") as f:
-            f.write(tam_oyun)
-
-        print("🤖 Robot oyuncu test ediyor...")
-        rapor = oyunu_test_et(test_yolu, client, MODEL, fikir)
-        api_cagrisi += rapor["api_cagrisi"]
-
-        if rapor["gecti"]:
-            print(f"✅ Test geçildi! Puan: {rapor['puan']}/10")
-            rapor["eklenti"] = eklenti
-            return tam_oyun, api_cagrisi, rapor
-
-        print(f"❌ Robot reddetti (Puan: {rapor['puan']}/10)")
-        for s in rapor["sorunlar"][:4]:
-            print(f"   - {s}")
-        ilk = rapor["sorunlar"][0][:60] if rapor["sorunlar"] else "?"
-        deneme_ozetleri.append(f"D{deneme}:ROBOT(p{rapor['puan']}) {ilk}")
-        hata_gecmisi += "\n- Test sonucu sorunlar (çizimleri düzelt): " \
-                        + "; ".join(rapor["sorunlar"][:4])
-
-    print("🚨 Maksimum deneme aşıldı.")
-    return None, api_cagrisi, " | ".join(deneme_ozetleri)
-
-
-def eklenti_cilala(fikir, eklenti_kodu, client):
-    """Testi geçen eklentinin SADECE çizim fonksiyonlarını zenginleştirir."""
-    prompt = f"""Aşağıda testleri geçmiş, çalışan bir oyun tema eklentisi var.
-Konsept: "{fikir}"
-
-Görevin: YAPIYA VE SAYISAL DEĞERLERE HİÇ DOKUNMADAN, sadece çizim fonksiyonlarını
-(arkaplanCiz, yolCiz, dusmanCiz, kuleCiz) görsel olarak zenginleştirmek:
-- Arka plana bir katman daha ekle (uzak siluet, gökyüzü detayı, zemin dokusu) ve t ile
-  yumuşak animasyon ver.
-- Düşman ve kulelere ek detay katmanları koy (kontur, iç desen, ışık vurgusu, gölge).
-- Renk geçişleri (createLinearGradient / createRadialGradient) ve c.shadowBlur kullanarak
-  derinlik kat.
-- Kule seviyesine (k.seviye) göre görsel farklılık ekle.
-
-DEĞİŞMEZ: Nesne yapısı, alan isimleri, palet dışındaki sayısal değerler, yol dizisi,
-düşman/kule istatistikleri AYNI kalacak. Fonksiyonlar c.save()/c.restore() dengesini koruyacak.
-Dış kaynak, emoji, document/window kullanımı YOK.
-
-ÇIKTI: SADECE güncellenmiş eklenti kodu. `const TEMA = {{` ile başla, `}};` ile bitir,
-sonuna `// SON` yaz. Markdown kullanma.
-
-MEVCUT EKLENTİ:
-{eklenti_kodu}"""
-    cevap = gemini_cagir(client, MODEL, prompt)
-    yeni = eklenti_temizle(cevap.text)
-    return None if eklenti_gecerli_mi(yeni) else yeni
-
-# ================== KAYIT + GALERİ ==================
-def kaydet_ve_galeriyi_guncelle(oyun_adi, html_icerik):
-    """Oyunu apps/slug/index.html'e kaydeder, manifest ve kök galeriyi günceller."""
-    os.makedirs("apps", exist_ok=True)
-
-    manifest_yolu = os.path.join("apps", "manifest.json")
-    manifest = []
-    if os.path.exists(manifest_yolu):
-        with open(manifest_yolu, "r", encoding="utf-8") as f:
-            manifest = json.load(f)
-
-    # Slug çakışması: varsa -2, -3 ekle
-    slug = slugify(oyun_adi)
-    mevcut_sluglar = {m["slug"] for m in manifest}
-    temel, sayac = slug, 2
-    while slug in mevcut_sluglar:
-        slug = f"{temel}-{sayac}"
-        sayac += 1
-
-    klasor = os.path.join("apps", slug)
-    os.makedirs(klasor, exist_ok=True)
-    with open(os.path.join(klasor, "index.html"), "w", encoding="utf-8") as f:
-        f.write(analytics_ekle(html_icerik))
-    print(f"📁 Oyun kaydedildi: apps/{slug}/index.html")
-
-    manifest.append({"isim": oyun_adi, "slug": slug,
-                     "tarih": datetime.now().strftime("%Y-%m-%d")})
-    with open(manifest_yolu, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, ensure_ascii=False, indent=2)
-
-    # Kök galeri
-    kartlar = ""
-    for m in reversed(manifest):  # en yeni üstte
-        kartlar += f"""
-            <a href="apps/{m['slug']}/index.html" class="block p-6 bg-white rounded-xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all border border-slate-200">
-                <h2 class="text-xl font-semibold text-slate-800 mb-1">{m['isim']}</h2>
-                <p class="text-xs text-slate-400 mb-2">{m['tarih']}</p>
-                <span class="text-sm font-medium text-blue-600">Oyunu Başlat &rarr;</span>
-            </a>"""
-
-    galeri = f"""<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Savunma Oyunları Arşivi</title>
-<script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-50 font-sans text-slate-800">
-<div class="max-w-5xl mx-auto px-4 py-16">
-<h1 class="text-4xl font-bold text-center text-slate-900 mb-4">Savunma Oyunları Arşivi</h1>
-<p class="text-center text-slate-600 mb-12">Yapay zeka tarafından her gün sıfırdan kodlanan, Canvas tabanlı tarayıcı savunma oyunları laboratuvarı.</p>
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{kartlar}
-</div>
-</div>
-</body>
-</html>"""
-
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(analytics_ekle(galeri))
-    print("🌐 Galeri güncellendi.")
-    return slug
-
-
-# ================== GITHUB PUSH ==================
-def github_repoya_gonder(slug):
-    pat = os.environ.get("GITHUB_PAT")
-    if not pat:
-        raise ValueError("GITHUB_PAT ortam değişkeni bulunamadı.")
-
-    g = Github(auth=Auth.Token(pat))
-    repo = g.get_user().get_repo(REPO_ADI)
-    mesaj = f"Yapay Zeka Yeni Oyun Uretti: {slug}"
-
-    dosyalar = [
-        f"apps/{slug}/index.html",
-        "apps/manifest.json",
-        "index.html",
-    ]
-
-    for yol in dosyalar:
-        if not os.path.exists(yol):
-            print(f"⚠️ {yol} lokalde yok, atlanıyor.")
-            continue
-        with open(yol, "r", encoding="utf-8") as f:
-            icerik = f.read()
-        try:
-            mevcut = repo.get_contents(yol)
-            repo.update_file(mevcut.path, mesaj, icerik, mevcut.sha)
-            print(f"🔄 Güncellendi: {yol}")
-        except GithubException as e:
-            if e.status == 404:  # Dosya yok veya repo tamamen boş -> OLUŞTUR
-                repo.create_file(yol, mesaj, icerik)
-                print(f"✅ Eklendi: {yol}")
-            else:
-                raise
-
-    print("🚀 Push tamamlandı.")
-
-
-# ================== LOG ==================
-def log_yaz(log_sekmesi, oyun_adi, api_sayisi, durum, not_=""):
-    try:
-        log_sekmesi.append_row([
-            datetime.now().strftime("%Y-%m-%d %H:%M"),
-            oyun_adi, str(api_sayisi), durum, not_ or "-",
-        ])
-        print(f"📊 Log: {durum} ({api_sayisi} API çağrısı)")
+        metin = re.sub(r"^```json\s*|^```\s*|```$", "", cevap.text.strip(),
+                       flags=re.MULTILINE).strip()
+        veri = json.loads(metin)
+        puan = int(veri.get("puan", 5))
+        yorum = veri.get("yorum", "")
+        sorunlar.extend(veri.get("sorunlar", []))
     except Exception as e:
-        print(f"🚨 Log yazılamadı: {e}")
+        sorunlar.append(f"Görsel inceleme tamamlanamadı: {e}")
 
+    # --- KARAR ---
+    # Sadece GERÇEK bozukluklar kritik: konsol hatası, oyunun hiç ilerlememesi,
+    # menüde takılıp kalma, 1. dalgada imkansızlık. "Görsel inceleme tamamlanamadı"
+    # gibi geçici teknik aksaklıklar kritik sayılmaz.
+    kritik_anahtarlar = ("konsol hatası", "ilerlemiyor", "menu' aşamasında",
+                         "çok zor", "tıklanamadı", "panel açık kalmış",
+                         "aşırı hızlı", "hala duruyor")
+    kritik_var = any(any(a in s.lower() for a in kritik_anahtarlar) for s in sorunlar)
+    gecti = (not kritik_var) and puan >= 6
 
-# ================== ANA AKIŞ ==================
-def main():
-    # FAILED logu NameError vermesin diye baştan tanımlı:
-    oyun_adi = "BILINMIYOR"
-    api_cagrisi = 0
-    log_sekmesi = None
-
-    try:
-        # Gemini istemcisi (anahtar ortamdan)
-        api_key = os.environ.get("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY ortam değişkeni bulunamadı.")
-        client = genai.Client(api_key=api_key)
-
-        # Google Sheets bağlantısı
-        scope = ["https://spreadsheets.google.com/feeds",
-                 "https://www.googleapis.com/auth/drive"]
-        creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
-        gc = gspread.authorize(creds)
-        dosya = gc.open(SHEET_ADI)
-        log_sekmesi = dosya.worksheet(LOG_SEKMESI)
-        havuz = dosya.worksheet(HAVUZ_SEKMESI)
-
-        # 1. Fikir al
-        fikir = havuzdan_fikir_al(havuz)
-        if not fikir:
-            log_yaz(log_sekmesi, "HAVUZ BOS", 0, "FAILED", "Fikir havuzu tükendi!")
-            return
-        oyun_adi = fikirden_baslik(fikir)
-        print(f"💡 Fikir: {fikir}")
-
-        # 2. Tema eklentisi üret + motora tak + robot oyuncuyla test et
-        kod, api_cagrisi, rapor = eklenti_uret_ve_test_et(fikir, client)
-        if kod is None:
-            sebep = rapor if isinstance(rapor, str) else "Sebep kaydedilemedi"
-            log_yaz(log_sekmesi, oyun_adi, api_cagrisi, "FAILED", sebep[:250])
-            return
-
-        # 2.5 CİLA: Çalışan eklentinin çizimlerini zenginleştir.
-        # Cilalı sürüm testi geçer ve puanı düşmezse o yayınlanır, yoksa orijinal kalır.
-        try:
-            print("✨ Cila aşaması: grafikler zenginleştiriliyor...")
-            mevcut_eklenti = rapor.get("eklenti") or ""
-            cilali_eklenti = eklenti_cilala(fikir, mevcut_eklenti, client) \
-                if mevcut_eklenti else None
-            api_cagrisi += 1
-            if cilali_eklenti:
-                cilali_oyun = oyun_olustur(cilali_eklenti, oyun_adi)
-                os.makedirs("temp_test", exist_ok=True)
-                cila_yolu = os.path.join("temp_test", "cila.html")
-                with open(cila_yolu, "w", encoding="utf-8") as f:
-                    f.write(cilali_oyun)
-                cila_rapor = oyunu_test_et(cila_yolu, client, MODEL, fikir)
-                api_cagrisi += cila_rapor["api_cagrisi"]
-                if cila_rapor["gecti"] and cila_rapor["puan"] >= rapor["puan"]:
-                    kod, rapor = cilali_oyun, cila_rapor
-                    print(f"✨ Cilalı sürüm kabul edildi! Puan: {rapor['puan']}/10")
-                else:
-                    print("✨ Cilalı sürüm barajı geçemedi, orijinal yayınlanacak.")
-            else:
-                print("✨ Cila çıktısı geçersiz, orijinal yayınlanacak.")
-        except Exception as cila_hata:
-            print(f"✨ Cila aşaması atlandı ({cila_hata}), orijinal yayınlanacak.")
-
-        # 3. Kaydet + galeri + push
-        slug = kaydet_ve_galeriyi_guncelle(oyun_adi, kod)
-        github_repoya_gonder(slug)
-
-        # 4. Başarı logu (robot oyuncunun puanı ve yorumuyla)
-        log_yaz(log_sekmesi, oyun_adi, api_cagrisi, "BASARILI",
-                f"Puan: {rapor['puan']}/10 - {rapor['yorum']}")
-
-    except Exception as e:
-        print(f"🚨 KRİTİK HATA: {e}")
-        if log_sekmesi is not None:
-            log_yaz(log_sekmesi, oyun_adi, api_cagrisi, "FAILED", str(e)[:200])
-        raise  # Actions'ın da kırmızı görünmesi için
-
-
-if __name__ == "__main__":
-    main()
+    return {"gecti": gecti, "puan": puan, "yorum": yorum,
+            "sorunlar": sorunlar, "api_cagrisi": api_cagrisi}
