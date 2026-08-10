@@ -552,12 +552,26 @@ __TEMA_EKLENTISI__
     }
 
     for (const k of kuleler){
+      ctx.save();
+      ctx.beginPath(); ctx.rect(k.x-46, k.y-46, 92, 92); ctx.clip();  // taşan çizimi kırp
       try { (T.kuleCiz || varsayilanKule)(ctx,k,zaman); }
       catch(e){ varsayilanKule(ctx,k,zaman); }
+      ctx.restore();
     }
     for (const d of dusmanlar){
+      // Kontrast halkası: eklenti düşmanı zeminle aynı renk yapsa bile ayrışsın
+      ctx.save();
+      ctx.strokeStyle="rgba(0,0,0,.55)"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(d.x,d.y,d.yaricap*1.05,0,6.29); ctx.stroke();
+      ctx.strokeStyle="rgba(255,255,255,.35)"; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(d.x,d.y,d.yaricap*1.05,0,6.29); ctx.stroke();
+      ctx.restore();
+      ctx.save();
+      ctx.beginPath(); ctx.rect(d.x-d.yaricap*2, d.y-d.yaricap*2.4,
+                                d.yaricap*4, d.yaricap*4.4); ctx.clip();
       try { (T.dusmanCiz || varsayilanDusman)(ctx,d,zaman); }
       catch(e){ varsayilanDusman(ctx,d,zaman); }
+      ctx.restore();
       canBari(ctx,d);
     }
     for (const m of mermiler){
