@@ -556,6 +556,40 @@ __TEMA_EKLENTISI__
     c.fillRect(d.x-g/2,y,g*Math.max(0,d.can/d.maxCan),d.bos?7:4);
   }
 
+  // ---------- PERFORMANS: Kule sprite önbelleği ----------
+  // Her kule tipi+seviye+açı kombinasyonu bir kez offscreen canvas'a çizilir,
+  // sonrasında sadece drawImage ile kopyalanır (gradient/shadow/path maliyeti
+  // her karede değil, sadece ilk seferde ödenir). Ateş flaşı önbelleğe alınmaz
+  // (üstteki ışık halesi zaten k.flas ile canlı pulslanıyor), böylece flaş
+  // efekti kaybolmaz.
+  const kuleSpriteOnbellek = new Map();
+  const ACI_ADIM = 32;  // 11.25°'lik dilimler; gözle fark edilmeyecek kadar ince
+
+  function kuleSpriteAl(k){
+    const tipIdx = KULE_TIPLERI.indexOf(k.tip);
+    const adim = (Math.PI*2)/ACI_ADIM;
+    const aciQ = ((Math.round(k.aci/adim) % ACI_ADIM) + ACI_ADIM) % ACI_ADIM;
+    const anahtar = tipIdx + "_" + k.seviye + "_" + aciQ;
+    let s = kuleSpriteOnbellek.get(anahtar);
+    if (s) return s;
+
+    const boyut = 96;
+    const off = document.createElement("canvas");
+    off.width = boyut; off.height = boyut;
+    const octx = off.getContext("2d");
+    octx.translate(boyut/2, boyut/2);
+    octx.save();
+    octx.beginPath(); octx.rect(-46,-46,92,92); octx.clip();
+    const sahteK = Object.assign({}, k, {x:0, y:0, aci: aciQ*adim, flas:0});
+    try { (T.kuleCiz || varsayilanKule)(octx, sahteK, 0); }
+    catch(e){ varsayilanKule(octx, sahteK, 0); }
+    octx.restore();
+
+    s = {canvas: off, boyut: boyut};
+    kuleSpriteOnbellek.set(anahtar, s);
+    return s;
+  }
+
   function ambiyansCiz(c,t){
     c.save(); c.globalAlpha=.3; c.fillStyle = P.vurgu;
     for (const a of ambiyansParcaciklari){
@@ -603,11 +637,9 @@ __TEMA_EKLENTISI__
       } catch(e){}
       ctx.restore();
 
-      ctx.save();
-      ctx.beginPath(); ctx.rect(k.x-46, k.y-46, 92, 92); ctx.clip();  // taşan çizimi kırp
-      try { (T.kuleCiz || varsayilanKule)(ctx,k,zaman); }
-      catch(e){ varsayilanKule(ctx,k,zaman); }
-      ctx.restore();
+      // PERFORMANS: canlı çizim yerine önbellekten kopyala (bkz. kuleSpriteAl)
+      const sprite = kuleSpriteAl(k);
+      ctx.drawImage(sprite.canvas, k.x - sprite.boyut/2, k.y - sprite.boyut/2);
     }
     for (const d of dusmanlar){
       // Kontrast halkası: eklenti düşmanı zeminle aynı renk yapsa bile ayrışsın
