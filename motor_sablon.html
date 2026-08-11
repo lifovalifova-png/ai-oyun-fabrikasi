@@ -34,6 +34,9 @@
          font-size:26px;font-weight:800;text-shadow:0 2px 10px rgba(0,0,0,.8);
          opacity:0;transition:opacity .3s;pointer-events:none;}
   #uyari.gorunur{opacity:1;}
+  #vinyet{position:absolute;inset:0;z-index:9;pointer-events:none;opacity:0;
+          transition:opacity .4s;
+          background:radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(220,38,38,.55) 100%);}
   .text-3xl{font-size:30px;} .text-2xl{font-size:24px;} .text-sm{font-size:13px;}
   .font-bold{font-weight:700;} .mb-3{margin-bottom:12px;} .mb-2{margin-bottom:8px;}
   .text-slate-300{color:#cbd5e1;} .text-slate-400{color:#94a3b8;}
@@ -52,6 +55,7 @@
   </div>
 
   <div id="uyari"></div>
+  <div id="vinyet"></div>
 
   <div id="kulePanel"></div>
 
@@ -115,6 +119,11 @@ __TEMA_EKLENTISI__
   // ---------- Durum ----------
   let asama = "menu";                 // menu | oyunda | kazandi | kaybetti
   let can, altin, dalga, skor, combo, comboZaman;
+  let ekranSarsinti = 0, donmaSuresi = 0;   // JUICE: sarsıntı + vuruş anı donması
+  const ambiyansParcaciklari = Array.from({length:36}, () => ({
+    x: Math.random()*1280, y: Math.random()*720,
+    hiz: 6 + Math.random()*14, boyut: 1 + Math.random()*1.8, faz: Math.random()*6.28
+  }));
   let dusmanlar, kuleler, mermiler, parcaciklar, yaziEfektleri;
   let dalgaKuyrugu, dalgaAraSayac, dalgaAktif, spawnSayac, spawnKuyrugu;
   let seciliKuleTipi = 0, seciliKule = null, zaman = 0;
@@ -222,7 +231,7 @@ __TEMA_EKLENTISI__
       hiz: t.hiz*(kayit.bos?0.72:1), altin: Math.round(t.altin*(kayit.bos?8:1)),
       yaricap: (t.yaricap||14)*(kayit.bos?1.9:1), renk: t.renk||P.dusman,
       bos: !!kayit.bos, yavaslama:1, yavaslamaSayac:0, faz: Math.random()*6.28,
-      x:0, y:0, aci:0
+      vurulmaZaman:0, x:0, y:0, aci:0
     });
   }
 
@@ -231,7 +240,7 @@ __TEMA_EKLENTISI__
     can=BASLANGIC_CAN; altin=BASLANGIC_ALTIN; dalga=0; skor=0; combo=1; comboZaman=0;
     dusmanlar=[]; kuleler=[]; mermiler=[]; parcaciklar=[]; yaziEfektleri=[];
     dalgaKuyrugu=[]; spawnKuyrugu=[]; dalgaAraSayac=3; dalgaAktif=false; spawnSayac=0;
-    seciliKule=null; seciliKuleTipi=0;
+    seciliKule=null; seciliKuleTipi=0; ekranSarsinti=0; donmaSuresi=0;
     kulePaneliCiz();
     hudGuncelle();
   }
@@ -267,6 +276,10 @@ __TEMA_EKLENTISI__
     document.getElementById("hudDalga").textContent = dalga;
     document.getElementById("hudToplamDalga").textContent = TOPLAM_DALGA;
     document.getElementById("hudSkor").textContent = skor;
+    // JUICE: can azaldıkça kırmızı vinyet belirginleşir (renk dili / durum uyarısı)
+    const oran = can / BASLANGIC_CAN;
+    document.getElementById("vinyet").style.opacity =
+      oran < 0.35 ? String((1 - oran/0.35) * 0.85) : "0";
     const c = document.getElementById("hudCombo");
     if (combo > 1){ c.style.display="block";
       document.getElementById("hudComboSayi").textContent = combo; }
@@ -365,6 +378,7 @@ __TEMA_EKLENTISI__
   // ---------- Güncelleme ----------
   function guncelle(dt){
     zaman += dt;
+    if (ekranSarsinti>0) ekranSarsinti = Math.max(0, ekranSarsinti - dt*2.2);  // JUICE: sönümlen
     if (asama !== "oyunda") return;
 
     // Combo zaman aşımı
@@ -397,6 +411,7 @@ __TEMA_EKLENTISI__
     // Düşmanlar
     for (let i=dusmanlar.length-1;i>=0;i--){
       const d = dusmanlar[i];
+      if (d.vurulmaZaman>0) d.vurulmaZaman = Math.max(0, d.vurulmaZaman - dt);
       if (d.yavaslamaSayac>0){ d.yavaslamaSayac-=dt; if (d.yavaslamaSayac<=0) d.yavaslama=1; }
       d.mesafe += d.hiz * d.yavaslama * dt;
       const n = yolNoktasi(d.mesafe);
@@ -406,6 +421,7 @@ __TEMA_EKLENTISI__
         dusmanlar.splice(i,1);
         can -= d.bos ? 5 : 1;
         combo=1;
+        ekranSarsinti = Math.min(1, ekranSarsinti + (d.bos ? 0.55 : 0.3));  // JUICE
         patlamaEkle(d.x,d.y,"#ef4444",8);
         hudGuncelle();
         if (can<=0){ can=0; hudGuncelle(); bitir(false); return; }
@@ -463,6 +479,7 @@ __TEMA_EKLENTISI__
     const hedefler = m.alan ? dusmanlar.filter(x=>mesafe(x,d)<=m.alan) : [d];
     for (const h of hedefler){
       h.can -= m.hasar;
+      h.vurulmaZaman = 0.14;  // JUICE: sıkışma-esneme animasyonu tetiklenir
       if (m.yavaslat){ h.yavaslama=m.yavaslat; h.yavaslamaSayac=1.6; }
       if (h.can<=0){
         const idx = dusmanlar.indexOf(h);
@@ -473,6 +490,10 @@ __TEMA_EKLENTISI__
           combo = Math.min(5, combo+1); comboZaman = 3;
           patlamaEkle(h.x,h.y,h.renk, h.bos?22:11);
           yaziEkle(h.x,h.y,"+"+kazanc, "#fbbf24");
+          if (h.bos){                          // JUICE: boss ölümünde ağırlık hissi
+            donmaSuresi = Math.max(donmaSuresi, 0.09);
+            ekranSarsinti = Math.min(1, ekranSarsinti + 0.7);
+          }
           hudGuncelle();
         }
       } else {
@@ -535,13 +556,30 @@ __TEMA_EKLENTISI__
     c.fillRect(d.x-g/2,y,g*Math.max(0,d.can/d.maxCan),d.bos?7:4);
   }
 
+  function ambiyansCiz(c,t){
+    c.save(); c.globalAlpha=.3; c.fillStyle = P.vurgu;
+    for (const a of ambiyansParcaciklari){
+      const y = ((a.y + t*a.hiz) % (REF_H+20)) - 10;
+      const x = a.x + Math.sin(t*0.5+a.faz)*14;
+      c.beginPath(); c.arc(x,y,a.boyut,0,6.29); c.fill();
+    }
+    c.restore();
+  }
+
   function ciz(){
     ctx.setTransform(1,0,0,1,0,0);
     ctx.fillStyle="#05080f"; ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.setTransform(olcek,0,0,olcek,kaydirX,kaydirY);
 
+    // JUICE: ekran sarsıntısı (sadece dünyayı etkiler, HUD ayrı DOM katmanında olduğu için sarsılmaz)
+    if (ekranSarsinti>0.01){
+      const guc = ekranSarsinti*ekranSarsinti;
+      ctx.translate((Math.random()*2-1)*10*guc, (Math.random()*2-1)*10*guc);
+    }
+
     try { (T.arkaplanCiz || varsayilanArkaplan)(ctx, REF_W, REF_H, zaman); }
     catch(e){ varsayilanArkaplan(ctx, REF_W, REF_H, zaman); }
+    ambiyansCiz(ctx, zaman);  // JUICE: her temada otomatik yüzen parıltı zerreleri
     try { (T.yolCiz || varsayilanYol)(ctx, yol, zaman); }
     catch(e){ varsayilanYol(ctx); }
 
@@ -552,6 +590,19 @@ __TEMA_EKLENTISI__
     }
 
     for (const k of kuleler){
+      // JUICE: kule altında yumuşak ışık halesi (her tema için otomatik, Gemini'ye bağlı değil)
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const renk = (k.tip.renk || P.kule);
+      const glowR = 30 + Math.sin(zaman*2 + k.x*0.01)*3 + (k.flas>0 ? 16 : 0);
+      try {
+        const g = ctx.createRadialGradient(k.x,k.y,0,k.x,k.y,glowR);
+        g.addColorStop(0, renk+"33"); g.addColorStop(1, renk+"00");
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(k.x,k.y,glowR,0,6.29); ctx.fill();
+      } catch(e){}
+      ctx.restore();
+
       ctx.save();
       ctx.beginPath(); ctx.rect(k.x-46, k.y-46, 92, 92); ctx.clip();  // taşan çizimi kırp
       try { (T.kuleCiz || varsayilanKule)(ctx,k,zaman); }
@@ -566,7 +617,15 @@ __TEMA_EKLENTISI__
       ctx.strokeStyle="rgba(255,255,255,.35)"; ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.arc(d.x,d.y,d.yaricap*1.05,0,6.29); ctx.stroke();
       ctx.restore();
+
+      // JUICE: vurulunca sıkışma-esneme (squash & stretch)
+      let sx=1, sy=1;
+      if (d.vurulmaZaman>0){
+        const o = d.vurulmaZaman/0.14;
+        sx = 1 + 0.22*o; sy = 1 - 0.22*o;
+      }
       ctx.save();
+      ctx.translate(d.x,d.y); ctx.scale(sx,sy); ctx.translate(-d.x,-d.y);
       ctx.beginPath(); ctx.rect(d.x-d.yaricap*2, d.y-d.yaricap*2.4,
                                 d.yaricap*4, d.yaricap*4.4); ctx.clip();
       try { (T.dusmanCiz || varsayilanDusman)(ctx,d,zaman); }
@@ -603,6 +662,7 @@ __TEMA_EKLENTISI__
     let dt = (su - sonZaman)/1000;
     sonZaman = su;
     if (dt > 0.05) dt = 0.05;     // sekme arka plandayken sıçrama olmasın
+    if (donmaSuresi > 0){ donmaSuresi -= dt; dt = 0; }  // JUICE: boss ölümünde kısa "vuruş anı" donması
     guncelle(dt);
     ciz();
     window.OYUN_DURUMU = {asama:asama, dalga:dalga||0, can:can||0, skor:skor||0, altin:altin||0};
