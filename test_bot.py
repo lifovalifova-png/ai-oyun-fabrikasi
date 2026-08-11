@@ -68,7 +68,7 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
             return {"gecti": False, "puan": 0,
                     "yorum": "Sayfada canvas bulunamadı, oyun yüklenmedi.",
                     "sorunlar": ["Canvas yok: üretilen HTML bozuk."],
-                    "api_cagrisi": 0}
+                    "api_cagrisi": 0, "kapak_png": None}
 
         # --- TEST 1: Sayfa çökmeden açıldı mı? ---
         if hatalar:
@@ -76,7 +76,7 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
             return {"gecti": False, "puan": 0,
                     "yorum": "Oyun açılırken konsol hatası verdi.",
                     "sorunlar": [f"Konsol hatası: {h}" for h in hatalar[:3]],
-                    "api_cagrisi": 0}
+                    "api_cagrisi": 0, "kapak_png": None}
 
         try:
             ekranlar.append(page.screenshot(timeout=15000, animations="disabled"))
@@ -272,5 +272,9 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
     kritik_var = any(any(a in s.lower() for a in kritik_anahtarlar) for s in sorunlar)
     gecti = (not kritik_var) and puan >= 6
 
+    # Kapak resmi: zaten alınmış ekran görüntülerinden — ek API çağrısı YOK, ek maliyet YOK.
+    # Oyun ortası ekranı (varsa) menüden daha çekici olduğu için tercih edilir.
+    kapak_png = ekranlar[-1] if len(ekranlar) >= 2 else (ekranlar[0] if ekranlar else None)
+
     return {"gecti": gecti, "puan": puan, "yorum": yorum,
-            "sorunlar": sorunlar, "api_cagrisi": api_cagrisi}
+            "sorunlar": sorunlar, "api_cagrisi": api_cagrisi, "kapak_png": kapak_png}
