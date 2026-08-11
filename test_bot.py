@@ -126,12 +126,38 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
             kutu0 = canvas0.bounding_box(timeout=5000)
         except Exception:
             kutu0 = None
+
+        tiklanan_noktalar = []  # Aynı noktaya iki kez tıklayıp kazara kule menüsü açmayalım
+
+        def _kule_menusu_kapat():
+            """Kazara açılan kule detay panelini kapatır (gerçek oyuncunun yapacağı gibi)."""
+            try:
+                if page.locator("#kuleMenu").get_attribute("class") or "":
+                    sinif = page.locator("#kuleMenu").get_attribute("class") or ""
+                    if "gizli" not in sinif:
+                        page.locator("#kmKapat").click(timeout=1000)
+                        page.wait_for_timeout(200)
+            except Exception:
+                pass
+
+        def _bos_nokta_bul(kutu, oran_min, oran_max, deneme=8):
+            """Önceki tıklamalardan uzak yeni bir nokta üretir (üst üste kule menüsü açmasın)."""
+            for _ in range(deneme):
+                x = kutu["x"] + random.uniform(oran_min, oran_max) * kutu["width"]
+                y = kutu["y"] + random.uniform(oran_min, oran_max) * kutu["height"]
+                if all(((x-px)**2 + (y-py)**2) ** 0.5 > 55 for px, py in tiklanan_noktalar):
+                    tiklanan_noktalar.append((x, y))
+                    return x, y
+            return None, None
+
         if kutu0:
             for _ in range(6):  # Erken birkaç kule kur
-                page.mouse.click(
-                    kutu0["x"] + random.uniform(0.2, 0.8) * kutu0["width"],
-                    kutu0["y"] + random.uniform(0.2, 0.8) * kutu0["height"])
+                x, y = _bos_nokta_bul(kutu0, 0.2, 0.8)
+                if x is None:
+                    continue
+                page.mouse.click(x, y)
                 page.wait_for_timeout(300)
+                _kule_menusu_kapat()
         page.wait_for_timeout(30000)  # Düşman dalgasının gelmesi için daha uzun süre
         durum = _durum_oku(page)
 
@@ -142,11 +168,13 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
         except Exception:
             kutu = None
         if kutu:
-            for _ in range(12):  # Rastgele 12 noktaya kule yerleştirmeyi dene
-                x = kutu["x"] + random.uniform(0.15, 0.85) * kutu["width"]
-                y = kutu["y"] + random.uniform(0.15, 0.85) * kutu["height"]
+            for _ in range(12):  # Rastgele noktalara kule yerleştirmeyi dene
+                x, y = _bos_nokta_bul(kutu, 0.15, 0.85)
+                if x is None:
+                    continue
                 page.mouse.click(x, y)
                 page.wait_for_timeout(400)
+                _kule_menusu_kapat()
 
         # TEST 4b: Oyun sırasında canvas'ı kapatan menü/overlay kalmış mı?
         try:
@@ -177,6 +205,7 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
             pass
 
         page.wait_for_timeout(27000)  # Toplam ~30 sn oyunu izle
+        _kule_menusu_kapat()  # Ekran görüntüsü öncesi son güvenlik: açık kalan panel varsa kapat
         try:
             ekranlar.append(page.screenshot(timeout=15000, animations="disabled"))
         except Exception:
