@@ -1,1351 +1,1403 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ay Ussu Savunmasi</title>
-    <!-- Tailwind CSS CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <style>
-        /* General body styling for full-screen game */
-        body { margin: 0; overflow: hidden; background-color: #1A1A2E; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        /* Game container to center and scale the canvas */
-        #gameContainer {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100vw;
-            height: 100vh;
-            background-color: #1A1A2E;
-        }
-        /* Canvas styling for responsiveness and visual flair */
-        canvas {
-            background-color: #1A1A2E; /* Fallback */
-            display: block;
-            border: 2px solid #537FE7;
-            box-shadow: 0 0 20px #537FE7; /* Glow effect */
-            /* Custom cursor for default state */
-            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="4" fill="%23FCF8E8" stroke="%23537FE7" stroke-width="2"/></svg>') 16 16, auto;
-        }
-        /* UI Panel common styling */
-        .ui-panel {
-            background-color: rgba(15, 52, 96, 0.85); /* Dark Lunar Surface with transparency */
-            border: 1px solid #537FE7;
-            box-shadow: 0 0 10px rgba(83, 127, 231, 0.7); /* Plasma Blue glow */
-            color: #FCF8E8;
-        }
-        /* UI Button common styling */
-        .ui-btn {
-            background-color: #537FE7;
-            color: #FCF8E8;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.1s ease;
-            font-weight: bold;
-            text-transform: uppercase;
-            border-radius: 6px;
-        }
-        .ui-btn:hover {
-            background-color: #1A1A2E; /* Deep Space on hover */
-            transform: translateY(-2px);
-        }
-        .ui-btn:active {
-            transform: translateY(0);
-        }
-        .ui-btn:disabled {
-            background-color: #0F3460; /* Darker lunar for disabled */
-            color: #2A2A5E; /* Metallic Grey for disabled text */
-            cursor: not-allowed;
-            transform: none;
-        }
-        /* Tooltip styling */
-        #tooltip {
-            position: absolute;
-            background-color: rgba(15, 52, 96, 0.95);
-            border: 1px solid #537FE7;
-            color: #FCF8E8;
-            padding: 10px;
-            font-size: 0.9rem;
-            pointer-events: none;
-            z-index: 1000;
-            display: none;
-            box-shadow: 0 0 8px rgba(83, 127, 231, 0.8);
-            border-radius: 4px;
-            max-width: 200px;
-            line-height: 1.4;
-        }
-        #tooltip h4 { margin-bottom: 5px; color: #FFD700; } /* Gold title for tooltip */
-        #tooltip p { margin-bottom: 3px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ay üssü kubbe savunması</title>
+<style>
+  html,body{margin:0;padding:0;overflow:hidden;background:#0b0f19;font-family:system-ui,sans-serif;}
+  #sahne{position:relative;width:100vw;height:100vh;}
+  canvas{display:block;width:100%;height:100%;touch-action:none;}
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+           background:rgba(5,8,15,.82);z-index:20;}
+  .overlay.gizli{display:none;pointer-events:none;}
+  .panel{background:rgba(17,24,39,.95);border:1px solid rgba(255,255,255,.12);
+         border-radius:16px;padding:28px 32px;max-width:520px;text-align:center;color:#e5e7eb;}
+  .btn{background:#2563eb;color:#fff;border:none;border-radius:10px;padding:12px 26px;
+       font-size:16px;font-weight:600;cursor:pointer;margin-top:14px;}
+  .btn:hover{background:#1d4ed8;}
+  .btn.ikincil{background:#374151;}
+  #hud{position:absolute;top:0;left:0;right:0;z-index:10;display:flex;gap:14px;flex-wrap:wrap;
+       padding:10px 14px;background:linear-gradient(180deg,rgba(5,8,15,.85),rgba(5,8,15,0));
+       color:#e5e7eb;font-size:14px;font-weight:600;pointer-events:none;}
+  #hud .kutu{background:rgba(17,24,39,.7);border:1px solid rgba(255,255,255,.1);
+             border-radius:10px;padding:6px 12px;}
+  #kulePanel{position:absolute;bottom:0;left:0;right:0;z-index:10;display:flex;gap:8px;
+             justify-content:center;flex-wrap:wrap;padding:10px;
+             background:linear-gradient(0deg,rgba(5,8,15,.9),rgba(5,8,15,0));}
+  .kule-btn{background:rgba(17,24,39,.92);border:2px solid rgba(255,255,255,.15);color:#e5e7eb;
+            border-radius:12px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;
+            min-width:96px;}
+  .kule-btn.secili{border-color:#38bdf8;box-shadow:0 0 0 2px rgba(56,189,248,.35);}
+  .kule-btn:disabled{opacity:.45;cursor:not-allowed;}
+  #uyari{position:absolute;top:44%;left:0;right:0;z-index:12;text-align:center;color:#fbbf24;
+         font-size:26px;font-weight:800;text-shadow:0 2px 10px rgba(0,0,0,.8);
+         opacity:0;transition:opacity .3s;pointer-events:none;}
+  #uyari.gorunur{opacity:1;}
+  #vinyet{position:absolute;inset:0;z-index:9;pointer-events:none;opacity:0;
+          transition:opacity .4s;
+          background:radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(220,38,38,.55) 100%);}
+  .text-3xl{font-size:30px;} .text-2xl{font-size:24px;} .text-sm{font-size:13px;}
+  .font-bold{font-weight:700;} .mb-3{margin-bottom:12px;} .mb-2{margin-bottom:8px;}
+  .text-slate-300{color:#cbd5e1;} .text-slate-400{color:#94a3b8;}
+</style>
 </head>
 <body>
-    <div id="gameContainer" class="relative">
-        <canvas id="gameCanvas" class="max-w-full max-h-full"></canvas>
+<div id="sahne">
+  <canvas id="oyunCanvas"></canvas>
 
-        <!-- Main Menu / Game Over Screen -->
-        <div id="menuPanel" class="absolute inset-0 flex flex-col items-center justify-center bg-opacity-80 bg-gray-900 z-10 hidden">
-            <h1 id="menuTitle" class="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-600 mb-8 tracking-wider" style="text-shadow: 0 0 15px #537FE7;">Ay Ussu Savunmasi</h1>
-            <p id="menuMessage" class="text-xl text-white mb-6 text-center"></p>
-            <button id="baslaBtn" class="ui-btn text-2xl px-12 py-4 rounded-lg">OYUNA BASLA</button>
-        </div>
+  <div id="hud">
+    <div class="kutu">Can: <span id="hudCan">20</span></div>
+    <div class="kutu">Altın: <span id="hudAltin">0</span></div>
+    <div class="kutu">Dalga: <span id="hudDalga">0</span>/<span id="hudToplamDalga">10</span></div>
+    <div class="kutu">Skor: <span id="hudSkor">0</span></div>
+    <div class="kutu" id="hudCombo" style="display:none">Combo x<span id="hudComboSayi">1</span></div>
+  </div>
 
-        <!-- In-Game UI (Always visible when playing) -->
-        <div id="gameUI" class="absolute top-0 left-0 w-full p-4 flex justify-between items-center text-white text-lg font-bold z-20 hidden">
-            <div class="flex flex-col items-start ui-panel p-3 rounded-lg">
-                <span>Can: <span id="healthDisplay">10</span></span>
-                <span>Skor: <span id="scoreDisplay">0</span></span>
-            </div>
-            <div class="flex flex-col items-center ui-panel p-3 rounded-lg">
-                <span>Dalga: <span id="waveDisplay">1</span></span>
-                <span>Altin: <span id="goldDisplay" class="text-yellow-400">100</span></span>
-            </div>
-            <div id="waveTimerDisplay" class="ui-panel p-3 rounded-lg text-yellow-300">Hazirlan: 5s</div>
-        </div>
+  <div id="uyari"></div>
+  <div id="vinyet"></div>
 
-        <!-- Tower Selection Panel -->
-        <div id="towerSelectionPanel" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4 p-4 rounded-lg ui-panel z-20 hidden">
-            <!-- Tower buttons will be injected here by JavaScript -->
-        </div>
+  <div id="kulePanel"></div>
 
-        <!-- Tower Info/Upgrade Panel -->
-        <div id="towerInfoPanel" class="absolute bottom-4 right-4 p-4 rounded-lg ui-panel flex flex-col gap-3 z-20 hidden">
-            <h3 class="text-xl text-white font-bold" id="selectedTowerName"></h3>
-            <div class="text-sm text-gray-300 flex flex-col gap-1" id="selectedTowerStats"></div>
-            <button id="upgradeTowerBtn" class="ui-btn text-sm rounded">Yukselt (<span id="upgradeCost"></span>)</button>
-            <button id="sellTowerBtn" class="ui-btn text-sm rounded">Sat (<span id="sellAmount"></span>)</button>
-        </div>
-
-        <div id="tooltip" class="rounded"></div>
+  <div id="menuOverlay" class="overlay">
+    <div class="panel">
+      <h1 id="menuBaslik" class="text-3xl font-bold mb-3">Ay üssü kubbe savunması</h1>
+      <p id="menuAciklama" class="text-slate-300 mb-2"></p>
+      <p class="text-slate-400 text-sm">Kule seçmek için alttaki panele, yerleştirmek için haritaya dokun.
+         Kurulu kuleye dokunarak yükselt veya sat.</p>
+      <button id="baslaBtn" class="btn">Oyunu Başlat</button>
     </div>
+  </div>
 
-    <script>
-        // Global Game State for testing and external access (as per requirements)
-        window.OYUN_DURUMU = {
-            asama: "menu",
-            dalga: 0,
-            can: 0,
-            skor: 0
-        };
+  <div id="sonOverlay" class="overlay gizli">
+    <div class="panel">
+      <h2 id="sonBaslik" class="text-3xl font-bold mb-2">Oyun Bitti</h2>
+      <p id="sonMetin" class="text-slate-300"></p>
+      <button id="yenidenBtn" class="btn">Yeniden Başlat</button>
+    </div>
+  </div>
 
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const gameContainer = document.getElementById('gameContainer');
+  <div id="kuleMenu" class="overlay gizli">
+    <div class="panel">
+      <h3 id="kmBaslik" class="text-2xl font-bold mb-2">Kule</h3>
+      <p id="kmBilgi" class="text-slate-300 mb-2"></p>
+      <button id="kmYukselt" class="btn">Yükselt</button>
+      <button id="kmSat" class="btn ikincil">Sat</button>
+      <button id="kmKapat" class="btn ikincil">Kapat</button>
+    </div>
+  </div>
+</div>
 
-        // References to UI elements for easy access
-        const menuPanel = document.getElementById('menuPanel');
-        const menuTitle = document.getElementById('menuTitle');
-        const menuMessage = document.getElementById('menuMessage');
-        const baslaBtn = document.getElementById('baslaBtn');
-        const gameUI = document.getElementById('gameUI');
-        const healthDisplay = document.getElementById('healthDisplay');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const waveDisplay = document.getElementById('waveDisplay');
-        const goldDisplay = document.getElementById('goldDisplay');
-        const waveTimerDisplay = document.getElementById('waveTimerDisplay');
-        const towerSelectionPanel = document.getElementById('towerSelectionPanel');
-        const towerInfoPanel = document.getElementById('towerInfoPanel');
-        const selectedTowerName = document.getElementById('selectedTowerName');
-        const selectedTowerStats = document.getElementById('selectedTowerStats');
-        const upgradeTowerBtn = document.getElementById('upgradeTowerBtn');
-        const sellTowerBtn = document.getElementById('sellTowerBtn');
-        const upgradeCostSpan = document.getElementById('upgradeCost');
-        const sellAmountSpan = document.getElementById('sellAmount');
-        const tooltip = document.getElementById('tooltip');
+<script>
+/* ============================================================
+   TEMA EKLENTİSİ (Gemini tarafından üretilir)
+   ============================================================ */
+const TEMA = {
+  ad: "Ay Kubbesi Savunması",
+  aciklama: "Ay yüzeyindeki yaşam kubbesini, düşmanca uzaylı sürülerinden koru! Mermiler düşük yerçekiminde kavisli ilerliyor.",
+  palet: {
+    arka1:"#0A0A1A",   // Uzayın derinliği (koyu mavi)
+    arka2:"#1A1A3A",   // Uzayın hafif aydınlık kısmı (orta koyu mavi)
+    yol:"#444455",     // Ay toprağı / yolu (gri ton)
+    yolKenar:"#666677",// Yol kenarları (daha açık gri)
+    dusman:"#FF6666",  // Kırmızımsı düşman (Ay Böceği)
+    dusman2:"#66FF66", // Yeşilimsi düşman (Gölge Drone)
+    kule:"#AAAAFF",    // Mavi lazer kule
+    mermi:"#FFFF99",   // Parlak sarı mermi/enerji
+    vurgu:"#FFD700"    // Altın sarısı (genel vurgu, gözler, ışıklar)
+  },
+  yol: [
+    {x:0,y:400}, {x:200,y:400}, {x:350,y:250}, {x:500,y:250}, {x:650,y:450}, {x:800,y:450}, {x:950,y:300}, {x:1280,y:300}
+  ],
+  dusmanTipleri: [
+    {ad:"Ay Böceği", can:60, hiz:62, altin:12, yaricap:14, renk:"#FF6666"}, // Kırmızımsı böcek
+    {ad:"Gölge Drone", can:42, hiz:96, altin:14, yaricap:12, renk:"#66FF66"}, // Yeşilimsi drone
+    {ad:"Kaya Titan", can:155, hiz:44, altin:23, yaricap:18, renk:"#8888AA"} // Gri kaya canavarı
+  ],
+  kuleTipleri: [
+    {ad:"Lazer Kule", fiyat:50, menzil:150, hasar:18, atisHizi:1.2, mermiHizi:360, renk:"#AAAAFF"}, // Mavi lazer
+    {ad:"Plazma Topu", fiyat:90, menzil:125, hasar:44, atisHizi:0.55, mermiHizi:270, renk:"#FFAA66", alan:48}, // Turuncu plazma, alan hasarı
+    {ad:"Yerçekimi Yavaşlatıcı", fiyat:70, menzil:135, hasar:8, atisHizi:0.9, mermiHizi:330, renk:"#CC99FF", yavaslat:0.5} // Mor yavaşlatıcı
+  ],
+  arkaplanCiz: function(c, W, H, t){
+    c.save();
 
-        // Game Configuration Constants
-        const GAME_WIDTH = 1280;
-        const GAME_HEIGHT = 720;
-        const BASE_HEALTH = 10;
-        const START_GOLD = 150;
-        const WAVE_PREP_TIME = 5000; // 5 seconds in milliseconds
-        const GRAVITY = 0.00003; // Low gravity constant for projectiles (pixels/ms^2)
+    // Uzay ve ay ufku gradyanı (mevcut)
+    var grad = c.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, this.palet.arka1);
+    grad.addColorStop(0.5, this.palet.arka2);
+    grad.addColorStop(1, "#282848"); // Biraz daha morumsu ufuk çizgisi
+    c.fillStyle = grad;
+    c.fillRect(0, 0, W, H);
 
-        // Themed Color Palette (Hex values)
-        const COLORS = {
-            DEEP_SPACE: '#1A1A2E',      // Dark blue for space background
-            DARK_LUNAR: '#0F3460',      // Darker blue/grey for moon surface, shadows
-            ENERGY_RED: '#E94560',      // Vibrant red for enemy accents, damage, plasma
-            MOON_DUST: '#FCF8E8',       // Off-white for moon ground, highlights, laser
-            PLASMA_BLUE: '#537FE7',     // Bright blue for plasma, shields, glow
-            METALLIC_GREY: '#2A2A5E',   // Dark grey for structures, tower bodies
-            GOLD: '#FFD700',            // Gold for currency, special effects
-            CRATER_RIM: '#4F4F6A'       // Medium grey for crater outlines, specific details
-        };
+    // Yeni katman: Uzak nebula/galaksi efekti
+    let nebulaGrad = c.createRadialGradient(W * 0.2 + Math.sin(t*0.05)*100, H * 0.1 + Math.cos(t*0.07)*50, 50, W * 0.2 + Math.sin(t*0.05)*100, H * 0.1 + Math.cos(t*0.07)*50, 400);
+    nebulaGrad.addColorStop(0, "rgba(100, 100, 200, " + (0.2 + 0.1*Math.sin(t*0.6)) + ")");
+    nebulaGrad.addColorStop(0.5, "rgba(50, 50, 150, 0.1)");
+    nebulaGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+    c.fillStyle = nebulaGrad;
+    c.fillRect(0, 0, W, H);
 
-        // Game loop variables
-        let lastTime = 0;
-        let deltaTime = 0;
-        let game; // Main game instance - Will be assigned in initGame
+    nebulaGrad = c.createRadialGradient(W * 0.8 + Math.cos(t*0.06)*80, H * 0.3 + Math.sin(t*0.08)*40, 30, W * 0.8 + Math.cos(t*0.06)*80, H * 0.3 + Math.sin(t*0.08)*40, 300);
+    nebulaGrad.addColorStop(0, "rgba(200, 100, 100, " + (0.15 + 0.08*Math.cos(t*0.7)) + ")");
+    nebulaGrad.addColorStop(0.5, "rgba(150, 50, 50, 0.05)");
+    nebulaGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+    c.fillStyle = nebulaGrad;
+    c.fillRect(0, 0, W, H);
 
-        // Path Definition for enemies (array of waypoints)
-        const path = [
-            { x: -50, y: GAME_HEIGHT / 2 - 50 }, // Start off-screen left
-            { x: 150, y: GAME_HEIGHT / 2 - 50 },
-            { x: 250, y: GAME_HEIGHT / 2 + 50 },
-            { x: 400, y: GAME_HEIGHT / 2 + 50 },
-            { x: 500, y: GAME_HEIGHT / 2 - 100 },
-            { x: 650, y: GAME_HEIGHT / 2 - 100 },
-            { x: 750, y: GAME_HEIGHT / 2 + 0 },
-            { x: 900, y: GAME_HEIGHT / 2 + 0 },
-            { x: 1000, y: GAME_HEIGHT / 2 - 120 },
-            { x: 1150, y: GAME_HEIGHT / 2 - 120 },
-            { x: GAME_WIDTH + 50, y: GAME_HEIGHT / 2 - 120 } // End off-screen right
-        ];
-        const BASE_POS = { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 2 - 100 }; // Player base location
+    // Uzak yıldızlar (parlama animasyonu) (mevcut)
+    c.fillStyle = "rgba(255, 255, 255, " + (0.5 + 0.2 * Math.sin(t * 1.5)) + ")";
+    for(let i=0; i<100; i++) {
+      c.fillRect(Math.random() * W, Math.random() * H, 1, 1);
+    }
+    // Daha büyük yıldızlar (mevcut)
+    c.fillStyle = "rgba(255, 255, 200, " + (0.7 + 0.3 * Math.sin(t * 0.8 + Math.PI/2)) + ")";
+    for(let i=0; i<20; i++) {
+      c.beginPath();
+      c.arc(Math.random() * W, Math.random() * H, 1.5, 0, Math.PI * 2);
+      c.fill();
+    }
 
-        // --- Utility Functions ---
-        // Converts mouse/touch coordinates to canvas coordinates, handling responsiveness
-        function getCanvasMousePos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.clientX || e.touches[0].clientX;
-            const clientY = e.clientY || e.touches[0].clientY;
-            return {
-                x: (clientX - rect.left) / rect.width * GAME_WIDTH,
-                y: (clientY - rect.top) / rect.height * GAME_HEIGHT
-            };
+    // Yeni katman: Ay yüzeyi silüeti (uzak, daha detaylı)
+    c.fillStyle = "#2D2D40"; // Slightly darker than the current #33334A for more depth
+    c.beginPath();
+    c.moveTo(0, H * 0.65);
+    c.bezierCurveTo(W*0.15, H*0.60, W*0.3, H*0.70, W*0.45, H*0.63 + Math.sin(t*0.3)*5);
+    c.bezierCurveTo(W*0.6, H*0.58, W*0.8, H*0.67, W, H*0.62);
+    c.lineTo(W, H);
+    c.lineTo(0, H);
+    c.closePath();
+    c.fill();
+
+    // Ay yüzeyi (yakın) (mevcut)
+    // Use a gradient for more depth instead of solid color
+    let groundGrad = c.createLinearGradient(0, H * 0.7, 0, H);
+    groundGrad.addColorStop(0, "#444455");
+    groundGrad.addColorStop(1, "#3A3A4A"); // Darker as it goes down
+    c.fillStyle = groundGrad;
+    c.beginPath();
+    c.moveTo(0, H * 0.75);
+    c.bezierCurveTo(W*0.25, H*0.7, W*0.5, H*0.8, W*0.75, H*0.72);
+    c.bezierCurveTo(W*0.9, H*0.68, W, H*0.75);
+    c.lineTo(W, H);
+    c.lineTo(0, H);
+    c.closePath();
+    c.fill();
+
+    // Ay Krateri desenleri (mevcut, geliştirelim)
+    c.fillStyle = "rgba(0, 0, 0, 0.15)"; // Daha belirgin
+    c.strokeStyle = "rgba(0, 0, 0, 0.25)"; // Daha belirgin
+    c.lineWidth = 1;
+    for(let i=0; i<20; i++){ // Daha fazla krater
+      let cx = Math.random()*W;
+      let cy = H*0.7 + Math.random()*H*0.3;
+      let r = 15 + Math.random()*40;
+      c.beginPath();
+      c.arc(cx, cy, r, 0, Math.PI*2);
+      c.fill();
+      c.beginPath();
+      c.arc(cx, cy, r * 0.8, 0, Math.PI*2); // İç kenar
+      c.stroke();
+    }
+
+    // Yeni katman: Ay tozu/taş dokusu (yakın plan)
+    c.fillStyle = "rgba(255, 255, 255, 0.05)"; // Açık renkli parçacıklar
+    for(let i=0; i<50; i++){
+      c.fillRect(Math.random() * W, H*0.8 + Math.random()*H*0.2, 1, 1);
+    }
+    c.fillStyle = "rgba(0, 0, 0, 0.08)"; // Koyu parçacıklar
+    for(let i=0; i<50; i++){
+      c.fillRect(Math.random() * W, H*0.8 + Math.random()*H*0.2, 1, 1);
+    }
+
+    // Ana yapı: Ay Kubbesi (mevcut, geliştirelim)
+    const kubbeX = W - 100;
+    const kubbeY = 300 + 100;
+
+    // Dış ışık halkası
+    c.shadowColor = this.palet.vurgu;
+    c.shadowBlur = 30 + 15 * Math.sin(t * 1.5); // Daha belirgin animasyon
+    c.globalAlpha = 0.8; // Daha opak ışık
+
+    c.beginPath();
+    c.arc(kubbeX, kubbeY, 100, Math.PI, 0);
+    c.fillStyle = "rgba(180, 200, 255, 0.15)"; // Saydam dış katman, daha az opak
+    c.fill();
+    c.strokeStyle = "rgba(180, 200, 255, 0.3)"; // Daha az opak
+    c.lineWidth = 5; // Daha kalın kontur
+    c.stroke();
+
+    c.globalAlpha = 1.0; // Reset global alpha
+
+    // İç katman gradyanı
+    let innerDomeGrad = c.createRadialGradient(kubbeX, kubbeY-40, 50, kubbeX, kubbeY, 90);
+    innerDomeGrad.addColorStop(0, "rgba(120, 140, 200, 0.6)");
+    innerDomeGrad.addColorStop(1, "rgba(80, 100, 160, 0.4)");
+    c.fillStyle = innerDomeGrad;
+    c.beginPath();
+    c.arc(kubbeX, kubbeY, 90, Math.PI, 0);
+    c.fill();
+    c.strokeStyle = "rgba(100, 120, 180, 0.7)"; // Daha opak
+    c.lineWidth = 4;
+    c.stroke();
+
+    // Kubbe pencereleri/ışıkları (mevcut, geliştirelim)
+    c.shadowBlur = 0; // Shadow'u resetle
+    c.fillStyle = this.palet.vurgu;
+    c.shadowColor = this.palet.vurgu;
+    c.shadowBlur = 10; // Pencerelerin kendi ışığı
+
+    for (let i = 0; i < 6; i++) { // Daha fazla pencere
+      let angle = Math.PI + (i * (Math.PI / 7)) + (Math.sin(t * 0.7 + i) * 0.05); // Hafif sallanma
+      let r = 85; // Biraz daha dışa
+      let winX = kubbeX + r * Math.cos(angle);
+      let winY = kubbeY + r * Math.sin(angle) * 0.6; // Elips gibi
+      c.beginPath();
+      c.arc(winX, winY, 5 + 2 * Math.sin(t * 4 + i), 0, Math.PI * 2); // Parlama animasyonu
+      c.fill();
+    }
+
+    // İç yapısal çizgiler
+    c.shadowBlur = 0;
+    c.strokeStyle = "rgba(180, 200, 255, 0.2)";
+    c.lineWidth = 1;
+    for(let i=1; i<4; i++){
+      c.beginPath();
+      c.arc(kubbeX, kubbeY, 95 - i*15, Math.PI, 0);
+      c.stroke();
+    }
+    for(let i=0; i<6; i++){
+      let angle = Math.PI + (i * (Math.PI / 5.5)); // Radyal çizgiler
+      c.beginPath();
+      c.moveTo(kubbeX + 90 * Math.cos(angle), kubbeY + 90 * Math.sin(angle) * 0.6);
+      c.lineTo(kubbeX + 50 * Math.cos(angle), kubbeY + 50 * Math.sin(angle) * 0.6);
+      c.stroke();
+    }
+
+    c.shadowBlur = 0; // Shadow'u resetle
+    c.restore();
+  },
+  yolCiz: function(c, yol, t){
+    c.save();
+
+    // Yol kenarındaki gölgeler
+    c.shadowColor = "rgba(0,0,0,0.5)";
+    c.shadowBlur = 10;
+    c.lineWidth = 18; // Gölge için biraz daha geniş
+    c.strokeStyle = "rgba(0,0,0,0.2)";
+    c.beginPath();
+    c.moveTo(yol[0].x, yol[0].y);
+    for(let i=1; i<yol.length; i++){
+      c.lineTo(yol[i].x, yol[i].y);
+    }
+    c.stroke();
+    c.shadowBlur = 0; // Shadow'u resetle
+
+    // Yolun dış konturu
+    c.strokeStyle = "#111122"; // Daha koyu bir kontur
+    c.lineWidth = 14; // Daha ince kontur
+    c.beginPath();
+    c.moveTo(yol[0].x, yol[0].y);
+    for(let i=1; i<yol.length; i++){
+      c.lineTo(yol[i].x, yol[i].y);
+    }
+    c.stroke();
+
+    // Yolun iç kısmı (Gradyan ile derinlik)
+    c.lineWidth = 10;
+    // Calculate min/max Y for the path to create a vertical gradient
+    let minY = yol[0].y, maxY = yol[0].y;
+    for(let i=1; i<yol.length; i++){
+      if (yol[i].y < minY) minY = yol[i].y;
+      if (yol[i].y > maxY) maxY = yol[i].y;
+    }
+    var pathGrad = c.createLinearGradient(0, minY - 20, 0, maxY + 20); // Extent slightly beyond path
+    pathGrad.addColorStop(0, this.palet.yol); // Üst kısımlar
+    pathGrad.addColorStop(0.5, "#3A3A4A"); // Orta kısımlar biraz daha koyu
+    pathGrad.addColorStop(1, "#444455"); // Alt kısımlar tekrar açık
+    c.strokeStyle = pathGrad;
+    c.beginPath();
+    c.moveTo(yol[0].x, yol[0].y);
+    for(let i=1; i<yol.length; i++){
+      c.lineTo(yol[i].x, yol[i].y);
+    }
+    c.stroke();
+
+    // Yol kenar çizgisi (iç kontur) - parlayan enerji çizgileri
+    c.strokeStyle = this.palet.yolKenar;
+    c.lineWidth = 2; // Daha ince
+    c.shadowColor = this.palet.yolKenar;
+    c.shadowBlur = 10 + 5 * Math.sin(t * 3); // Parlama animasyonu
+    c.beginPath();
+    c.moveTo(yol[0].x, yol[0].y);
+    for(let i=1; i<yol.length; i++){
+      c.lineTo(yol[i].x, yol[i].y);
+    }
+    c.stroke();
+    c.shadowBlur = 0; // Shadow'u resetle
+
+    // Yol üzerine Ay dokusu (hafif kraterler, taşlar) (mevcut, geliştirelim)
+    c.fillStyle = "rgba(0, 0, 0, 0.2)";
+    c.strokeStyle = "rgba(255, 255, 255, 0.05)"; // Beyaz kenar
+    c.lineWidth = 0.5;
+    for(let i=0; i<yol.length-1; i++){
+      let p1 = yol[i];
+      let p2 = yol[i+1];
+      let len = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+      let numCraters = Math.floor(len / 30); // Daha sık krater
+      for(let j=0; j<numCraters; j++){
+        let frac = j / numCraters;
+        let cx = p1.x + (p2.x - p1.x) * frac + (Math.sin(t*2+j*5) * 5); // Add animation to crater position
+        let cy = p1.y + (p2.y - p1.y) * frac + (Math.cos(t*2+j*5) * 5);
+        let r = 4 + Math.random()*7; // Daha küçük ve varyasyonlu
+        c.beginPath();
+        c.arc(cx, cy, r, 0, Math.PI*2);
+        c.fill();
+        c.stroke();
+      }
+    }
+
+    // Yol üzerinde kayan parlak noktalar (enerji akışı simülasyonu)
+    c.fillStyle = this.palet.yolKenar;
+    c.shadowColor = this.palet.yolKenar;
+    c.shadowBlur = 5;
+
+    let totalPathLen = 0;
+    for(let i=0; i<yol.length-1; i++){
+      let p1 = yol[i];
+      let p2 = yol[i+1];
+      totalPathLen += Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+    }
+
+    // Create multiple glowing points moving along the path
+    const numGlowPoints = 3;
+    const glowPointSpacing = totalPathLen / numGlowPoints;
+    for(let g = 0; g < numGlowPoints; g++) {
+      let animPos = (t * 50 + (g * glowPointSpacing)) % totalPathLen; // Offset each point
+
+      let currentLen = 0;
+      for(let i=0; i<yol.length-1; i++){
+        let p1 = yol[i];
+        let p2 = yol[i+1];
+        let segmentLen = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+
+        if (animPos >= currentLen && animPos < currentLen + segmentLen) {
+          let segmentFrac = (animPos - currentLen) / segmentLen;
+          let px = p1.x + (p2.x - p1.x) * segmentFrac;
+          let py = p1.y + (p2.y - p1.y) * segmentFrac;
+
+          c.beginPath();
+          c.arc(px, py, 3 + 1*Math.sin(t*10 + g), 0, Math.PI * 2); // Animate size
+          c.fill();
+          break;
         }
+        currentLen += segmentLen;
+      }
+    }
+    c.shadowBlur = 0; // Shadow'u resetle
 
-        // Calculates Euclidean distance between two points
-        function distance(p1, p2) {
-            return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+    c.restore();
+  },
+  dusmanCiz: function(c, d, t){
+    c.save();
+    c.translate(d.x, d.y);
+
+    const coreRadius = d.yaricap;
+    const animPhase = (t * 4 + d.faz * Math.PI) % (Math.PI * 2);
+    const animOffset = Math.sin(animPhase) * (coreRadius * 0.15); // Y ekseninde yukarı-aşağı salınım
+
+    // Genel dış gölge
+    c.shadowColor = "rgba(0,0,0,0.6)"; // Daha belirgin
+    c.shadowBlur = d.bos ? 20 : 8; // Daha fazla bulanıklık
+    c.shadowOffsetX = 4;
+    c.shadowOffsetY = 4 + animOffset * 0.5; // Gölgenin de hafifçe hareket etmesi
+
+    // Ana renk ve kontur için birincil çizim
+    c.strokeStyle = "#000000";
+    c.lineWidth = 2.5; // Daha kalın kontur
+    c.lineJoin = "round";
+    c.lineCap = "round";
+
+    if (d.renk === this.palet.dusman) { // Ay Böceği (reddish)
+      // Gövde (gradyan ile derinlik)
+      let bodyGrad = c.createRadialGradient(0, animOffset, 0, 0, animOffset, coreRadius * 1.0);
+      bodyGrad.addColorStop(0, d.renk);
+      bodyGrad.addColorStop(0.8, "#AA3333"); // Daha koyu kırmızı
+      bodyGrad.addColorStop(1, "#771111"); // En dış kenarlar daha da koyu
+      c.fillStyle = bodyGrad;
+      c.beginPath();
+      c.ellipse(0, animOffset, coreRadius * 1.0, coreRadius * 0.8, 0, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+
+      // Kafa (gradyan ile derinlik)
+      let headGrad = c.createRadialGradient(coreRadius * 0.6, animOffset - coreRadius * 0.3, 0, coreRadius * 0.6, animOffset - coreRadius * 0.3, coreRadius * 0.4);
+      headGrad.addColorStop(0, d.renk);
+      headGrad.addColorStop(1, "#AA3333");
+      c.fillStyle = headGrad;
+      c.beginPath();
+      c.arc(coreRadius * 0.6, animOffset - coreRadius * 0.3, coreRadius * 0.4, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+
+      // Antenler (mevcut)
+      c.strokeStyle = "#333333"; // Daha koyu antenler
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(coreRadius * 0.6, animOffset - coreRadius * 0.3);
+      c.lineTo(coreRadius * 0.9, animOffset - coreRadius * 0.7 + animOffset * 0.5);
+      c.moveTo(coreRadius * 0.6, animOffset - coreRadius * 0.3);
+      c.lineTo(coreRadius * 0.3, animOffset - coreRadius * 0.8 + animOffset * 0.5);
+      c.stroke();
+
+      // Bacaklar (mevcut, geliştirelim)
+      c.strokeStyle = "#333333"; // Bacaklar da koyu
+      c.lineWidth = 2.5;
+      for(let i=-1; i<=1; i++){
+        let legOffset = i * (coreRadius * 0.4);
+        let legAnim = Math.sin(t * 6 + d.faz * Math.PI + i * Math.PI/2) * 0.2;
+
+        // Sol bacak
+        c.beginPath();
+        c.moveTo(-coreRadius * 0.7, animOffset + legOffset + coreRadius * 0.2);
+        c.lineTo(-coreRadius * 1.0, animOffset + legOffset + coreRadius * 0.5 + legAnim * 20);
+        c.lineTo(-coreRadius * 1.2, animOffset + legOffset + coreRadius * 0.4 + legAnim * 10);
+        c.stroke();
+
+        // Sağ bacak
+        c.beginPath();
+        c.moveTo(coreRadius * 0.7, animOffset + legOffset + coreRadius * 0.2);
+        c.lineTo(coreRadius * 1.0, animOffset + legOffset + coreRadius * 0.5 - legAnim * 20);
+        c.lineTo(coreRadius * 1.2, animOffset + legOffset + coreRadius * 0.4 - legAnim * 10);
+        c.stroke();
+      }
+
+      // Gözler (glowing)
+      c.shadowBlur = 0; // Kendi gölgesini kaldırmalıyız
+      c.shadowColor = this.palet.vurgu;
+      c.shadowBlur = 10 + 5 * Math.sin(t * 5); // Parlayan gözler
+      c.fillStyle = this.palet.vurgu;
+      c.beginPath();
+      c.arc(coreRadius * 0.8, animOffset - coreRadius * 0.4, coreRadius * 0.1, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.arc(coreRadius * 0.5, animOffset - coreRadius * 0.4, coreRadius * 0.1, 0, Math.PI * 2);
+      c.fill();
+
+      // İç chitin desenleri (hafif gölge)
+      c.shadowBlur = 0;
+      c.strokeStyle = "rgba(0,0,0,0.2)";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.ellipse(0, animOffset, coreRadius * 0.8, coreRadius * 0.6, 0, 0, Math.PI * 2);
+      c.stroke();
+      c.beginPath();
+      c.ellipse(0, animOffset, coreRadius * 0.6, coreRadius * 0.4, 0, 0, Math.PI * 2);
+      c.stroke();
+
+
+    } else if (d.renk === this.palet.dusman2) { // Gölge Drone (greenish)
+      // Gövde (altıgen, gradyan ile derinlik)
+      let bodyGrad = c.createRadialGradient(0, animOffset, 0, 0, animOffset, coreRadius * 1.0);
+      bodyGrad.addColorStop(0, d.renk);
+      bodyGrad.addColorStop(0.8, "#33AA33");
+      bodyGrad.addColorStop(1, "#117711");
+      c.fillStyle = bodyGrad;
+      c.beginPath();
+      for (let i = 0; i < 6; i++) {
+          let angle = Math.PI / 3 * i + t * 0.5; // Dönen altıgen
+          let x = coreRadius * 1.0 * Math.cos(angle);
+          let y = coreRadius * 1.0 * Math.sin(angle) * 0.8 + animOffset;
+          if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
+      }
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      // Kanatlar/iticiler (glowing)
+      c.shadowBlur = 0;
+      c.shadowColor = this.palet.vurgu; // Iticilerin kendisi parlasın
+      c.shadowBlur = 15 + 10 * Math.sin(t * 8); // Parlama animasyonu
+      c.fillStyle = "rgba(100,255,100,0.7)"; // Daha opak
+      c.beginPath();
+      c.ellipse(-coreRadius * 0.8, animOffset, coreRadius * 0.5, coreRadius * 0.25, Math.PI / 4, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      c.beginPath();
+      c.ellipse(coreRadius * 0.8, animOffset, coreRadius * 0.5, coreRadius * 0.25, -Math.PI / 4, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+
+      // Merkez çekirdek (daha güçlü parlama)
+      c.shadowBlur = 0; // Shadow'u resetle
+      c.shadowColor = this.palet.vurgu;
+      c.shadowBlur = 20 + 10 * Math.cos(t * 7); // Merkezi çekirdek daha çok parlasın
+      c.fillStyle = this.palet.vurgu;
+      c.beginPath();
+      c.arc(0, animOffset, coreRadius * 0.3, 0, Math.PI * 2);
+      c.fill();
+      c.shadowBlur = 0; // Shadow'u resetle
+
+      // Enerji çizgileri (iç desen)
+      c.strokeStyle = "rgba(255,255,255,0.3)";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.arc(0, animOffset, coreRadius * 0.6, t * 0.5, t * 0.5 + Math.PI);
+      c.stroke();
+      c.beginPath();
+      c.arc(0, animOffset, coreRadius * 0.6, t * 0.5 + Math.PI, t * 0.5 + Math.PI * 2);
+      c.stroke();
+
+
+    } else { // Kaya Titan (grayish)
+      // Vücut (düzensiz şekil, gradyan ile derinlik)
+      let bodyGrad = c.createRadialGradient(0, animOffset, 0, 0, animOffset, coreRadius * 1.2);
+      bodyGrad.addColorStop(0, d.renk);
+      bodyGrad.addColorStop(0.8, "#555566");
+      bodyGrad.addColorStop(1, "#333344");
+      c.fillStyle = bodyGrad;
+      c.beginPath();
+      c.moveTo(coreRadius * 0.8 * Math.cos(t * 0.2), coreRadius * 0.8 * Math.sin(t * 0.2) * 0.8 + animOffset);
+      for(let i=1; i<8; i++){ // Daha fazla nokta için daha düzensiz
+        let r = coreRadius * (0.9 + 0.3 * Math.sin(t*0.5 + i) + Math.random()*0.2); // Daha belirgin dış çıkıntılar
+        let angle = (Math.PI * 2 / 8) * i;
+        c.lineTo(r * Math.cos(angle), r * Math.sin(angle) * 0.8 + animOffset);
+      }
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      // Kaya parçacıkları/desenleri (iç desen)
+      c.fillStyle = "rgba(0,0,0,0.25)"; // Daha koyu
+      for(let i=0; i<6; i++){ // Daha fazla parça
+        c.beginPath();
+        c.arc(Math.cos(t*0.7+i)*coreRadius*0.5, Math.sin(t*0.7+i)*coreRadius*0.4 + animOffset, coreRadius*0.2 + Math.sin(t*2+i)*0.05, 0, Math.PI * 2); // Hafif animasyon
+        c.fill();
+      }
+      // Parlayan çatlaklar (seviye 2 detayı gibi)
+      c.shadowBlur = 0;
+      c.strokeStyle = "rgba(255, 255, 150, " + (0.3 + 0.2*Math.sin(t*4)) + ")";
+      c.shadowColor = "rgba(255, 255, 150, 0.8)";
+      c.shadowBlur = 5;
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(-coreRadius * 0.5, animOffset - coreRadius * 0.2);
+      c.lineTo(0, animOffset - coreRadius * 0.1);
+      c.lineTo(coreRadius * 0.4, animOffset - coreRadius * 0.3);
+      c.stroke();
+      c.beginPath();
+      c.moveTo(coreRadius * 0.3, animOffset + coreRadius * 0.2);
+      c.lineTo(-coreRadius * 0.1, animOffset + coreRadius * 0.3);
+      c.stroke();
+      c.shadowBlur = 0;
+
+      // Gözler (tek, büyük, glowing)
+      c.shadowBlur = 0; // Shadow'u resetle
+      c.shadowColor = this.palet.vurgu;
+      c.shadowBlur = 12 + 8 * Math.sin(t * 6); // Parlayan göz
+      c.fillStyle = this.palet.vurgu;
+      c.beginPath();
+      c.ellipse(0, animOffset - coreRadius * 0.4, coreRadius * 0.25, coreRadius * 0.15, 0, 0, Math.PI * 2);
+      c.fill();
+      c.shadowBlur = 0; // Shadow'u resetle
+    }
+    c.shadowBlur = 0;
+    c.restore();
+  },
+  kuleCiz: function(c, k, t){
+    c.save();
+    c.translate(k.x, k.y);
+
+    const baseColor = k.tip.renk;
+    const detailColor = this.palet.vurgu;
+    const towerScale = 1 + k.seviye * 0.1;
+
+    // Kule boyutlarını sınırlar içinde tutmak için ayarlamalar
+    const effectiveBaseRadius = Math.min(20 * towerScale, 28); // Max taban yarıçapı 28 (eskisi 26)
+    const barrelWidth = Math.min(8 * towerScale, 14); // Lazer namlu genişliği, max 14 (eskisi 12)
+    const plasmaBarrelHeight = Math.min(16 * towerScale, 28); // Plazma için namlu yüksekliği, max 28 (eskisi 24)
+
+    c.strokeStyle = "#000000";
+    c.lineWidth = 2;
+    c.lineJoin = "round";
+    c.lineCap = "round";
+
+    // Genel kule gölgesi
+    c.shadowColor = "rgba(0,0,0,0.6)"; // Daha belirgin
+    c.shadowBlur = 10;
+    c.shadowOffsetX = 4;
+    c.shadowOffsetY = 4;
+
+    // Taban - Alttaki destek platformu
+    let baseGrad = c.createRadialGradient(0, 0, 0, 0, 0, effectiveBaseRadius);
+    baseGrad.addColorStop(0, "#8888AA");
+    baseGrad.addColorStop(0.8, "#555577");
+    baseGrad.addColorStop(1, "#333344"); // Koyu dış kenar
+    c.fillStyle = baseGrad;
+    c.beginPath();
+    c.arc(0, 0, effectiveBaseRadius, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Gövde (dönen kısım, rotasyondan önce çiziliyor ama dönme merkezi burası)
+    let bodyGrad = c.createRadialGradient(0, 0, 0, 0, 0, effectiveBaseRadius * 0.7);
+    bodyGrad.addColorStop(0, baseColor);
+    bodyGrad.addColorStop(0.7, "#333333"); // Koyu iç kısım
+    bodyGrad.addColorStop(1, baseColor); // Tekrar dışa doğru rengi
+
+    c.fillStyle = bodyGrad;
+    c.beginPath();
+    c.arc(0, 0, effectiveBaseRadius * 0.7, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Seviye detayları:
+    c.shadowBlur = 0; // Detaylar için ayrı gölge
+    c.shadowColor = detailColor;
+
+    if (k.seviye >= 1) { // Lazer kulelerde basit bir ışık göstergesi
+      c.fillStyle = detailColor;
+      c.shadowBlur = 5 + 3 * Math.sin(t*5);
+      c.beginPath();
+      c.arc(effectiveBaseRadius * 0.4 * Math.cos(t*0.5), effectiveBaseRadius * 0.4 * Math.sin(t*0.5), 2, 0, Math.PI * 2);
+      c.fill();
+    }
+    if (k.seviye >= 2) {
+      c.fillStyle = detailColor;
+      c.shadowBlur = 8 + 4 * Math.cos(t*4);
+      c.beginPath();
+      c.arc(effectiveBaseRadius * 0.5 * Math.cos(t*0.5 + Math.PI/2), effectiveBaseRadius * 0.5 * Math.sin(t*0.5 + Math.PI/2), 3, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.arc(effectiveBaseRadius * 0.5 * Math.cos(t*0.5 + Math.PI*1.5), effectiveBaseRadius * 0.5 * Math.sin(t*0.5 + Math.PI*1.5), 3, 0, Math.PI * 2);
+      c.fill();
+    }
+    if (k.seviye === 3) { // Seviye 3 için daha gelişmiş desen
+      c.shadowBlur = 10 + 5 * Math.sin(t*6);
+      c.strokeStyle = detailColor;
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.arc(0, 0, effectiveBaseRadius * 0.6, t * 1.5, t * 1.5 + Math.PI * 0.8);
+      c.stroke();
+      c.beginPath();
+      c.arc(0, 0, effectiveBaseRadius * 0.6, t * 1.5 + Math.PI, t * 1.5 + Math.PI * 1.8);
+      c.stroke();
+    }
+    c.shadowBlur = 0; // Shadow'u resetle
+
+    // Namlu ve ateşleme animasyonu için dönüş
+    c.rotate(k.aci);
+
+    // Namlu (Dönen kısım) - +X yönünde çizilmeli
+    c.shadowColor = "rgba(0,0,0,0.5)";
+    c.shadowBlur = 8;
+    c.shadowOffsetX = 3;
+    c.shadowOffsetY = 3;
+
+    let effectiveBarrelLength = 0;
+    let effectiveTipRadius = 0;
+
+    if (k.tip.ad === "Lazer Kule") {
+      effectiveBarrelLength = Math.min(20 * towerScale, 26);
+      effectiveTipRadius = Math.min(6 * towerScale, 4);
+
+      let barrelGrad = c.createLinearGradient(0, -barrelWidth / 2, effectiveBarrelLength, barrelWidth / 2);
+      barrelGrad.addColorStop(0, "#444444"); // Gövdeye yakın koyu
+      barrelGrad.addColorStop(0.5, baseColor); // Orta kısım ana renk
+      barrelGrad.addColorStop(1, "#666666"); // Uca yakın koyu
+      c.fillStyle = barrelGrad;
+
+      c.fillRect(0, -barrelWidth / 2, effectiveBarrelLength, barrelWidth);
+      c.strokeRect(0, -barrelWidth / 2, effectiveBarrelLength, barrelWidth);
+
+      // Namlu ucu detayı (glowing)
+      c.shadowBlur = 0;
+      c.shadowColor = detailColor;
+      c.shadowBlur = 10 + 5 * Math.sin(t * 10); // Parlama animasyonu
+      c.fillStyle = detailColor;
+      c.beginPath();
+      c.arc(effectiveBarrelLength, 0, effectiveTipRadius, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+
+      // Ateşleme flaşı (daha belirgin)
+      if (k.flas > 0) {
+        c.shadowBlur = 0; // Kendi flaşının shadow'u ayrı yönetilecek
+        c.shadowColor = detailColor;
+        c.shadowBlur = 30 * k.flas; // Daha güçlü flaş
+        c.fillStyle = "rgba(255, 255, 150, " + k.flas + ")";
+        c.beginPath();
+        c.arc(effectiveBarrelLength + effectiveTipRadius + 5, 0, 10 * k.flas * towerScale * 0.7, 0, Math.PI * 2); // Daha büyük flaş
+        c.fill();
+        c.shadowBlur = 0;
+      }
+    } else if (k.tip.ad === "Plazma Topu") {
+      effectiveBarrelLength = Math.min(14 * towerScale, 20);
+      effectiveTipRadius = Math.min(10 * towerScale, 8);
+
+      let barrelGrad = c.createLinearGradient(0, -plasmaBarrelHeight / 2, effectiveBarrelLength, plasmaBarrelHeight / 2);
+      barrelGrad.addColorStop(0, "#664433");
+      barrelGrad.addColorStop(0.5, baseColor);
+      barrelGrad.addColorStop(1, "#885544");
+      c.fillStyle = barrelGrad;
+
+      c.fillRect(0, -plasmaBarrelHeight / 2, effectiveBarrelLength, plasmaBarrelHeight);
+      c.strokeRect(0, -plasmaBarrelHeight / 2, effectiveBarrelLength, plasmaBarrelHeight);
+
+      // Namlu ağzı (glowing)
+      c.shadowBlur = 0;
+      c.shadowColor = detailColor;
+      c.shadowBlur = 15 + 8 * Math.sin(t * 8); // Parlama animasyonu
+      c.fillStyle = detailColor;
+      c.beginPath();
+      c.arc(effectiveBarrelLength, 0, effectiveTipRadius, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+
+      // Ateşleme flaşı (daha belirgin)
+      if (k.flas > 0) {
+        c.shadowBlur = 0;
+        c.shadowColor = detailColor;
+        c.shadowBlur = 35 * k.flas; // Daha güçlü flaş
+        c.fillStyle = "rgba(255, 180, 100, " + k.flas + ")";
+        c.beginPath();
+        c.arc(effectiveBarrelLength + effectiveTipRadius + 7, 0, 15 * k.flas * towerScale * 0.7, 0, Math.PI * 2); // Daha büyük flaş
+        c.fill();
+        c.shadowBlur = 0;
+      }
+    } else if (k.tip.ad === "Yerçekimi Yavaşlatıcı") {
+      // Yavaşlatıcı: Merkezde dönen enerji alanı
+      c.shadowBlur = 0;
+      c.shadowColor = "rgba(0,0,0,0.5)"; // Kendi gölgesi
+      c.shadowBlur = 8;
+      c.shadowOffsetX = 3;
+      c.shadowOffsetY = 3;
+
+      let innerGrad = c.createRadialGradient(0, 0, 0, 0, 0, effectiveBaseRadius * 0.6);
+      innerGrad.addColorStop(0, "#8855AA");
+      innerGrad.addColorStop(0.7, baseColor);
+      innerGrad.addColorStop(1, "#663388");
+      c.fillStyle = innerGrad;
+      c.beginPath();
+      c.arc(0, 0, effectiveBaseRadius * 0.6, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+
+      // Dönen enerji jeneratörü (glowing)
+      c.shadowBlur = 0;
+      c.shadowColor = detailColor;
+      c.shadowBlur = 20 + 15 * Math.sin(t * 5); // Daha güçlü parlama
+      c.fillStyle = "rgba(200, 150, 255, " + (0.7 + 0.3 * Math.sin(t*5)) + ")";
+      c.beginPath();
+      c.arc(0, 0, effectiveBaseRadius * 0.4, 0, Math.PI * 2);
+      c.fill();
+      c.shadowBlur = 0;
+
+      // Yavaşlatıcı alan animasyonu (görsel efekt)
+      c.shadowColor = detailColor;
+      c.shadowBlur = 10;
+      c.strokeStyle = "rgba(200, 150, 255, " + (0.5 + 0.3 * Math.sin(t*2)) + ")";
+      c.lineWidth = 4; // Daha belirgin dalga
+      c.beginPath();
+      c.arc(0, 0, effectiveBaseRadius * (0.8 + 0.1 * Math.sin(t*3)), 0, Math.PI * 2);
+      c.stroke();
+
+      c.strokeStyle = "rgba(200, 150, 255, " + (0.3 + 0.2 * Math.cos(t*2.5)) + ")";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(0, 0, effectiveBaseRadius * (0.6 + 0.15 * Math.cos(t*3)), t*2, t*2 + Math.PI*1.5); // İkinci, dönen halka
+      c.stroke();
+    }
+    c.shadowBlur = 0;
+    c.restore();
+  }
+};
+
+/* ============================================================
+   SAVUNMA MOTORU v1 - test edilmiş, değiştirilmez
+   ============================================================ */
+(function(){
+  "use strict";
+
+  const canvas = document.getElementById("oyunCanvas");
+  const ctx = canvas.getContext("2d");
+  const T = (typeof TEMA !== "undefined") ? TEMA : {};
+  const P = Object.assign({
+    arka1:"#0f172a", arka2:"#1e293b", yol:"#475569", yolKenar:"#334155",
+    dusman:"#ef4444", dusman2:"#f97316", kule:"#38bdf8", mermi:"#fde047",
+    vurgu:"#f472b6", metin:"#e5e7eb"
+  }, T.palet || {});
+
+  // ---------- Sabitler ----------
+  const TOPLAM_DALGA = 10;
+  const BASLANGIC_CAN = 20;
+  const BASLANGIC_ALTIN = (T.baslangicAltin != null) ? T.baslangicAltin : 120;
+  const DALGA_ARASI = 5;              // saniye
+  const REF_W = 1280, REF_H = 720;    // referans çizim alanı
+
+  // ---------- Durum ----------
+  let asama = "menu";                 // menu | oyunda | kazandi | kaybetti
+  let can, altin, dalga, skor, combo, comboZaman;
+  let ekranSarsinti = 0, donmaSuresi = 0;   // JUICE: sarsıntı + vuruş anı donması
+  const ambiyansParcaciklari = Array.from({length:36}, () => ({
+    x: Math.random()*1280, y: Math.random()*720,
+    hiz: 6 + Math.random()*14, boyut: 1 + Math.random()*1.8, faz: Math.random()*6.28
+  }));
+  let dusmanlar, kuleler, mermiler, parcaciklar, yaziEfektleri;
+  let dalgaKuyrugu, dalgaAraSayac, dalgaAktif, spawnSayac, spawnKuyrugu;
+  let seciliKuleTipi = 0, seciliKule = null, zaman = 0;
+  let olcek = 1, kaydirX = 0, kaydirY = 0;
+
+  // ---------- Yol ----------
+  const yol = (T.yol && T.yol.length > 1) ? T.yol.slice() : [
+    {x:0,y:360},{x:260,y:360},{x:260,y:170},{x:640,y:170},
+    {x:640,y:540},{x:1000,y:540},{x:1000,y:300},{x:1280,y:300}
+  ];
+  const yolUzunluklari = [];
+  let yolToplam = 0;
+  for (let i=0;i<yol.length-1;i++){
+    const d = Math.hypot(yol[i+1].x-yol[i].x, yol[i+1].y-yol[i].y);
+    yolUzunluklari.push(d); yolToplam += d;
+  }
+  function yolNoktasi(mesafe){
+    let kalan = Math.max(0, mesafe);
+    for (let i=0;i<yolUzunluklari.length;i++){
+      if (kalan <= yolUzunluklari[i]){
+        const o = kalan / (yolUzunluklari[i] || 1);
+        return {x: yol[i].x + (yol[i+1].x-yol[i].x)*o,
+                y: yol[i].y + (yol[i+1].y-yol[i].y)*o,
+                aci: Math.atan2(yol[i+1].y-yol[i].y, yol[i+1].x-yol[i].x)};
+      }
+      kalan -= yolUzunluklari[i];
+    }
+    const s = yol[yol.length-1];
+    return {x:s.x, y:s.y, aci:0};
+  }
+
+  // ---------- Tip tanımları ----------
+  const varsayilanDusmanlar = [
+    {ad:"Asker", can:60, hiz:60, altin:12, yaricap:14, renk:P.dusman},
+    {ad:"Koşucu", can:40, hiz:95, altin:14, yaricap:12, renk:P.dusman2},
+    {ad:"Zırhlı", can:150, hiz:42, altin:22, yaricap:18, renk:P.vurgu}
+  ];
+  const varsayilanKuleler = [
+    {ad:"Nişancı", fiyat:50, menzil:150, hasar:18, atisHizi:1.1, mermiHizi:340, renk:P.kule},
+    {ad:"Top", fiyat:90, menzil:120, hasar:42, atisHizi:0.55, mermiHizi:260, renk:P.mermi, alan:46},
+    {ad:"Yavaşlatıcı", fiyat:70, menzil:135, hasar:8, atisHizi:0.9, mermiHizi:320, renk:P.vurgu, yavaslat:0.55}
+  ];
+  const DUSMAN_TIPLERI = (T.dusmanTipleri && T.dusmanTipleri.length) ? T.dusmanTipleri : varsayilanDusmanlar;
+  const KULE_TIPLERI  = (T.kuleTipleri && T.kuleTipleri.length)  ? T.kuleTipleri  : varsayilanKuleler;
+
+  // ---------- Yardımcı ----------
+  function rastgele(a,b){ return a + Math.random()*(b-a); }
+  function mesafe(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+  function boyutlandir(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    const o = Math.min(canvas.width/REF_W, canvas.height/REF_H);
+    olcek = o;
+    kaydirX = (canvas.width - REF_W*o)/2;
+    kaydirY = (canvas.height - REF_H*o)/2;
+  }
+  window.addEventListener("resize", boyutlandir);
+
+  function olayNoktasi(e){
+    const r = canvas.getBoundingClientRect();
+    const kx = (e.touches && e.touches[0]) ? e.touches[0].clientX :
+               (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : e.clientX;
+    const ky = (e.touches && e.touches[0]) ? e.touches[0].clientY :
+               (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientY : e.clientY;
+    const px = (kx - r.left) * (canvas.width / r.width);
+    const py = (ky - r.top) * (canvas.height / r.height);
+    return {x: (px - kaydirX)/olcek, y: (py - kaydirY)/olcek};
+  }
+
+  function yolaYakinMi(p, esik){
+    for (let i=0;i<yol.length-1;i++){
+      const a=yol[i], b=yol[i+1];
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const uzun = dx*dx+dy*dy || 1;
+      let t = ((p.x-a.x)*dx + (p.y-a.y)*dy)/uzun;
+      t = Math.max(0, Math.min(1, t));
+      const px=a.x+dx*t, py=a.y+dy*t;
+      if (Math.hypot(p.x-px, p.y-py) < esik) return true;
+    }
+    return false;
+  }
+
+  // ---------- Dalga üretimi ----------
+  function dalgaOlustur(n){
+    const bos = (n % 5 === 0);           // 5. ve 10. dalga boss
+    const adet = bos ? 1 + Math.floor(n/3) : 5 + n*2;
+    const gucCarpani = Math.pow(1.28, n-1);
+    const liste = [];
+    for (let i=0;i<adet;i++){
+      const tip = DUSMAN_TIPLERI[Math.min(DUSMAN_TIPLERI.length-1,
+                    Math.floor(Math.random()*Math.min(DUSMAN_TIPLERI.length, 1+Math.floor(n/3))))];
+      liste.push({tip:tip, bos: bos && i===0, guc:gucCarpani});
+    }
+    return liste;
+  }
+
+  function dusmanEkle(kayit){
+    const t = kayit.tip;
+    const bosCarpan = kayit.bos ? 6 : 1;
+    dusmanlar.push({
+      tip:t, mesafe:-rastgele(0,40),
+      maxCan: t.can*kayit.guc*bosCarpan, can: t.can*kayit.guc*bosCarpan,
+      hiz: t.hiz*(kayit.bos?0.72:1), altin: Math.round(t.altin*(kayit.bos?8:1)),
+      yaricap: (t.yaricap||14)*(kayit.bos?1.9:1), renk: t.renk||P.dusman,
+      bos: !!kayit.bos, yavaslama:1, yavaslamaSayac:0, faz: Math.random()*6.28,
+      vurulmaZaman:0, x:0, y:0, aci:0
+    });
+  }
+
+  // ---------- Oyun kontrolü ----------
+  function sifirla(){
+    can=BASLANGIC_CAN; altin=BASLANGIC_ALTIN; dalga=0; skor=0; combo=1; comboZaman=0;
+    dusmanlar=[]; kuleler=[]; mermiler=[]; parcaciklar=[]; yaziEfektleri=[];
+    dalgaKuyrugu=[]; spawnKuyrugu=[]; dalgaAraSayac=3; dalgaAktif=false; spawnSayac=0;
+    seciliKule=null; seciliKuleTipi=0; ekranSarsinti=0; donmaSuresi=0;
+    kulePaneliCiz();
+    hudGuncelle();
+  }
+
+  function basla(){
+    sifirla();
+    asama="oyunda";
+    document.getElementById("menuOverlay").classList.add("gizli");
+    document.getElementById("sonOverlay").classList.add("gizli");
+    document.getElementById("kuleMenu").classList.add("gizli");
+  }
+
+  function bitir(kazandiMi){
+    asama = kazandiMi ? "kazandi" : "kaybetti";
+    document.getElementById("sonBaslik").textContent = kazandiMi ? "Kazandın!" : "Kaybettin";
+    document.getElementById("sonMetin").textContent =
+      (kazandiMi ? "Tüm dalgaları püskürttün. " : "Savunma çöktü. ") + "Skor: " + skor;
+    document.getElementById("sonOverlay").classList.remove("gizli");
+    document.getElementById("kuleMenu").classList.add("gizli");
+  }
+
+  function uyariGoster(metin){
+    const u = document.getElementById("uyari");
+    u.textContent = metin;
+    u.classList.add("gorunur");
+    setTimeout(()=>u.classList.remove("gorunur"), 1400);
+  }
+
+  // ---------- HUD ----------
+  function hudGuncelle(){
+    document.getElementById("hudCan").textContent = Math.max(0, can);
+    document.getElementById("hudAltin").textContent = altin;
+    document.getElementById("hudDalga").textContent = dalga;
+    document.getElementById("hudToplamDalga").textContent = TOPLAM_DALGA;
+    document.getElementById("hudSkor").textContent = skor;
+    // JUICE: can azaldıkça kırmızı vinyet belirginleşir (renk dili / durum uyarısı)
+    const oran = can / BASLANGIC_CAN;
+    document.getElementById("vinyet").style.opacity =
+      oran < 0.35 ? String((1 - oran/0.35) * 0.85) : "0";
+    const c = document.getElementById("hudCombo");
+    if (combo > 1){ c.style.display="block";
+      document.getElementById("hudComboSayi").textContent = combo; }
+    else c.style.display="none";
+    Array.from(document.querySelectorAll(".kule-btn")).forEach((b,i)=>{
+      b.disabled = altin < KULE_TIPLERI[i].fiyat;
+      b.classList.toggle("secili", i===seciliKuleTipi);
+    });
+  }
+
+  function kulePaneliCiz(){
+    const panel = document.getElementById("kulePanel");
+    panel.innerHTML = "";
+    KULE_TIPLERI.forEach((k,i)=>{
+      const b = document.createElement("button");
+      b.className = "kule-btn" + (i===0 ? " secili" : "");
+      b.innerHTML = k.ad + "<br><span style='opacity:.7'>" + k.fiyat + " altın</span>";
+      b.addEventListener("click", (e)=>{ e.stopPropagation(); seciliKuleTipi=i; hudGuncelle(); });
+      panel.appendChild(b);
+    });
+  }
+
+  // ---------- Etkileşim ----------
+  function haritayaDokun(e){
+    if (asama !== "oyunda") return;
+    e.preventDefault();
+    const p = olayNoktasi(e);
+
+    // Kurulu kuleye dokunulduysa menü aç
+    for (const k of kuleler){
+      if (mesafe(p,k) < 26){ seciliKule = k; kuleMenusuAc(); return; }
+    }
+    // Yeni kule kur
+    const tip = KULE_TIPLERI[seciliKuleTipi];
+    if (altin < tip.fiyat){ uyariGoster("Yetersiz altın!"); return; }
+    if (yolaYakinMi(p, 34)){ uyariGoster("Yola kule kurulamaz!"); return; }
+    for (const k of kuleler){ if (mesafe(p,k) < 40){ uyariGoster("Çok yakın!"); return; } }
+    if (p.x<10||p.y<10||p.x>REF_W-10||p.y>REF_H-10) return;
+
+    kuleler.push({x:p.x, y:p.y, tip:tip, seviye:1, sayac:0, aci:-Math.PI/2,
+                  menzil:tip.menzil, hasar:tip.hasar, yatirim:tip.fiyat, flas:0});
+    altin -= tip.fiyat;
+    hudGuncelle();
+  }
+  canvas.addEventListener("click", haritayaDokun);
+  canvas.addEventListener("touchstart", haritayaDokun, {passive:false});
+
+  function kuleMenusuAc(){
+    if (!seciliKule) return;
+    const k = seciliKule;
+    document.getElementById("kmBaslik").textContent = k.tip.ad + " (Sv." + k.seviye + ")";
+    document.getElementById("kmBilgi").textContent =
+      "Hasar: " + Math.round(k.hasar) + " | Menzil: " + Math.round(k.menzil) +
+      " | Yükseltme: " + yukseltmeFiyati(k) + " altın | Satış: " + Math.floor(k.yatirim*0.6) + " altın";
+    document.getElementById("kmYukselt").disabled = (k.seviye>=3 || altin<yukseltmeFiyati(k));
+    document.getElementById("kuleMenu").classList.remove("gizli");
+  }
+  function yukseltmeFiyati(k){ return Math.round(k.tip.fiyat * 0.8 * k.seviye); }
+
+  document.getElementById("kmYukselt").addEventListener("click", ()=>{
+    const k = seciliKule; if (!k) return;
+    const f = yukseltmeFiyati(k);
+    if (k.seviye<3 && altin>=f){
+      altin-=f; k.yatirim+=f; k.seviye++;
+      k.hasar*=1.6; k.menzil*=1.15;
+    }
+    document.getElementById("kuleMenu").classList.add("gizli");
+    seciliKule=null; hudGuncelle();
+  });
+  document.getElementById("kmSat").addEventListener("click", ()=>{
+    if (seciliKule){
+      altin += Math.floor(seciliKule.yatirim*0.6);
+      kuleler = kuleler.filter(x=>x!==seciliKule);
+    }
+    document.getElementById("kuleMenu").classList.add("gizli");
+    seciliKule=null; hudGuncelle();
+  });
+  document.getElementById("kmKapat").addEventListener("click", ()=>{
+    document.getElementById("kuleMenu").classList.add("gizli"); seciliKule=null;
+  });
+  document.getElementById("baslaBtn").addEventListener("click", basla);
+  document.getElementById("yenidenBtn").addEventListener("click", basla);
+
+  // ---------- Efektler ----------
+  function patlamaEkle(x,y,renk,adet){
+    for (let i=0;i<(adet||10);i++){
+      const a = Math.random()*Math.PI*2, h = rastgele(60,190);
+      parcaciklar.push({x:x,y:y,vx:Math.cos(a)*h,vy:Math.sin(a)*h,
+                        omur:rastgele(0.3,0.75), yas:0, renk:renk, boyut:rastgele(2,4.5)});
+    }
+  }
+  function yaziEkle(x,y,metin,renk){
+    yaziEfektleri.push({x:x,y:y,metin:metin,renk:renk||P.metin,omur:0.9,yas:0});
+  }
+
+  // ---------- Güncelleme ----------
+  function guncelle(dt){
+    zaman += dt;
+    if (ekranSarsinti>0) ekranSarsinti = Math.max(0, ekranSarsinti - dt*2.2);  // JUICE: sönümlen
+    if (asama !== "oyunda") return;
+
+    // Combo zaman aşımı
+    if (combo>1){ comboZaman-=dt; if (comboZaman<=0){ combo=1; hudGuncelle(); } }
+
+    // Dalga yönetimi
+    if (!dalgaAktif && spawnKuyrugu.length===0 && dusmanlar.length===0){
+      dalgaAraSayac -= dt;
+      if (dalgaAraSayac<=0){
+        if (dalga >= TOPLAM_DALGA){ bitir(true); return; }
+        dalga++;
+        spawnKuyrugu = dalgaOlustur(dalga);
+        dalgaAktif = true; spawnSayac = 0;
+        uyariGoster("Dalga " + dalga + " geliyor!");
+        hudGuncelle();
+      }
+    }
+    if (dalgaAktif){
+      spawnSayac -= dt;
+      if (spawnSayac<=0 && spawnKuyrugu.length){
+        dusmanEkle(spawnKuyrugu.shift());
+        spawnSayac = 0.75;
+      }
+      if (spawnKuyrugu.length===0) dalgaAktif=false;
+    }
+    if (!dalgaAktif && spawnKuyrugu.length===0 && dusmanlar.length===0 && dalgaAraSayac<=0){
+      dalgaAraSayac = DALGA_ARASI;
+    }
+
+    // Düşmanlar
+    for (let i=dusmanlar.length-1;i>=0;i--){
+      const d = dusmanlar[i];
+      if (d.vurulmaZaman>0) d.vurulmaZaman = Math.max(0, d.vurulmaZaman - dt);
+      if (d.yavaslamaSayac>0){ d.yavaslamaSayac-=dt; if (d.yavaslamaSayac<=0) d.yavaslama=1; }
+      d.mesafe += d.hiz * d.yavaslama * dt;
+      const n = yolNoktasi(d.mesafe);
+      d.x=n.x; d.y=n.y; d.aci=n.aci;
+      if (T.dusmanGuncelle) { try { T.dusmanGuncelle(d, dt, zaman); } catch(e){} }
+      if (d.mesafe >= yolToplam){
+        dusmanlar.splice(i,1);
+        can -= d.bos ? 5 : 1;
+        combo=1;
+        ekranSarsinti = Math.min(1, ekranSarsinti + (d.bos ? 0.55 : 0.3));  // JUICE
+        patlamaEkle(d.x,d.y,"#ef4444",8);
+        hudGuncelle();
+        if (can<=0){ can=0; hudGuncelle(); bitir(false); return; }
+      }
+    }
+
+    // Kuleler
+    for (const k of kuleler){
+      k.sayac -= dt;
+      if (k.flas>0) k.flas-=dt;
+      let hedef=null, enYakin=1e9;
+      for (const d of dusmanlar){
+        const m = mesafe(k,d);
+        if (m<=k.menzil && d.mesafe>enYakin*0-1 && m<enYakin){ enYakin=m; hedef=d; }
+      }
+      if (hedef){
+        k.aci = Math.atan2(hedef.y-k.y, hedef.x-k.x);
+        if (k.sayac<=0){
+          k.sayac = 1/(k.tip.atisHizi||1);
+          k.flas = 0.08;
+          mermiler.push({x:k.x,y:k.y,hedef:hedef,hiz:k.tip.mermiHizi||320,
+                         hasar:k.hasar, renk:k.tip.renk||P.mermi,
+                         alan:k.tip.alan||0, yavaslat:k.tip.yavaslat||0, iz:[]});
         }
+      }
+    }
 
-        // --- Drawing Helper Functions (for themed graphics) ---
-        // Draws a circle
-        function drawCircle(x, y, radius, color, shadow = false) {
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fillStyle = color;
-            if (shadow) {
-                ctx.shadowColor = color;
-                ctx.shadowBlur = 10;
-            }
-            ctx.fill();
-            if (shadow) { ctx.shadowBlur = 0; }
+    // Mermiler
+    for (let i=mermiler.length-1;i>=0;i--){
+      const m = mermiler[i];
+      if (!m.hedef || m.hedef.can<=0 || dusmanlar.indexOf(m.hedef)===-1){ mermiler.splice(i,1); continue; }
+      const dx=m.hedef.x-m.x, dy=m.hedef.y-m.y, uz=Math.hypot(dx,dy)||1;
+      m.iz.push({x:m.x,y:m.y}); if (m.iz.length>6) m.iz.shift();
+      m.x += dx/uz*m.hiz*dt; m.y += dy/uz*m.hiz*dt;
+      if (uz < 14){
+        vurus(m, m.hedef);
+        mermiler.splice(i,1);
+      }
+    }
+
+    // Parçacıklar / yazılar
+    for (let i=parcaciklar.length-1;i>=0;i--){
+      const p=parcaciklar[i]; p.yas+=dt;
+      if (p.yas>=p.omur){ parcaciklar.splice(i,1); continue; }
+      p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=180*dt;
+    }
+    for (let i=yaziEfektleri.length-1;i>=0;i--){
+      const y=yaziEfektleri[i]; y.yas+=dt; y.y-=26*dt;
+      if (y.yas>=y.omur) yaziEfektleri.splice(i,1);
+    }
+    if (T.guncelle) { try { T.guncelle(dt, zaman, {dusmanlar,kuleler,dalga}); } catch(e){} }
+  }
+
+  function vurus(m, d){
+    const hedefler = m.alan ? dusmanlar.filter(x=>mesafe(x,d)<=m.alan) : [d];
+    for (const h of hedefler){
+      h.can -= m.hasar;
+      h.vurulmaZaman = 0.14;  // JUICE: sıkışma-esneme animasyonu tetiklenir
+      if (m.yavaslat){ h.yavaslama=m.yavaslat; h.yavaslamaSayac=1.6; }
+      if (h.can<=0){
+        const idx = dusmanlar.indexOf(h);
+        if (idx>-1){
+          dusmanlar.splice(idx,1);
+          const kazanc = Math.round(h.altin*combo);
+          altin += kazanc; skor += Math.round(10*combo*(h.bos?5:1));
+          combo = Math.min(5, combo+1); comboZaman = 3;
+          patlamaEkle(h.x,h.y,h.renk, h.bos?22:11);
+          yaziEkle(h.x,h.y,"+"+kazanc, "#fbbf24");
+          if (h.bos){                          // JUICE: boss ölümünde ağırlık hissi
+            donmaSuresi = Math.max(donmaSuresi, 0.09);
+            ekranSarsinti = Math.min(1, ekranSarsinti + 0.7);
+          }
+          hudGuncelle();
         }
-
-        // Draws a rectangle
-        function drawRect(x, y, width, height, color, shadow = false) {
-            ctx.fillStyle = color;
-            if (shadow) {
-                ctx.shadowColor = color;
-                ctx.shadowBlur = 10;
-            }
-            ctx.fillRect(x, y, width, height);
-            if (shadow) { ctx.shadowBlur = 0; }
-        }
-
-        // Draws a rounded rectangle
-        function drawRoundedRect(x, y, width, height, radius, color, shadow = false) {
-            ctx.beginPath();
-            ctx.moveTo(x + radius, y);
-            ctx.lineTo(x + width - radius, y);
-            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-            ctx.lineTo(x + width, y + height - radius);
-            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-            ctx.lineTo(x + radius, y + height);
-            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-            ctx.lineTo(x, y + radius);
-            ctx.quadraticCurveTo(x, y, x + radius, y);
-            ctx.closePath();
-            ctx.fillStyle = color;
-            if (shadow) {
-                ctx.shadowColor = color;
-                ctx.shadowBlur = 10;
-            }
-            ctx.fill();
-            if (shadow) { ctx.shadowBlur = 0; }
-        }
-
-        // --- Game Classes ---
-
-        class Path {
-            constructor(waypoints) {
-                this.waypoints = waypoints;
-            }
-
-            draw() {
-                // Main path (Moon Dust)
-                ctx.beginPath();
-                ctx.moveTo(this.waypoints[0].x, this.waypoints[0].y);
-                for (let i = 1; i < this.waypoints.length; i++) {
-                    ctx.lineTo(this.waypoints[i].x, this.waypoints[i].y);
-                }
-                ctx.strokeStyle = COLORS.MOON_DUST;
-                ctx.lineWidth = 30;
-                ctx.shadowColor = COLORS.DARK_LUNAR;
-                ctx.shadowBlur = 10;
-                ctx.stroke();
-                ctx.shadowBlur = 0;
-
-                // Path texture/cracks (Dark Lunar)
-                ctx.strokeStyle = COLORS.DARK_LUNAR;
-                ctx.lineWidth = 3;
-                for (let i = 0; i < this.waypoints.length - 1; i++) {
-                    const p1 = this.waypoints[i];
-                    const p2 = this.waypoints[i + 1];
-                    // Draw random cracks along the path segments
-                    ctx.beginPath();
-                    ctx.moveTo(p1.x + (Math.random() - 0.5) * 10, p1.y + (Math.random() - 0.5) * 10);
-                    ctx.lineTo(p2.x + (Math.random() - 0.5) * 10, p2.y + (Math.random() - 0.5) * 10);
-                    ctx.stroke();
-                }
-            }
-        }
-
-        class Particle {
-            constructor(x, y, color, vx, vy, life) {
-                this.x = x;
-                this.y = y;
-                this.color = color;
-                this.vx = vx;
-                this.vy = vy;
-                this.life = life; // Milliseconds
-                this.maxLife = life;
-                this.radius = 2 + Math.random() * 3;
-            }
-
-            update(deltaTime) {
-                this.x += this.vx * deltaTime;
-                this.y += this.vy * deltaTime;
-                this.life -= deltaTime;
-            }
-
-            draw() {
-                ctx.save();
-                ctx.globalAlpha = Math.max(0, this.life / this.maxLife); // Fade out
-                drawCircle(this.x, this.y, this.radius, this.color);
-                ctx.restore();
-            }
-        }
-
-        class FloatingText {
-            constructor(x, y, text, color, duration = 1000) {
-                this.x = x;
-                this.y = y;
-                this.text = text;
-                this.color = color;
-                this.life = duration;
-                this.maxLife = duration;
-                this.vy = -0.05; // Moves upwards
-            }
-
-            update(deltaTime) {
-                this.y += this.vy * deltaTime;
-                this.life -= deltaTime;
-            }
-
-            draw() {
-                ctx.save();
-                ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
-                ctx.fillStyle = this.color;
-                ctx.font = 'bold 18px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(this.text, this.x, this.y);
-                ctx.restore();
-            }
-        }
-
-        class Enemy {
-            constructor(type, path, gameInstance) { // gameInstance eklendi
-                this.type = type;
-                this.path = path;
-                this.game = gameInstance; // gameInstance referansı saklandı
-                this.waypointIndex = 0;
-                this.x = path.waypoints[0].x; // Initial position at path start
-                this.y = path.waypoints[0].y;
-                this.radius = 15;
-                this.angle = 0; // For orientation and animation
-
-                this.setStats(type);
-                this.currentHealth = this.maxHealth;
-                this.alive = true;
-                this.offsetY = 0; // For floating/swaying animation
-                this.offsetAngle = Math.random() * Math.PI * 2; // Unique start for each enemy
-            }
-
-            setStats(type) {
-                switch (type) {
-                    case 'rover':
-                        this.maxHealth = 100;
-                        this.speed = 0.05; // pixels per ms
-                        this.gold = 10;
-                        this.color = COLORS.METALLIC_GREY;
-                        this.radius = 15;
-                        break;
-                    case 'drone':
-                        this.maxHealth = 150;
-                        this.speed = 0.06;
-                        this.gold = 15;
-                        this.color = COLORS.PLASMA_BLUE;
-                        this.radius = 12;
-                        break;
-                    case 'boss_tank':
-                        this.maxHealth = 1500;
-                        this.speed = 0.03;
-                        this.gold = 100;
-                        this.color = COLORS.ENERGY_RED;
-                        this.radius = 25;
-                        break;
-                }
-            }
-
-            takeDamage(amount) {
-                this.currentHealth -= amount;
-                if (this.currentHealth <= 0) {
-                    this.currentHealth = 0;
-                    this.alive = false;
-                }
-                this.game.floatingTexts.push(new FloatingText(this.x, this.y - this.radius - 10, `-${amount}`, COLORS.ENERGY_RED));
-            }
-
-            update(deltaTime) {
-                if (!this.alive) return;
-
-                const targetWaypoint = this.path.waypoints[this.waypointIndex];
-                const distToTarget = distance(this, targetWaypoint);
-
-                // Update animation offset
-                this.offsetAngle += deltaTime * 0.005; // Slower oscillation
-                this.offsetY = Math.sin(this.offsetAngle) * 2; // Small vertical sway
-
-                if (distToTarget < this.speed * deltaTime) {
-                    this.x = targetWaypoint.x;
-                    this.y = targetWaypoint.y;
-                    this.waypointIndex++;
-                    if (this.waypointIndex >= this.path.waypoints.length) {
-                        this.alive = false; // Reached end
-                        this.game.health--; // 'this.game' kullanıldı
-                        this.game.floatingTexts.push(new FloatingText(BASE_POS.x, BASE_POS.y + 20, `-1 CAN`, COLORS.ENERGY_RED, 1500)); // 'this.game' kullanıldı
-                        return;
-                    }
-                } else {
-                    const dx = targetWaypoint.x - this.x;
-                    const dy = targetWaypoint.y - this.y;
-                    this.angle = Math.atan2(dy, dx); // Angle for drawing direction
-                    this.x += dx / distToTarget * this.speed * deltaTime;
-                    this.y += dy / distToTarget * this.speed * deltaTime;
-                }
-            }
-
-            draw() {
-                if (!this.alive) return;
-
-                ctx.save();
-                ctx.translate(this.x, this.y + this.offsetY); // Apply sway animation
-                ctx.rotate(this.angle);
-
-                if (this.type === 'rover') {
-                    // Main body
-                    drawRoundedRect(-15, -10, 30, 20, 5, COLORS.METALLIC_GREY);
-                    // Wheels
-                    drawCircle(-10, 10, 5, COLORS.DARK_LUNAR);
-                    drawCircle(10, 10, 5, COLORS.DARK_LUNAR);
-                    // Antenna with glowing tip
-                    ctx.strokeStyle = COLORS.MOON_DUST;
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(0, -10);
-                    ctx.lineTo(0, -20);
-                    ctx.stroke();
-                    drawCircle(0, -20, 3, COLORS.ENERGY_RED, true);
-                } else if (this.type === 'drone') {
-                    // Central body (glowing)
-                    drawCircle(0, 0, this.radius, COLORS.METALLIC_GREY, true);
-                    // Two triangular wings
-                    ctx.fillStyle = COLORS.DARK_LUNAR;
-                    ctx.beginPath();
-                    ctx.moveTo(-this.radius, 0); ctx.lineTo(-this.radius - 10, -10); ctx.lineTo(-this.radius - 10, 10); ctx.closePath(); ctx.fill();
-                    ctx.beginPath();
-                    ctx.moveTo(this.radius, 0); ctx.lineTo(this.radius + 10, -10); ctx.lineTo(this.radius + 10, 10); ctx.closePath(); ctx.fill();
-                    // Red eye
-                    drawCircle(this.radius * 0.7, 0, 3, COLORS.ENERGY_RED, true);
-                } else if (this.type === 'boss_tank') {
-                    // Main armored body
-                    drawRoundedRect(-25, -15, 50, 30, 8, COLORS.METALLIC_GREY);
-                    // Cannon barrel
-                    ctx.fillStyle = COLORS.DARK_LUNAR;
-                    ctx.fillRect(15, -5, 20, 10);
-                    // Tracks on sides
-                    drawRoundedRect(-28, -18, 56, 8, 3, COLORS.CRATER_RIM);
-                    drawRoundedRect(-28, 10, 56, 8, 3, COLORS.CRATER_RIM);
-                    // Glowing energy core
-                    drawCircle(0, 0, 10, COLORS.ENERGY_RED, true);
-                }
-                ctx.restore();
-
-                // Health Bar (always visible above enemy)
-                const healthBarWidth = 30;
-                const healthBarHeight = 5;
-                ctx.fillStyle = 'gray';
-                ctx.fillRect(this.x - healthBarWidth / 2, this.y - this.radius - 10, healthBarWidth, healthBarHeight);
-                ctx.fillStyle = 'lime';
-                ctx.fillRect(this.x - healthBarWidth / 2, this.y - this.radius - 10, healthBarWidth * (this.currentHealth / this.maxHealth), healthBarHeight);
-
-                // Boss Health Bar (prominent at top of screen)
-                if (this.type === 'boss_tank') {
-                    ctx.fillStyle = COLORS.DARK_LUNAR;
-                    ctx.fillRect(GAME_WIDTH / 2 - 150, 20, 300, 15);
-                    ctx.fillStyle = COLORS.ENERGY_RED;
-                    ctx.fillRect(GAME_WIDTH / 2 - 150, 20, 300 * (this.currentHealth / this.maxHealth), 15);
-                    ctx.fillStyle = COLORS.MOON_DUST;
-                    ctx.font = 'bold 12px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(`BOSS CANI: ${Math.round(this.currentHealth)} / ${this.maxHealth}`, GAME_WIDTH / 2, 33);
-                }
-            }
-        }
-
-        class Projectile {
-            constructor(x, y, targetEnemy, damage, speed, type) {
-                this.x = x;
-                this.y = y;
-                this.targetEnemy = targetEnemy;
-                this.damage = damage;
-                this.speed = speed; // Pixels per ms
-                this.type = type;
-                this.alive = true;
-                this.trail = []; // For visual effect
-                this.hit = false;
-
-                // Initial velocity calculation, aiming slightly higher to counteract gravity
-                const targetX = targetEnemy.x;
-                const targetY = targetEnemy.y;
-                const dist = distance({ x, y }, { x: targetX, y: targetY });
-                // Estimate time to reach target
-                const estimatedTime = dist / this.speed; 
-                // Calculate required initial vertical velocity to hit target considering gravity
-                // y_final = y_initial + v_initial_y * t + 0.5 * g * t^2
-                // v_initial_y = (y_final - y_initial - 0.5 * g * t^2) / t
-                const requiredInitialVy = (targetY - y - 0.5 * GRAVITY * estimatedTime * estimatedTime) / estimatedTime;
-                
-                const angle = Math.atan2(requiredInitialVy, targetX - x);
-                
-                this.vx = Math.cos(angle) * this.speed;
-                this.vy = Math.sin(angle) * this.speed;
-            }
-
-            update(deltaTime) {
-                if (this.hit || !this.targetEnemy.alive) { // Projectile dies if target dead or already hit
-                    this.alive = false;
-                    return;
-                }
-
-                this.vy += GRAVITY * deltaTime; // Apply gravity
-                this.x += this.vx * deltaTime;
-                this.y += this.vy * deltaTime;
-
-                // Add current position to trail for visual effect
-                this.trail.push({ x: this.x, y: this.y });
-                if (this.trail.length > 10) this.trail.shift(); // Keep trail length limited
-
-                // Collision detection with target enemy
-                if (distance(this, this.targetEnemy) < this.targetEnemy.radius / 2) {
-                    this.hit = true;
-                    this.targetEnemy.takeDamage(this.damage);
-                    this.alive = false; // Projectile is consumed on hit
-                }
-
-                // Remove if off-screen (optimization)
-                if (this.x < -50 || this.x > GAME_WIDTH + 50 || this.y < -50 || this.y > GAME_HEIGHT + 50) {
-                    this.alive = false;
-                }
-            }
-
-            draw() {
-                if (!this.alive) return;
-
-                // Draw trail (fading line)
-                let trailColor = COLORS.MOON_DUST;
-                if (this.type === 'laser') trailColor = COLORS.PLASMA_BLUE;
-                else if (this.type === 'plasma') trailColor = COLORS.ENERGY_RED;
-
-                ctx.strokeStyle = trailColor;
-                ctx.lineWidth = 2;
-                ctx.shadowColor = trailColor;
-                ctx.shadowBlur = 5;
-                ctx.beginPath();
-                if (this.trail.length > 0) {
-                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
-                    for (let i = 1; i < this.trail.length; i++) {
-                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
-                    }
-                    ctx.stroke();
-                }
-                ctx.shadowBlur = 0;
-
-                // Draw projectile head
-                if (this.type === 'laser') {
-                    drawCircle(this.x, this.y, 3, COLORS.PLASMA_BLUE, true);
-                } else if (this.type === 'plasma') {
-                    drawCircle(this.x, this.y, 5, COLORS.ENERGY_RED, true);
-                } else if (this.type === 'missile') {
-                    ctx.save();
-                    ctx.translate(this.x, this.y);
-                    const currentAngle = Math.atan2(this.vy, this.vx); // Orient missile to its flight path
-                    ctx.rotate(currentAngle);
-                    // Missile body
-                    drawRect(-5, -2, 10, 4, COLORS.METALLIC_GREY);
-                    // Fins
-                    ctx.fillStyle = COLORS.DARK_LUNAR;
-                    ctx.beginPath(); ctx.moveTo(-5, -2); ctx.lineTo(-8, -5); ctx.lineTo(-8, -2); ctx.closePath(); ctx.fill();
-                    ctx.beginPath(); ctx.moveTo(-5, 2); ctx.lineTo(-8, 5); ctx.lineTo(-8, 2); ctx.closePath(); ctx.fill();
-                    // Tip (energy red)
-                    ctx.fillStyle = COLORS.ENERGY_RED;
-                    ctx.beginPath(); ctx.moveTo(5, 0); ctx.lineTo(10, 0); ctx.lineTo(5, -2); ctx.lineTo(5, 2); ctx.closePath(); ctx.fill();
-                    ctx.restore();
-                }
-            }
-        }
-
-        class Tower {
-            constructor(x, y, type, gameInstance) { // gameInstance eklendi
-                this.x = x;
-                this.y = y;
-                this.type = type;
-                this.level = 1;
-                this.angle = 0; // For aiming rotation
-                this.lastFireTime = 0;
-                this.game = gameInstance; // gameInstance referansı saklandı
-
-                this.setStats(type, this.level);
-            }
-
-            setStats(type, level) {
-                const typeData = this.game.towerTypes[type]; // 'this.game' kullanıldı
-                this.cost = typeData.cost;
-                const levelData = typeData.levels[level - 1]; // levels array is 0-indexed
-
-                this.range = levelData.rng;
-                this.damage = levelData.dmg;
-                this.fireRate = levelData.spd; // ms
-                this.projectileSpeed = levelData.projSpeed;
-                this.maxLevel = typeData.levels.length;
-
-                // Calculate sell value based on total cost spent
-                let totalCostSpent = this.cost;
-                for(let i = 0; i < level - 1; i++) {
-                    totalCostSpent += typeData.upgradeCosts[i];
-                }
-                this.sellValue = Math.floor(totalCostSpent / 2);
-
-                this.upgradeCost = (level < this.maxLevel) ? typeData.upgradeCosts[level - 1] : 0;
-                this.projectileType = type;
-            }
-
-            upgrade() {
-                if (this.level < this.maxLevel) {
-                    this.level++;
-                    this.setStats(this.type, this.level); // Recalculate stats for new level
-                }
-            }
-
-            update(deltaTime) {
-                // Find nearest enemy within range, prioritizing furthest along path
-                let target = null;
-                let furthestWaypointIndex = -1; // Keep track of progress on path
-
-                for (const enemy of this.game.enemies) { // 'this.game' kullanıldı
-                    if (enemy.alive && distance(this, enemy) < this.range) {
-                        if (enemy.waypointIndex > furthestWaypointIndex) {
-                            target = enemy;
-                            furthestWaypointIndex = enemy.waypointIndex;
-                        }
-                    }
-                }
-
-                if (target) {
-                    this.angle = Math.atan2(target.y - this.y, target.x - this.x); // Aim at target
-
-                    if (performance.now() - this.lastFireTime > this.fireRate) {
-                        this.game.projectiles.push(new Projectile(this.x, this.y, target, this.damage, this.projectileSpeed, this.projectileType)); // 'this.game' kullanıldı
-                        this.lastFireTime = performance.now();
-                        // Muzzle flash effect: particles burst from barrel tip
-                        const muzzleFlashX = this.x + Math.cos(this.angle) * 25; // Adjusted for barrel length
-                        const muzzleFlashY = this.y + Math.sin(this.angle) * 25;
-                        for (let i = 0; i < 5; i++) {
-                            const particleAngle = this.angle + (Math.random() - 0.5) * Math.PI / 4; // Spread slightly
-                            const speed = Math.random() * 0.1 + 0.05;
-                            this.game.particles.push(new Particle(muzzleFlashX, muzzleFlashY, COLORS.MOON_DUST, Math.cos(particleAngle) * speed, Math.sin(particleAngle) * speed, 150)); // 'this.game' kullanıldı
-                        }
-                    }
-                }
-            }
-
-            draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.angle); // Rotate the tower to face its target
-
-                if (this.type === 'laser') {
-                    drawRoundedRect(-12, -12, 24, 24, 5, COLORS.METALLIC_GREY); // Base
-                    drawCircle(0, 0, 8, COLORS.DARK_LUNAR); // Turret body
-                    ctx.fillStyle = COLORS.MOON_DUST;
-                    ctx.fillRect(5, -2, 20, 4); // Barrel
-                    drawCircle(25, 0, 3, COLORS.PLASMA_BLUE, true); // Laser tip (glowing)
-                } else if (this.type === 'plasma') {
-                    drawRoundedRect(-15, -15, 30, 30, 8, COLORS.METALLIC_GREY); // Wider base
-                    drawCircle(0, 0, 10, COLORS.PLASMA_BLUE, true); // Energy Core (glowing)
-                    ctx.fillStyle = COLORS.DARK_LUNAR;
-                    ctx.fillRect(8, -5, 12, 10); // Inner barrel segment
-                    ctx.fillStyle = COLORS.ENERGY_RED;
-                    ctx.fillRect(20, -7, 8, 14); // Outer plasma emitter
-                } else if (this.type === 'missile') {
-                    drawRoundedRect(-18, -18, 36, 36, 10, COLORS.METALLIC_GREY); // Large base
-                    ctx.fillStyle = COLORS.DARK_LUNAR;
-                    ctx.fillRect(10, -12, 15, 8); // Top missile launcher
-                    ctx.fillRect(10, 4, 15, 8); // Bottom missile launcher
-                    drawCircle(-10, -10, 5, COLORS.MOON_DUST); // Targeting dish
-                    ctx.beginPath(); // Dish detail
-                    ctx.arc(-10, -10, 5, Math.PI, 0);
-                    ctx.strokeStyle = COLORS.CRATER_RIM;
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                }
-                ctx.restore();
-
-                // Draw range circle if selected
-                if (this.game.selectedTower === this) { // 'this.game' kullanıldı
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2);
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                }
-            }
-        }
-
-        class Game {
-            constructor() {
-                this.state = 'menu'; // menu, playing, gameOver, kazandi
-                this.health = BASE_HEALTH;
-                this.gold = START_GOLD;
-                this.score = 0;
-                this.wave = 0;
-                this.towers = [];
-                this.enemies = [];
-                this.projectiles = [];
-                this.particles = [];
-                this.floatingTexts = [];
-                this.path = new Path(path);
-                this.selectedTower = null; // Currently selected tower for info/upgrade
-                this.towerToPlace = null; // Type of tower currently being placed by player
-                this.waveTimer = 0; // Countdown until next wave starts
-                this.lastWaveCompletionTime = 0; // Timestamp of when last wave ended
-                this.currentMousePos = { x: 0, y: 0 }; // Track mouse position for tower placement preview
-
-                // Define tower types and their level stats & upgrade costs
-                this.towerTypes = {
-                    laser: { 
-                        name: "Lazer Kulesi", description: "Hizli ates eden temel kule, uzay araclarina karsi etkili.", cost: 100, 
-                        levels: [
-                            { dmg: 10, spd: 500, rng: 150, projSpeed: 0.5 }, // L1
-                            { dmg: 15, spd: 400, rng: 180, projSpeed: 0.5 }, // L2
-                            { dmg: 25, spd: 300, rng: 220, projSpeed: 0.5 }  // L3
-                        ],
-                        upgradeCosts: [150, 250] // Cost to upgrade to L2, then L3
-                    },
-                    plasma: { 
-                        name: "Plazma Topu", description: "Yuksek hasar veren orta menzilli kule, yavas ama guclu atislar.", cost: 250, 
-                        levels: [
-                            { dmg: 25, spd: 800, rng: 180, projSpeed: 0.4 },
-                            { dmg: 40, spd: 700, rng: 220, projSpeed: 0.4 },
-                            { dmg: 60, spd: 600, rng: 260, projSpeed: 0.4 }
-                        ],
-                        upgradeCosts: [300, 450]
-                    },
-                    missile: { 
-                        name: "Fuze Firlatici", description: "Uzun menzilli agir hasar kulesi, yavas dusmanlara karsi ideal.", cost: 400, 
-                        levels: [
-                            { dmg: 50, spd: 1200, rng: 250, projSpeed: 0.3 },
-                            { dmg: 80, spd: 1000, rng: 300, projSpeed: 0.3 },
-                            { dmg: 120, spd: 800, rng: 350, projSpeed: 0.3 }
-                        ],
-                        upgradeCosts: [500, 700]
-                    }
-                };
-
-                this.initUI();
-            }
-
-            // Helper to reset cursor to default
-            resetCursor() {
-                canvas.style.cursor = 'url("data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="4" fill="%23FCF8E8" stroke="%23537FE7" stroke-width="2"/></svg>") 16 16, auto';
-            }
-
-            // Initializes dynamic UI elements like tower selection buttons
-            initUI() {
-                baslaBtn.onclick = () => this.startGame();
-
-                towerSelectionPanel.innerHTML = '';
-                for (const type in this.towerTypes) {
-                    const towerData = this.towerTypes[type];
-                    const btn = document.createElement('button');
-                    btn.className = `ui-btn kule-btn flex flex-col items-center justify-center p-2 rounded-md transition-all duration-200 ease-in-out`;
-                    btn.innerHTML = `<span class="text-lg">${towerData.name}</span> <span class="text-sm">${towerData.cost} <span class="text-yellow-400">Altin</span></span>`;
-                    btn.onclick = () => this.selectTowerToPlace(type);
-                    btn.onmouseover = (e) => this.showTowerTooltip(e, type);
-                    btn.onmouseout = () => tooltip.style.display = 'none';
-                    btn.setAttribute('data-tower-type', type);
-                    towerSelectionPanel.appendChild(btn);
-                }
-
-                upgradeTowerBtn.onclick = () => this.upgradeSelectedTower();
-                sellTowerBtn.onclick = () => this.sellSelectedTower();
-            }
-
-            // Shows a detailed tooltip for tower purchase buttons
-            showTowerTooltip(e, type) {
-                const towerData = this.towerTypes[type];
-                const level1 = towerData.levels[0];
-                let tooltipContent = `<h4 class="text-lg font-bold">${towerData.name}</h4>`;
-                tooltipContent += `<p>${towerData.description}</p>`;
-                tooltipContent += `<p class="text-yellow-400">Maliyet: ${towerData.cost} Altin</p>`;
-                tooltipContent += `<p>Hasar: ${level1.dmg}</p>`;
-                tooltipContent += `<p>Menzil: ${level1.rng} px</p>`;
-                tooltipContent += `<p>Ates Hizi: ${(1000 / level1.spd).toFixed(1)}/sn</p>`;
-                tooltip.innerHTML = tooltipContent;
-                tooltip.style.left = `${e.clientX + 15}px`;
-                tooltip.style.top = `${e.clientY + 15}px`;
-                tooltip.style.display = 'block';
-            }
-
-            // Starts a new game or restarts after game over
-            startGame() {
-                this.health = BASE_HEALTH;
-                this.gold = START_GOLD;
-                this.score = 0;
-                this.wave = 0;
-                this.towers = [];
-                this.enemies = [];
-                this.projectiles = [];
-                this.particles = [];
-                this.floatingTexts = [];
-                this.selectedTower = null;
-                this.towerToPlace = null;
-                this.state = 'playing';
-                this.lastWaveCompletionTime = performance.now(); // Set initial prep time
-                this.waveTimer = WAVE_PREP_TIME; // Reset prep timer
-                this.enemies = []; // Clear existing enemies for the new game
-
-                menuPanel.classList.add('hidden');
-                gameUI.classList.remove('hidden');
-                towerSelectionPanel.classList.remove('hidden');
-                towerInfoPanel.classList.add('hidden');
-                this.resetCursor(); // Set default cursor on game start
-                this.updateUI();
-            }
-
-            // Handles game over or win conditions
-            gameOver(message, isWin = false) {
-                this.state = isWin ? 'kazandi' : 'gameOver';
-                menuPanel.classList.remove('hidden');
-                gameUI.classList.add('hidden');
-                towerSelectionPanel.classList.add('hidden');
-                towerInfoPanel.classList.add('hidden');
-                menuTitle.textContent = isWin ? 'ZAFER!' : 'OYUN BITTI';
-                menuMessage.textContent = message + ` Son Skorunuz: ${this.score}`;
-                baslaBtn.textContent = 'YENIDEN BASLA';
-                this.resetCursor(); // Set default cursor on game over
-                this.updateUI(); // Update window.OYUN_DURUMU
-            }
-
-            // Prepares and starts the next wave of enemies
-            startNextWave() {
-                this.wave++;
-                this.enemies = []; // Clear previous wave's enemies
-                this.waveTimer = WAVE_PREP_TIME; // Reset prep timer
-                this.lastWaveCompletionTime = performance.now(); // Mark time for prep countdown
-                this.selectedTower = null; // Deselect tower
-                towerInfoPanel.classList.add('hidden'); // Hide info panel
-
-                if (this.wave > 8) { // Game ends after 8 waves (can be adjusted for more depth)
-                    this.gameOver('Tum dalgalari savusturdunuz! Ay ussu guvende!', true);
-                    return;
-                }
-
-                // Wave generation logic with increasing difficulty
-                const baseEnemyCount = 5;
-                const totalEnemies = baseEnemyCount + this.wave * 2;
-                let enemyHealthMultiplier = 1 + (this.wave - 1) * 0.25; // Health increases per wave
-
-                if (this.wave % 4 === 0) { // Every 4th wave is a Boss wave
-                    const bossHealth = 1500 * (1 + (this.wave / 4 - 1) * 0.5); // Boss gets stronger
-                    setTimeout(() => {
-                        if (this.state === 'playing') {
-                            const bossEnemy = new Enemy('boss_tank', this.path, this); // 'this' game instance gecirildi
-                            bossEnemy.maxHealth = bossHealth;
-                            bossEnemy.currentHealth = bossHealth;
-                            bossEnemy.gold = 100 * (this.wave / 4);
-                            this.enemies.push(bossEnemy);
-                        }
-                    }, WAVE_PREP_TIME); // Boss da hazirlik suresi sonunda spawn olsun
-                } else {
-                    for (let i = 0; i < totalEnemies; i++) {
-                        setTimeout(() => {
-                            if (this.state === 'playing') { // Only activate enemy if game is still playing
-                                const enemyType = Math.random() < 0.7 ? 'rover' : 'drone'; // Mix of enemy types
-                                const newEnemy = new Enemy(enemyType, this.path, this); // 'this' game instance gecirildi
-                                newEnemy.maxHealth = Math.round(newEnemy.maxHealth * enemyHealthMultiplier);
-                                newEnemy.currentHealth = newEnemy.maxHealth;
-                                this.enemies.push(newEnemy); // Düşmanlar diziye gecikmeli olarak eklendi
-                            }
-                        }, i * 1000 + WAVE_PREP_TIME); // Add prep time to spawn delay for first enemy, then 1s stagger
-                    }
-                }
-                this.updateUI();
-            }
-
-            // Main game logic update loop
-            update(deltaTime) {
-                if (this.state !== 'playing') return;
-
-                // Handle wave timer / preparation phase
-                const allEnemiesDefeated = this.enemies.every(e => !e.alive);
-                const enemiesReachedEnd = this.enemies.some(e => e.waypointIndex >= this.path.waypoints.length - 1);
-                
-                // If all active enemies are defeated (or all spawned enemies have been dealt with)
-                // and we're not waiting for the wave timer to expire, start the prep timer.
-                // Or if it's the last wave and it's cleared, trigger game over.
-                if (allEnemiesDefeated && !enemiesReachedEnd) {
-                    if (this.waveTimer <= 0) { // Only reset timer if currently not in prep phase
-                        if (this.wave < 8) { // If not the final wave, prepare next
-                            this.waveTimer = WAVE_PREP_TIME;
-                            this.lastWaveCompletionTime = performance.now();
-                        } else if (this.wave === 8) { // Last wave cleared, game won
-                            this.gameOver('Tum dalgalari savusturdunuz! Ay ussu guvende!', true);
-                            return;
-                        }
-                    }
-                }
-
-                if (this.waveTimer > 0) {
-                    const elapsedPrepTime = performance.now() - this.lastWaveCompletionTime;
-                    this.waveTimer = Math.max(0, WAVE_PREP_TIME - elapsedPrepTime);
-                    waveTimerDisplay.textContent = `Hazirlan: ${Math.ceil(this.waveTimer / 1000)}s`;
-                    if (this.waveTimer === 0) {
-                        // After prep time, if enemies array is empty (meaning no new wave started yet), start new wave.
-                        // The enemies array will be filled by setTimeouts *after* startNextWave clears it.
-                        if (this.enemies.length === 0 && this.wave < 8) {
-                            this.startNextWave();
-                        } else if (this.wave === 8 && this.enemies.length === 0) {
-                             this.gameOver('Tum dalgalari savusturdunuz! Ay ussu guvende!', true);
-                             return;
-                        }
-                    }
-                } else if (this.enemies.length > 0) {
-                     waveTimerDisplay.textContent = ''; // Hide timer during active wave
-                } else if (this.wave === 0) { // Initial state before game starts
-                    waveTimerDisplay.textContent = `Hazirlan: ${Math.ceil(WAVE_PREP_TIME / 1000)}s`; // Show initial prep time
-                }
-
-                // Filter out dead enemies and award gold/score
-                this.enemies = this.enemies.filter(enemy => {
-                    if (!enemy.alive) {
-                        // If enemy was killed before reaching the end of the path
-                        if (enemy.waypointIndex < this.path.waypoints.length - 1) { // Check before last waypoint (base)
-                            this.gold += enemy.gold;
-                            this.score += enemy.maxHealth; // Score based on enemy max health
-                            // Enemy death explosion effect
-                            for (let i = 0; i < 10; i++) {
-                                const angle = Math.random() * Math.PI * 2;
-                                const speed = Math.random() * 0.1 + 0.05;
-                                this.particles.push(new Particle(enemy.x, enemy.y, enemy.color, Math.cos(angle) * speed, Math.sin(angle) * speed, 500 + Math.random() * 500));
-                            }
-                        }
-                        return false;
-                    }
-                    return true;
-                });
-
-                // Update all game entities
-                this.towers.forEach(tower => tower.update(deltaTime));
-                this.enemies.forEach(enemy => enemy.update(deltaTime));
-                this.projectiles = this.projectiles.filter(p => p.alive);
-                this.projectiles.forEach(p => p.update(deltaTime));
-                this.particles = this.particles.filter(p => p.life > 0);
-                this.particles.forEach(p => p.update(deltaTime));
-                this.floatingTexts = this.floatingTexts.filter(t => t.life > 0);
-                this.floatingTexts.forEach(t => t.update(deltaTime));
-
-                // Check for game over condition
-                if (this.health <= 0) {
-                    this.gameOver('Ay ussu imha edildi!');
-                }
-
-                this.updateUI(); // Update display values
-            }
-
-            // Draws all game elements on the canvas
-            draw() {
-                ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-                // --- Background Drawing ---
-                // Deep space gradient
-                const spaceGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
-                spaceGradient.addColorStop(0, COLORS.DEEP_SPACE);
-                spaceGradient.addColorStop(1, COLORS.DARK_LUNAR);
-                ctx.fillStyle = spaceGradient;
-                ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-                // Stars
-                ctx.fillStyle = COLORS.MOON_DUST;
-                for (let i = 0; i < 100; i++) {
-                    drawCircle(Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT * 0.7, Math.random() * 1.5, COLORS.MOON_DUST);
-                }
-
-                // Craters (layered for depth)
-                ctx.fillStyle = COLORS.DARK_LUNAR;
-                ctx.shadowColor = COLORS.DEEP_SPACE;
-                ctx.shadowBlur = 15;
-                drawCircle(100, 100, 70, COLORS.DARK_LUNAR);
-                drawCircle(GAME_WIDTH - 200, 150, 60, COLORS.DARK_LUNAR);
-                drawCircle(GAME_WIDTH / 2, GAME_HEIGHT - 100, 90, COLORS.DARK_LUNAR);
-                ctx.shadowBlur = 0; // Reset shadow
-
-                this.path.draw(); // Draw the enemy path
-
-                this.drawBase(BASE_POS.x, BASE_POS.y); // Draw the player's base
-
-                // Draw all active game entities
-                this.towers.forEach(tower => tower.draw());
-                this.enemies.forEach(enemy => enemy.draw());
-                this.projectiles.forEach(p => p.draw());
-                this.particles.forEach(p => p.draw());
-                this.floatingTexts.forEach(t => t.draw());
-
-                // Draw tower placement preview if player is selecting a tower
-                if (this.towerToPlace && this.state === 'playing') {
-                    this.drawTowerPreview(this.currentMousePos.x, this.currentMousePos.y, this.towerToPlace);
-                }
-
-                // Game title display during gameplay
-                ctx.fillStyle = COLORS.MOON_DUST;
-                ctx.font = 'bold 24px Arial'; // Using Arial, assuming 'Orbitron' might not be available
-                ctx.shadowColor = COLORS.PLASMA_BLUE;
-                ctx.shadowBlur = 10;
-                ctx.textAlign = 'left';
-                ctx.fillText('Ay Ussu Savunmasi', 20, 40);
-                ctx.shadowBlur = 0;
-            }
-
-            // Draws the player's moon base structure
-            drawBase(x, y) {
-                // Main Dome (semi-circle)
-                ctx.beginPath();
-                ctx.arc(x, y, 70, Math.PI, 2 * Math.PI);
-                ctx.fillStyle = COLORS.METALLIC_GREY;
-                ctx.shadowColor = COLORS.PLASMA_BLUE;
-                ctx.shadowBlur = 15;
-                ctx.fill();
-                ctx.strokeStyle = COLORS.PLASMA_BLUE;
-                ctx.lineWidth = 3;
-                ctx.stroke();
-                ctx.shadowBlur = 0;
-
-                // Base foundation
-                drawRect(x - 70, y, 140, 20, COLORS.DARK_LUNAR);
-
-                // Entrance/Docking port (rounded rectangle with inner door)
-                drawRoundedRect(x - 20, y + 20, 40, 15, 5, COLORS.MOON_DUST);
-                ctx.fillStyle = COLORS.CRATER_RIM;
-                drawRect(x - 15, y + 23, 30, 9, COLORS.CRATER_RIM);
-
-                // Solar Panels (simplified rectangles)
-                drawRect(x + 50, y + 10, 25, 10, COLORS.CRATER_RIM);
-                drawRect(x - 75, y + 10, 25, 10, COLORS.CRATER_RIM);
-                ctx.fillStyle = COLORS.PLASMA_BLUE; // Blue cells
-                drawRect(x + 52, y + 12, 21, 6, COLORS.PLASMA_BLUE);
-                drawRect(x - 73, y + 12, 21, 6, COLORS.PLASMA_BLUE);
-            }
-
-            // Draws a preview of a tower being placed at the current mouse position
-            drawTowerPreview(x, y, type) {
-                ctx.save();
-                ctx.translate(x, y);
-
-                // Draw with reduced opacity
-                ctx.globalAlpha = 0.5;
-
-                // Call the specific tower drawing logic
-                if (type === 'laser') {
-                    drawRoundedRect(-12, -12, 24, 24, 5, COLORS.METALLIC_GREY);
-                    drawCircle(0, 0, 8, COLORS.DARK_LUNAR);
-                    ctx.fillStyle = COLORS.MOON_DUST; ctx.fillRect(5, -2, 20, 4);
-                    drawCircle(25, 0, 3, COLORS.PLASMA_BLUE); // No shadow for preview
-                } else if (type === 'plasma') {
-                    drawRoundedRect(-15, -15, 30, 30, 8, COLORS.METALLIC_GREY);
-                    drawCircle(0, 0, 10, COLORS.PLASMA_BLUE);
-                    ctx.fillStyle = COLORS.DARK_LUNAR; ctx.fillRect(8, -5, 12, 10);
-                    ctx.fillStyle = COLORS.ENERGY_RED; ctx.fillRect(20, -7, 8, 14);
-                } else if (type === 'missile') {
-                    drawRoundedRect(-18, -18, 36, 36, 10, COLORS.METALLIC_GREY);
-                    ctx.fillStyle = COLORS.DARK_LUNAR; ctx.fillRect(10, -12, 15, 8); ctx.fillRect(10, 4, 15, 8);
-                    drawCircle(-10, -10, 5, COLORS.MOON_DUST);
-                    ctx.beginPath(); ctx.arc(-10, -10, 5, Math.PI, 0); ctx.strokeStyle = COLORS.CRATER_RIM; ctx.lineWidth = 1; ctx.stroke();
-                }
-
-                ctx.restore();
-                ctx.globalAlpha = 1.0; // Reset global alpha
-
-                // Draw range preview
-                ctx.beginPath();
-                ctx.arc(x, y, this.towerTypes[type].levels[0].rng, 0, Math.PI * 2);
-                ctx.strokeStyle = `rgba(255, 255, 255, 0.3)`;
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            }
-
-            // Sets the game state to 'placing tower'
-            selectTowerToPlace(type) {
-                if (this.gold >= this.towerTypes[type].cost) {
-                    this.towerToPlace = type;
-                    this.selectedTower = null; // Deselect any active tower
-                    towerInfoPanel.classList.add('hidden');
-                    // Change cursor to crosshair for placement mode
-                    canvas.style.cursor = 'crosshair';
-                } else {
-                    this.floatingTexts.push(new FloatingText(this.currentMousePos.x, this.currentMousePos.y, 'Yeterli altininiz yok!', COLORS.ENERGY_RED, 1500));
-                    this.towerToPlace = null; // Yeterli altin yoksa yerlestirme modundan cik
-                    this.resetCursor(); // İmleci sifirla
-                }
-            }
-
-            // Places a tower at given coordinates if valid
-            placeTower(x, y) {
-                if (!this.towerToPlace) return;
-
-                const towerType = this.towerToPlace;
-                const towerCost = this.towerTypes[towerType].cost;
-
-                // Placement validation rules
-                const minDistance = 50; // Minimum distance to other towers/path
-                let validPlacement = true;
-
-                // Check distance to base
-                if (distance({x, y}, BASE_POS) < minDistance + 50) validPlacement = false;
-
-                // Check distance to path (simplified line-segment distance check)
-                for (let i = 0; i < this.path.waypoints.length - 1; i++) {
-                    const p1 = this.path.waypoints[i];
-                    const p2 = this.path.waypoints[i + 1];
-                    const lengthSq = distance(p1, p2);
-                    // Avoid division by zero if waypoints are identical
-                    if (lengthSq === 0) {
-                         if (distance({ x, y }, p1) < minDistance) {
-                            validPlacement = false;
-                            break;
-                        }
-                        continue;
-                    }
-                    let t = ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / lengthSq;
-                    t = Math.max(0, Math.min(1, t)); // Clamp t to [0,1]
-                    const closestX = p1.x + t * (p2.x - p1.x);
-                    const closestY = p1.y + t * (p2.y - p1.y);
-                    if (distance({ x, y }, { x: closestX, y: closestY }) < minDistance) {
-                        validPlacement = false;
-                        break;
-                    }
-                }
-
-                // Check distance to other existing towers
-                for (const tower of this.towers) {
-                    if (distance({ x, y }, tower) < minDistance) {
-                        validPlacement = false;
-                        break;
-                    }
-                }
-
-                if (validPlacement && this.gold >= towerCost) {
-                    this.towers.push(new Tower(x, y, towerType, this)); // 'this' game instance gecirildi
-                    this.gold -= towerCost;
-                    this.towerToPlace = null; // Exit placement mode
-                    this.resetCursor(); // Yerlestirme sonrasi imleci sifirla
-                } else if (!validPlacement) {
-                    this.floatingTexts.push(new FloatingText(x, y, 'Gecersiz konum!', COLORS.ENERGY_RED, 1500));
-                } else { // Should not happen if `selectTowerToPlace` already checked gold
-                     this.floatingTexts.push(new FloatingText(x, y, 'Yeterli altininiz yok!', COLORS.ENERGY_RED, 1500));
-                     this.towerToPlace = null; // Yerlestirme modundan cik
-                     this.resetCursor(); // İmleci sifirla
-                }
-                this.updateUI();
-            }
-
-            // Selects an existing tower for upgrade/sell options
-            selectTower(x, y) {
-                this.selectedTower = null;
-                for (const tower of this.towers) {
-                    if (distance({ x, y }, tower) < 20) { // Click radius for tower selection
-                        this.selectedTower = tower;
-                        break;
-                    }
-                }
-                if (this.selectedTower) {
-                    this.showTowerInfo(this.selectedTower);
-                } else {
-                    towerInfoPanel.classList.add('hidden'); // Hide info panel if no tower selected
-                }
-                this.updateUI();
-            }
-
-            // Populates and displays the tower info panel
-            showTowerInfo(tower) {
-                selectedTowerName.textContent = `${this.towerTypes[tower.type].name} (Seviye ${tower.level})`;
-                selectedTowerStats.innerHTML = `
-                    <p>Hasar: ${tower.damage}</p>
-                    <p>Ates Hizi: ${(1000 / tower.fireRate).toFixed(1)}/sn</p>
-                    <p>Menzil: ${tower.range}</p>
-                `;
-
-                if (tower.level < tower.maxLevel) {
-                    upgradeCostSpan.textContent = `${tower.upgradeCost} Altin`;
-                    upgradeTowerBtn.disabled = this.gold < tower.upgradeCost;
-                    upgradeTowerBtn.classList.remove('hidden');
-                } else {
-                    upgradeCostSpan.textContent = 'Maks Seviye';
-                    upgradeTowerBtn.disabled = true;
-                    upgradeTowerBtn.classList.add('hidden'); // Hide if max level
-                }
-                sellAmountSpan.textContent = `${tower.sellValue} Altin`;
-                towerInfoPanel.classList.remove('hidden');
-            }
-
-            // Upgrades the currently selected tower
-            upgradeSelectedTower() {
-                if (this.selectedTower && this.selectedTower.level < this.selectedTower.maxLevel) {
-                    const upgradeCost = this.selectedTower.upgradeCost;
-                    if (this.gold >= upgradeCost) {
-                        this.selectedTower.upgrade();
-                        this.gold -= upgradeCost;
-                        this.showTowerInfo(this.selectedTower); // Update info panel after upgrade
-                        this.floatingTexts.push(new FloatingText(this.selectedTower.x, this.selectedTower.y, 'YUKSELTILDI!', COLORS.GOLD, 1500));
-                    } else {
-                        this.floatingTexts.push(new FloatingText(this.selectedTower.x, this.selectedTower.y, 'Yeterli altininiz yok!', COLORS.ENERGY_RED, 1500));
-                    }
-                }
-                this.updateUI();
-            }
-
-            // Sells the currently selected tower
-            sellSelectedTower() {
-                if (this.selectedTower) {
-                    this.gold += this.selectedTower.sellValue;
-                    this.towers = this.towers.filter(t => t !== this.selectedTower); // Remove tower from array
-                    this.floatingTexts.push(new FloatingText(this.selectedTower.x, this.selectedTower.y, `+${this.selectedTower.sellValue} Altin`, COLORS.GOLD, 1500));
-                    this.selectedTower = null; // Clear selection
-                    towerInfoPanel.classList.add('hidden'); // Hide info panel
-                }
-                this.updateUI();
-            }
-
-            // Updates all UI display elements and the global game state object
-            updateUI() {
-                healthDisplay.textContent = this.health;
-                scoreDisplay.textContent = this.score;
-                waveDisplay.textContent = this.wave;
-                goldDisplay.textContent = this.gold;
-
-                // Enable/disable tower purchase buttons based on current gold
-                document.querySelectorAll('.kule-btn').forEach(btn => {
-                    const type = btn.getAttribute('data-tower-type');
-                    const cost = this.towerTypes[type].cost;
-                    btn.disabled = this.gold < cost;
-                });
-
-                // Update the global test object
-                window.OYUN_DURUMU = {
-                    asama: this.state,
-                    dalga: this.wave,
-                    can: this.health,
-                    skor: this.score
-                };
-            }
-        }
-
-        // Main game animation loop
-        function animate(currentTime) {
-            deltaTime = currentTime - lastTime;
-            lastTime = currentTime;
-
-            game.update(deltaTime);
-            game.draw();
-
-            requestAnimationFrame(animate);
-        }
-
-        // Initial setup function for the game
-        function initGame() {
-            canvas.width = GAME_WIDTH;
-            canvas.height = GAME_HEIGHT;
-
-            // Make canvas responsive to window size
-            function resizeCanvas() {
-                const containerWidth = gameContainer.offsetWidth;
-                const containerHeight = gameContainer.offsetHeight;
-                const aspectRatio = GAME_WIDTH / GAME_HEIGHT;
-
-                let newWidth, newHeight;
-                if (containerWidth / containerHeight > aspectRatio) {
-                    newHeight = containerHeight;
-                    newWidth = containerHeight * aspectRatio;
-                } else {
-                    newWidth = containerWidth;
-                    newHeight = containerWidth / aspectRatio;
-                }
-
-                canvas.style.width = `${newWidth}px`;
-                canvas.style.height = `${newHeight}px`;
-            }
-
-            window.addEventListener('resize', resizeCanvas);
-            resizeCanvas(); // Initial call to set canvas size
-
-            game = new Game(); // Game instance burada olusturuluyor
-            game.updateUI(); // Set initial UI values and test status
-            menuPanel.classList.remove('hidden'); // Show main menu initially
-            game.resetCursor(); // Başlangıçta imleci sıfırla
-
-            // Event listeners for mouse/touch interactions
-            canvas.addEventListener('mousemove', (e) => {
-                game.currentMousePos = getCanvasMousePos(e);
-                // game.draw() burada çağrılmıyor, animate loop zaten sürekli çiziyor.
-                // Bu daha performanslıdır.
-                // Update tooltip position if visible
-                if (tooltip.style.display === 'block') {
-                    tooltip.style.left = `${e.clientX + 15}px`;
-                    tooltip.style.top = `${e.clientY + 15}px`;
-                }
-            });
-
-            canvas.addEventListener('mousedown', (e) => {
-                const mousePos = getCanvasMousePos(e);
-                if (game.state === 'playing') {
-                    if (game.towerToPlace) {
-                        game.placeTower(mousePos.x, mousePos.y);
-                    } else {
-                        game.selectTower(mousePos.x, mousePos.y);
-                    }
-                }
-            });
-
-            canvas.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // Prevent default touch actions like scrolling/zooming
-                const touchPos = getCanvasMousePos(e);
-                if (game.state === 'playing') {
-                    if (game.towerToPlace) {
-                        game.placeTower(touchPos.x, touchPos.y);
-                    } else {
-                        game.selectTower(touchPos.x, touchPos.y);
-                    }
-                }
-            }, { passive: false }); // `passive: false` allows `preventDefault`
-
-            requestAnimationFrame(animate); // Start the game loop
-        }
-
-        // Ensure DOM is fully loaded before initializing the game
-        document.addEventListener('DOMContentLoaded', initGame);
-    </script>
+      } else {
+        yaziEkle(h.x, h.y-10, "-"+Math.round(m.hasar), "#fca5a5");
+      }
+    }
+    patlamaEkle(m.x,m.y,m.renk,4);
+  }
+
+  // ---------- Çizim ----------
+  function varsayilanArkaplan(c,W,H,t){
+    const g = c.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,P.arka1); g.addColorStop(1,P.arka2);
+    c.fillStyle=g; c.fillRect(0,0,W,H);
+  }
+  function varsayilanYol(c){
+    c.lineCap="round"; c.lineJoin="round";
+    c.strokeStyle=P.yolKenar; c.lineWidth=46;
+    c.beginPath(); c.moveTo(yol[0].x,yol[0].y);
+    for (let i=1;i<yol.length;i++) c.lineTo(yol[i].x,yol[i].y);
+    c.stroke();
+    c.strokeStyle=P.yol; c.lineWidth=36; c.stroke();
+  }
+  function varsayilanDusman(c,d,t){
+    c.save(); c.translate(d.x,d.y);
+    const sal = Math.sin(t*6+d.faz)*0.12;
+    c.rotate(sal);
+    c.fillStyle="rgba(0,0,0,.28)";
+    c.beginPath(); c.ellipse(0,d.yaricap*0.8,d.yaricap*0.9,d.yaricap*0.35,0,0,6.29); c.fill();
+    c.fillStyle=d.renk;
+    c.beginPath(); c.arc(0,0,d.yaricap,0,6.29); c.fill();
+    c.fillStyle="rgba(255,255,255,.85)";
+    c.beginPath(); c.arc(-d.yaricap*0.3,-d.yaricap*0.25,d.yaricap*0.18,0,6.29);
+    c.arc(d.yaricap*0.3,-d.yaricap*0.25,d.yaricap*0.18,0,6.29); c.fill();
+    c.restore();
+  }
+  function varsayilanKule(c,k,t){
+    c.save(); c.translate(k.x,k.y);
+    c.fillStyle="rgba(0,0,0,.3)";
+    c.beginPath(); c.ellipse(0,14,20,7,0,0,6.29); c.fill();
+    c.fillStyle="#1f2937";
+    c.beginPath(); c.arc(0,0,19,0,6.29); c.fill();
+    c.fillStyle=k.tip.renk||P.kule;
+    c.beginPath(); c.arc(0,0,14,0,6.29); c.fill();
+    c.rotate(k.aci);
+    c.fillStyle="#111827"; c.fillRect(0,-4,26,8);
+    if (k.flas>0){ c.fillStyle="#fff"; c.beginPath(); c.arc(28,0,7,0,6.29); c.fill(); }
+    c.restore();
+    for (let i=0;i<k.seviye-1;i++){
+      c.fillStyle=P.vurgu;
+      c.beginPath(); c.arc(k.x-6+i*6, k.y-24, 3, 0, 6.29); c.fill();
+    }
+  }
+
+  function canBari(c,d){
+    if (d.can>=d.maxCan) return;
+    const g = d.bos?60:30, y=d.y-d.yaricap-10;
+    c.fillStyle="rgba(0,0,0,.6)"; c.fillRect(d.x-g/2,y,g,d.bos?7:4);
+    c.fillStyle= d.bos?"#f43f5e":"#22c55e";
+    c.fillRect(d.x-g/2,y,g*Math.max(0,d.can/d.maxCan),d.bos?7:4);
+  }
+
+  function ambiyansCiz(c,t){
+    c.save(); c.globalAlpha=.3; c.fillStyle = P.vurgu;
+    for (const a of ambiyansParcaciklari){
+      const y = ((a.y + t*a.hiz) % (REF_H+20)) - 10;
+      const x = a.x + Math.sin(t*0.5+a.faz)*14;
+      c.beginPath(); c.arc(x,y,a.boyut,0,6.29); c.fill();
+    }
+    c.restore();
+  }
+
+  function ciz(){
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle="#05080f"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.setTransform(olcek,0,0,olcek,kaydirX,kaydirY);
+
+    // JUICE: ekran sarsıntısı (sadece dünyayı etkiler, HUD ayrı DOM katmanında olduğu için sarsılmaz)
+    if (ekranSarsinti>0.01){
+      const guc = ekranSarsinti*ekranSarsinti;
+      ctx.translate((Math.random()*2-1)*10*guc, (Math.random()*2-1)*10*guc);
+    }
+
+    try { (T.arkaplanCiz || varsayilanArkaplan)(ctx, REF_W, REF_H, zaman); }
+    catch(e){ varsayilanArkaplan(ctx, REF_W, REF_H, zaman); }
+    ambiyansCiz(ctx, zaman);  // JUICE: her temada otomatik yüzen parıltı zerreleri
+    try { (T.yolCiz || varsayilanYol)(ctx, yol, zaman); }
+    catch(e){ varsayilanYol(ctx); }
+
+    // Seçili kule tipinin menzil önizlemesi yok; kurulu kulelerin menzili seçiliyken
+    if (seciliKule){
+      ctx.strokeStyle="rgba(56,189,248,.55)"; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(seciliKule.x,seciliKule.y,seciliKule.menzil,0,6.29); ctx.stroke();
+    }
+
+    for (const k of kuleler){
+      // JUICE: kule altında yumuşak ışık halesi (her tema için otomatik, Gemini'ye bağlı değil)
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const renk = (k.tip.renk || P.kule);
+      const glowR = 30 + Math.sin(zaman*2 + k.x*0.01)*3 + (k.flas>0 ? 16 : 0);
+      try {
+        const g = ctx.createRadialGradient(k.x,k.y,0,k.x,k.y,glowR);
+        g.addColorStop(0, renk+"33"); g.addColorStop(1, renk+"00");
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(k.x,k.y,glowR,0,6.29); ctx.fill();
+      } catch(e){}
+      ctx.restore();
+
+      ctx.save();
+      ctx.beginPath(); ctx.rect(k.x-46, k.y-46, 92, 92); ctx.clip();  // taşan çizimi kırp
+      try { (T.kuleCiz || varsayilanKule)(ctx,k,zaman); }
+      catch(e){ varsayilanKule(ctx,k,zaman); }
+      ctx.restore();
+    }
+    for (const d of dusmanlar){
+      // Kontrast halkası: eklenti düşmanı zeminle aynı renk yapsa bile ayrışsın
+      ctx.save();
+      ctx.strokeStyle="rgba(0,0,0,.55)"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(d.x,d.y,d.yaricap*1.05,0,6.29); ctx.stroke();
+      ctx.strokeStyle="rgba(255,255,255,.35)"; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(d.x,d.y,d.yaricap*1.05,0,6.29); ctx.stroke();
+      ctx.restore();
+
+      // JUICE: vurulunca sıkışma-esneme (squash & stretch)
+      let sx=1, sy=1;
+      if (d.vurulmaZaman>0){
+        const o = d.vurulmaZaman/0.14;
+        sx = 1 + 0.22*o; sy = 1 - 0.22*o;
+      }
+      ctx.save();
+      ctx.translate(d.x,d.y); ctx.scale(sx,sy); ctx.translate(-d.x,-d.y);
+      ctx.beginPath(); ctx.rect(d.x-d.yaricap*2, d.y-d.yaricap*2.4,
+                                d.yaricap*4, d.yaricap*4.4); ctx.clip();
+      try { (T.dusmanCiz || varsayilanDusman)(ctx,d,zaman); }
+      catch(e){ varsayilanDusman(ctx,d,zaman); }
+      ctx.restore();
+      canBari(ctx,d);
+    }
+    for (const m of mermiler){
+      ctx.strokeStyle=m.renk; ctx.lineWidth=2; ctx.globalAlpha=.5;
+      ctx.beginPath();
+      m.iz.forEach((p,i)=> i? ctx.lineTo(p.x,p.y) : ctx.moveTo(p.x,p.y));
+      ctx.stroke(); ctx.globalAlpha=1;
+      ctx.fillStyle=m.renk; ctx.beginPath(); ctx.arc(m.x,m.y,4,0,6.29); ctx.fill();
+    }
+    for (const p of parcaciklar){
+      ctx.globalAlpha = Math.max(0, 1-p.yas/p.omur);
+      ctx.fillStyle=p.renk;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.boyut,0,6.29); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+    ctx.textAlign="center"; ctx.font="bold 15px system-ui";
+    for (const y of yaziEfektleri){
+      ctx.globalAlpha = Math.max(0, 1-y.yas/y.omur);
+      ctx.fillStyle=y.renk; ctx.fillText(y.metin,y.x,y.y);
+    }
+    ctx.globalAlpha=1;
+
+    if (T.ustCiz){ try { T.ustCiz(ctx, REF_W, REF_H, zaman, {dalga,can,altin}); } catch(e){} }
+  }
+
+  // ---------- Döngü ----------
+  let sonZaman = performance.now();
+  function dongu(su){
+    let dt = (su - sonZaman)/1000;
+    sonZaman = su;
+    if (dt > 0.05) dt = 0.05;     // sekme arka plandayken sıçrama olmasın
+    if (donmaSuresi > 0){ donmaSuresi -= dt; dt = 0; }  // JUICE: boss ölümünde kısa "vuruş anı" donması
+    guncelle(dt);
+    ciz();
+    window.OYUN_DURUMU = {asama:asama, dalga:dalga||0, can:can||0, skor:skor||0, altin:altin||0};
+    requestAnimationFrame(dongu);
+  }
+
+  // ---------- Başlat ----------
+  boyutlandir();
+  sifirla();
+  asama="menu";
+  if (T.ad) { document.getElementById("menuBaslik").textContent = T.ad;
+              document.title = T.ad; }
+  if (T.aciklama) document.getElementById("menuAciklama").textContent = T.aciklama;
+  window.OYUN_DURUMU = {asama:"menu", dalga:0, can:BASLANGIC_CAN, skor:0, altin:BASLANGIC_ALTIN};
+  requestAnimationFrame(dongu);
+})();
+</script>
 </body>
 </html>
