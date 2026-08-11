@@ -89,8 +89,13 @@ const TEMA = {
   aciklama: "Tek cümlelik Türkçe tanıtım",
   palet: { arka1:"#hex", arka2:"#hex", yol:"#hex", yolKenar:"#hex",
            dusman:"#hex", dusman2:"#hex", kule:"#hex", mermi:"#hex", vurgu:"#hex" },
-  yol: [ {x:0,y:360}, {x:300,y:360}, ... , {x:1280,y:300} ],   // 1280x720 alanda 5-9 nokta,
-        // ilk nokta soldan (x=0) veya üstten girmeli, son nokta ekrandan çıkmalı
+  yol: [ {x:0,y:360}, {x:300,y:360}, ... , {x:1280,y:300} ],   // 1280x720 alanda 5-9 nokta.
+        // ÇEŞİTLİLİK ZORUNLU: her oyunda farklı bir giriş/çıkış ve yön kombinasyonu seç.
+        // Giriş soldan (x<=0), sağdan (x>=1280), üstten (y<=0) veya alttan (y>=720) olabilir;
+        // çıkış GİRİŞTEN FARKLI bir kenardan olsun. Sadece dik açılı (90°) zikzak YETERLİ DEĞİL:
+        // çapraz segmentler, S kıvrımı, sarmal yaklaşımı gibi farklı desenler kullan. Örnek 3
+        // farklı desen: (a) sağ üstten girip sola-aşağı çapraz inen yol, (b) üstten girip S
+        // kıvrımıyla alta çıkan yol, (c) soldan girip merkezde spiral yapıp sağdan çıkan yol.
   dusmanTipleri: [
     {ad:"Türkçe ad", can:60, hiz:62, altin:12, yaricap:14, renk:"#hex"},
     {ad:"Türkçe ad", can:42, hiz:96, altin:14, yaricap:12, renk:"#hex"},
@@ -136,9 +141,18 @@ const TEMA = {
     genel manzara (dağ, bulut) yeterli DEĞİLDİR.
   - Yolun bittiği sağ/alt uçta savunulan yapı görünsün.
 
-- arkaplanCiz: KATMANLI sahne çiz. Gradient gökyüzü/zemin + uzak silüetler + orta katman dekor
-  + zemin dokusu + yukarıdaki ana yapı. t ile hafif animasyon ver (parlayan ışıklar, süzülen
-  bulut, kıpırdayan su gibi). Sabit ve boş arka plan KABUL EDİLMEZ.
+* ARKA PLAN DERİNLİĞİ (ÇOK SIK İHLAL EDİLİYOR — dikkatle uygula):
+  - En az 5 KATMAN olacak, her biri arka plandan öne doğru: (1) gökyüzü/zemin gradient,
+    (2) en uzak silüet (dağ/gökdelen/derinlik hissi veren büyük şekil), (3) orta mesafe
+    dekoru (bina/ağaç/kaya/yapı grubu — en az 4 farklı obje), (4) yakın zemin dokusu
+    (nokta/çizgi/leke deseniyle toprak-kum-metal-su ne ise onun hissi), (5) hareketli/
+    animasyonlu bir öğe (ışık parıltısı, dalga, sis, uçuşan kıvılcım — t ile animasyonlu).
+  - YASAK: sadece "gradient + 1-2 basit üçgen dağ" ile bırakmak. Bu basit/boş sayılır ve
+    reddedilir. Her katman gerçekten farklı şekil ve derinlik hissi vermeli.
+  - Katmanlar arası kontrast/opaklıkla derinlik hissi ver: uzak katmanlar soluk/az kontrast,
+    yakın katmanlar net/yüksek kontrast olsun.
+
+- arkaplanCiz: yukarıdaki 5 katmanı bu fonksiyonda uygula.
 - yolCiz: yolu dokulu çiz (kenar + iç dolgu + üzerine tema deseni). Verilen `yol` dizisini kullan.
 - dusmanCiz: d.x, d.y, d.yaricap, d.renk, d.bos (boss ise true), d.faz (animasyon fazı) verilir.
   Düşmanı EN AZ 4 parçadan oluştur (gövde + baş + detay + silah/kanat). Yürüme/salınım animasyonu
@@ -146,6 +160,12 @@ const TEMA = {
 - kuleCiz: k.x, k.y, k.aci, k.tip.renk, k.seviye (1-3), k.flas (ateş anı) verilir.
   Kuleyi EN AZ 4 parçadan oluştur (taban + gövde + namlu + detay). k.flas>0 iken namlu ucunda
   parlama çiz. k.seviye arttıkça görsel detay ekle.
+  * SİLÜET FARKLILIĞI ZORUNLU: kuleTipleri'ndeki 3 kule SADECE RENK ile ayrılamaz, GÖVDE
+    ŞEKLİ de belirgin farklı olmalı. Örnek 3 aile: (a) uzun/ince/sivri kule (mızrak, kule,
+    anten gibi), (b) geniş/alçak/kutu gövdeli (top, kalkan, kutu gibi), (c) köşeli/dikenli/
+    asimetrik form (mancınık, pençe, kristal gibi). kuleCiz içinde k.tip.ad'a göre if/else
+    dallanıp HER dalda TAMAMEN FARKLI bir taban+gövde geometrisi çiz, sadece namlu/detay
+    rengini değiştirmek YETERLİ DEĞİLDİR.
 - Gölge, kontur ve c.shadowBlur ile derinlik ver. Renkler paletle uyumlu olsun.
 - Her çizim fonksiyonu c.save() ile başlayıp c.restore() ile bitmeli (dönüşüm sızmasın).
 - Not: motor çizimden önce c.translate(x,y) YAPMAZ; sen kendi save/translate'ini yaparsın.
@@ -287,8 +307,10 @@ MEVCUT EKLENTİ:
     return None if eklenti_gecerli_mi(yeni) else yeni
 
 # ================== KAYIT + GALERİ ==================
-def kaydet_ve_galeriyi_guncelle(oyun_adi, html_icerik):
-    """Oyunu apps/slug/index.html'e kaydeder, manifest ve kök galeriyi günceller."""
+def kaydet_ve_galeriyi_guncelle(oyun_adi, html_icerik, kapak_png=None):
+    """Oyunu apps/slug/index.html'e kaydeder, manifest ve kök galeriyi günceller.
+    kapak_png verilirse (robot oyuncunun zaten çektiği ekran görüntüsü — ek maliyet
+    yok) apps/slug/kapak.png olarak da kaydedilir ve galeri kartında gösterilir."""
     os.makedirs("apps", exist_ok=True)
 
     manifest_yolu = os.path.join("apps", "manifest.json")
@@ -311,7 +333,14 @@ def kaydet_ve_galeriyi_guncelle(oyun_adi, html_icerik):
         f.write(analytics_ekle(html_icerik))
     print(f"📁 Oyun kaydedildi: apps/{slug}/index.html")
 
-    manifest.append({"isim": oyun_adi, "slug": slug,
+    kapak_var = False
+    if kapak_png:
+        with open(os.path.join(klasor, "kapak.png"), "wb") as f:
+            f.write(kapak_png)
+        kapak_var = True
+        print(f"🖼️ Kapak resmi kaydedildi: apps/{slug}/kapak.png")
+
+    manifest.append({"isim": oyun_adi, "slug": slug, "kapak": kapak_var,
                      "tarih": datetime.now().strftime("%Y-%m-%d")})
     with open(manifest_yolu, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
@@ -319,8 +348,14 @@ def kaydet_ve_galeriyi_guncelle(oyun_adi, html_icerik):
     # Kök galeri
     kartlar = ""
     for m in reversed(manifest):  # en yeni üstte
+        gorsel = (f'<img src="apps/{m["slug"]}/kapak.png" loading="lazy" '
+                  f'class="w-full h-36 object-cover rounded-lg mb-3" alt="{m["isim"]}">'
+                  if m.get("kapak") else
+                  '<div class="w-full h-36 rounded-lg mb-3 bg-gradient-to-br '
+                  'from-slate-200 to-slate-300"></div>')
         kartlar += f"""
-            <a href="apps/{m['slug']}/index.html" class="block p-6 bg-white rounded-xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all border border-slate-200">
+            <a href="apps/{m['slug']}/index.html" class="block p-4 bg-white rounded-xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all border border-slate-200">
+                {gorsel}
                 <h2 class="text-xl font-semibold text-slate-800 mb-1">{m['isim']}</h2>
                 <p class="text-xs text-slate-400 mb-2">{m['tarih']}</p>
                 <span class="text-sm font-medium text-blue-600">Oyunu Başlat &rarr;</span>
@@ -362,15 +397,18 @@ def github_repoya_gonder(slug):
 
     dosyalar = [
         f"apps/{slug}/index.html",
+        f"apps/{slug}/kapak.png",   # Varsa robot oyuncunun ekran görüntüsü; yoksa atlanır
         "apps/manifest.json",
         "index.html",
     ]
 
     for yol in dosyalar:
         if not os.path.exists(yol):
-            print(f"⚠️ {yol} lokalde yok, atlanıyor.")
+            if not yol.endswith("kapak.png"):  # kapak.png'nin olmaması normal, uyarı vermeye gerek yok
+                print(f"⚠️ {yol} lokalde yok, atlanıyor.")
             continue
-        with open(yol, "r", encoding="utf-8") as f:
+        ikili = yol.endswith(".png")
+        with open(yol, "rb" if ikili else "r", **({} if ikili else {"encoding": "utf-8"})) as f:
             icerik = f.read()
         try:
             mevcut = repo.get_contents(yol)
@@ -462,8 +500,8 @@ def main():
         except Exception as cila_hata:
             print(f"✨ Cila aşaması atlandı ({cila_hata}), orijinal yayınlanacak.")
 
-        # 3. Kaydet + galeri + push
-        slug = kaydet_ve_galeriyi_guncelle(oyun_adi, kod)
+        # 3. Kaydet + galeri + push (kapak: robot oyuncunun zaten çektiği ekran görüntüsü)
+        slug = kaydet_ve_galeriyi_guncelle(oyun_adi, kod, rapor.get("kapak_png"))
         github_repoya_gonder(slug)
 
         # 4. Başarı logu (robot oyuncunun puanı ve yorumuyla)
