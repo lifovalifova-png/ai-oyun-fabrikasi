@@ -1,1524 +1,1208 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saat Kulesi Savunması</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        canvas { display: block; background: #000; }
-        #gameCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-        }
-        #uiOverlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none; /* Allows clicks to pass through to canvas by default */
-        }
-        #menuScreen, #gameOverScreen, #gameWonScreen, #towerInfoPanel {
-            pointer-events: auto; /* Re-enable pointer events for specific UI screens */
-        }
-        .ui-panel {
-            background-color: rgba(0, 0, 0, 0.7);
-            border: 2px solid #A17A4D; /* Brass */
-            color: #D4C1A8; /* Aged Ivory */
-            padding: 10px;
-            box-shadow: 0 0 10px rgba(161, 122, 77, 0.8);
-        }
-        .btn-game {
-            background-color: #7B523F; /* Copper */
-            color: #D4C1A8; /* Aged Ivory */
-            padding: 8px 16px;
-            border-radius: 5px;
-            border: 1px solid #A17A4D; /* Brass */
-            cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-        .btn-game:hover {
-            background-color: #A17A4D; /* Brass */
-            transform: translateY(-1px);
-        }
-        .btn-game:disabled {
-            background-color: #4A3E3E; /* Dark Metal */
-            border-color: #2C2C2C; /* Deep Shadow */
-            cursor: not-allowed;
-            color: #7B523F; /* Copper */
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saat kulesi savunması</title>
+<style>
+  html,body{margin:0;padding:0;overflow:hidden;background:#0b0f19;font-family:system-ui,sans-serif;}
+  #sahne{position:relative;width:100vw;height:100vh;}
+  canvas{display:block;width:100%;height:100%;touch-action:none;}
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+           background:rgba(5,8,15,.82);z-index:20;}
+  .overlay.gizli{display:none;pointer-events:none;}
+  .panel{background:rgba(17,24,39,.95);border:1px solid rgba(255,255,255,.12);
+         border-radius:16px;padding:28px 32px;max-width:520px;text-align:center;color:#e5e7eb;}
+  .btn{background:#2563eb;color:#fff;border:none;border-radius:10px;padding:12px 26px;
+       font-size:16px;font-weight:600;cursor:pointer;margin-top:14px;}
+  .btn:hover{background:#1d4ed8;}
+  .btn.ikincil{background:#374151;}
+  #hud{position:absolute;top:0;left:0;right:0;z-index:10;display:flex;gap:14px;flex-wrap:wrap;
+       padding:10px 14px;background:linear-gradient(180deg,rgba(5,8,15,.85),rgba(5,8,15,0));
+       color:#e5e7eb;font-size:14px;font-weight:600;pointer-events:none;}
+  #hud .kutu{background:rgba(17,24,39,.7);border:1px solid rgba(255,255,255,.1);
+             border-radius:10px;padding:6px 12px;}
+  #kulePanel{position:absolute;bottom:0;left:0;right:0;z-index:10;display:flex;gap:8px;
+             justify-content:center;flex-wrap:wrap;padding:10px;
+             background:linear-gradient(0deg,rgba(5,8,15,.9),rgba(5,8,15,0));}
+  .kule-btn{background:rgba(17,24,39,.92);border:2px solid rgba(255,255,255,.15);color:#e5e7eb;
+            border-radius:12px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;
+            min-width:96px;}
+  .kule-btn.secili{border-color:#38bdf8;box-shadow:0 0 0 2px rgba(56,189,248,.35);}
+  .kule-btn:disabled{opacity:.45;cursor:not-allowed;}
+  #uyari{position:absolute;top:44%;left:0;right:0;z-index:12;text-align:center;color:#fbbf24;
+         font-size:26px;font-weight:800;text-shadow:0 2px 10px rgba(0,0,0,.8);
+         opacity:0;transition:opacity .3s;pointer-events:none;}
+  #uyari.gorunur{opacity:1;}
+  #vinyet{position:absolute;inset:0;z-index:9;pointer-events:none;opacity:0;
+          transition:opacity .4s;
+          background:radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(220,38,38,.55) 100%);}
+  .text-3xl{font-size:30px;} .text-2xl{font-size:24px;} .text-sm{font-size:13px;}
+  .font-bold{font-weight:700;} .mb-3{margin-bottom:12px;} .mb-2{margin-bottom:8px;}
+  .text-slate-300{color:#cbd5e1;} .text-slate-400{color:#94a3b8;}
+</style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    <div id="uiOverlay" class="relative">
+<div id="sahne">
+  <canvas id="oyunCanvas"></canvas>
 
-        <!-- Main Menu Screen -->
-        <div id="menuScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-90 z-20">
-            <h1 class="text-5xl font-bold mb-8 text-yellow-300 drop-shadow-lg">Saat Kulesi Savunması</h1>
-            <button id="baslaBtn" class="btn-game text-xl px-12 py-4">OYUNU BAŞLAT</button>
-        </div>
+  <div id="hud">
+    <div class="kutu">Can: <span id="hudCan">20</span></div>
+    <div class="kutu">Altın: <span id="hudAltin">0</span></div>
+    <div class="kutu">Dalga: <span id="hudDalga">0</span>/<span id="hudToplamDalga">10</span></div>
+    <div class="kutu">Skor: <span id="hudSkor">0</span></div>
+    <div class="kutu" id="hudCombo" style="display:none">Combo x<span id="hudComboSayi">1</span></div>
+  </div>
 
-        <!-- Game UI -->
-        <div id="gameUI" class="hidden absolute top-0 left-0 w-full p-4 z-10 pointer-events-none">
-            <div class="flex justify-between items-center text-lg ui-panel">
-                <div class="flex items-center space-x-4">
-                    <span>❤ Can: <span id="playerHealth">10</span></span>
-                    <span>💰 Altın: <span id="playerGold">100</span></span>
-                    <span>⭐ Skor: <span id="playerScore">0</span></span>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span class="font-bold text-2xl">Dalga: <span id="currentWave">1</span> / <span id="totalWaves">8</span></span>
-                    <button id="timeSlowBtn" class="btn-game px-6 py-2 pointer-events-auto">⏳ Zamanı Yavaşlat (0)</button>
-                </div>
-            </div>
-            <h2 class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl text-yellow-300 font-bold drop-shadow-lg" id="wavePrepText">Dalga Başlıyor...</h2>
-        </div>
+  <div id="uyari"></div>
+  <div id="vinyet"></div>
 
-        <!-- Tower Selection Panel -->
-        <div id="towerSelectionPanel" class="hidden absolute bottom-0 left-0 w-full p-4 flex justify-center space-x-4 z-10 pointer-events-auto">
-            <!-- Tower buttons will be injected here by JS -->
-        </div>
+  <div id="kulePanel"></div>
 
-        <!-- Tower Info Panel -->
-        <div id="towerInfoPanel" class="hidden absolute p-4 ui-panel z-10 pointer-events-auto" style="min-width: 200px;">
-            <h3 id="infoTowerName" class="text-xl font-bold mb-2"></h3>
-            <p>Seviye: <span id="infoTowerLevel"></span></p>
-            <p>Hasar: <span id="infoTowerDamage"></span></p>
-            <p>Menzil: <span id="infoTowerRange"></span></p>
-            <p>Hız: <span id="infoTowerFireRate"></span></p>
-            <div class="mt-4 flex flex-col space-y-2">
-                <button id="upgradeTowerBtn" class="btn-game">Yükselt (<span id="upgradeCost"></span> Altın)</button>
-                <button id="sellTowerBtn" class="btn-game">Sat (<span id="sellValue"></span> Altın)</button>
-                <button id="closeInfoBtn" class="btn-game bg-gray-600 border-gray-500 hover:bg-gray-700">Kapat</button>
-            </div>
-        </div>
-
-        <!-- Game Over Screen -->
-        <div id="gameOverScreen" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-90 z-20">
-            <h2 class="text-5xl font-bold mb-4 text-red-500 drop-shadow-lg">OYUN SONU: KAYBETTİNİZ!</h2>
-            <p class="text-2xl text-white mb-8">Skorunuz: <span id="finalScoreLost">0</span></p>
-            <button id="restartBtnLost" class="btn-game text-xl px-12 py-4">YENİDEN BAŞLAT</button>
-        </div>
-
-        <!-- Game Won Screen -->
-        <div id="gameWonScreen" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-90 z-20">
-            <h2 class="text-5xl font-bold mb-4 text-green-500 drop-shadow-lg">TEBRİKLER! KAZANDINIZ!</h2>
-            <p class="text-2xl text-white mb-8">Skorunuz: <span id="finalScoreWon">0</span></p>
-            <button id="restartBtnWon" class="btn-game text-xl px-12 py-4">YENİDEN BAŞLAT</button>
-        </div>
+  <div id="menuOverlay" class="overlay">
+    <div class="panel">
+      <h1 id="menuBaslik" class="text-3xl font-bold mb-3">Saat kulesi savunması</h1>
+      <p id="menuAciklama" class="text-slate-300 mb-2"></p>
+      <p class="text-slate-400 text-sm">Kule seçmek için alttaki panele, yerleştirmek için haritaya dokun.
+         Kurulu kuleye dokunarak yükselt veya sat.</p>
+      <button id="baslaBtn" class="btn">Oyunu Başlat</button>
     </div>
+  </div>
 
-    <script>
-        // --- Game Constants and Global Variables ---
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+  <div id="sonOverlay" class="overlay gizli">
+    <div class="panel">
+      <h2 id="sonBaslik" class="text-3xl font-bold mb-2">Oyun Bitti</h2>
+      <p id="sonMetin" class="text-slate-300"></p>
+      <button id="yenidenBtn" class="btn">Yeniden Başlat</button>
+    </div>
+  </div>
 
-        const PALETTE = {
-            darkMetalStone: '#4A3E3E',
-            copper: '#7B523F',
-            brass: '#A17A4D',
-            agedIvory: '#D4C1A8',
-            deepShadow: '#2C2C2C',
-            crimsonRed: '#B04C4C',
-            highlightBlue: '#87CEEB', // For time slow effect
-        };
+  <div id="kuleMenu" class="overlay gizli">
+    <div class="panel">
+      <h3 id="kmBaslik" class="text-2xl font-bold mb-2">Kule</h3>
+      <p id="kmBilgi" class="text-slate-300 mb-2"></p>
+      <button id="kmYukselt" class="btn">Yükselt</button>
+      <button id="kmSat" class="btn ikincil">Sat</button>
+      <button id="kmKapat" class="btn ikincil">Kapat</button>
+    </div>
+  </div>
+</div>
 
-        const GRID_SIZE = 60; // Size of each grid cell for pathfinding and tower placement
-        let TOWER_SLOTS = []; // Dynamically calculated based on path
-        let PATH = []; // Dynamically calculated based on canvas size
+<script>
+/* ============================================================
+   TEMA EKLENTİSİ (Gemini tarafından üretilir)
+   ============================================================ */
+const TEMA = {
+  ad: "Zamanın Savunucuları",
+  aciklama: "Karanlık güçler saat kulesini ele geçirmeye çalışırken zamanı yavaşlatarak şehrini koru!",
+  palet: {
+    arka1: "#1A2E3D", // Derin gece gökyüzü
+    arka2: "#3B5D7B", // Daha açık, puslu ufuk
+    yol: "#5E4A3F", // Eski taş yol / metal ızgara
+    yolKenar: "#8C7B6A", // Yol kenarı
+    dusman: "#E6B033", // Parlak altın/bronz - saatli robotlar
+    dusman2: "#7BC043", // Canlı yeşil - farklı bir düşman tipi için
+    kule: "#A8B1BD", // Gümüş/çelik - sağlam metal
+    mermi: "#FF5F00", // Turuncu enerji patlaması
+    vurgu: "#FFD700" // Altın - saat kolları, parlayan kısımlar
+  },
+  yol: [ // Çapraz ve kıvrımlı S şeklinde yol, sol üstten girip sağ altta çıkan
+    {x: 0, y: 180},
+    {x: 200, y: 180},
+    {x: 400, y: 300},
+    {x: 400, y: 540},
+    {x: 700, y: 540},
+    {x: 900, y: 400},
+    {x: 900, y: 200},
+    {x: 1280, y: 200}
+  ],
+  dusmanTipleri: [
+    {ad: "Dişli Devriye", can: 60, hiz: 62, altin: 12, yaricap: 14, renk: "#E6B033"},
+    {ad: "Akrep Mekaniği", can: 42, hiz: 96, altin: 14, yaricap: 12, renk: "#7BC043"},
+    {ad: "Zırhlı Golem", can: 155, hiz: 44, altin: 23, yaricap: 18, renk: "#6C7B8E"} // Ağır düşman için farklı renk
+  ],
+  kuleTipleri: [
+    {ad: "Dişli Atıcı", fiyat: 50, menzil: 150, hasar: 18, atisHizi: 1.2, mermiHizi: 360, renk: "#A8B1BD"},
+    {ad: "Zaman Bükücü", fiyat: 90, menzil: 125, hasar: 44, atisHizi: 0.55, mermiHizi: 270, renk: "#C38D9E", alan: 48}, // Alan etkili yavaşlatma için
+    {ad: "Kıvılcım Jeneratörü", fiyat: 70, menzil: 135, hasar: 8, atisHizi: 0.9, mermiHizi: 330, renk: "#9FB8B8", yavaslat: 0.5} // Tek hedef yavaşlatma
+  ],
+  
+  arkaplanCiz(c, W, H, t) {
+    c.save();
 
-        const PLAYER_INITIAL_HEALTH = 10;
-        const PLAYER_INITIAL_GOLD = 150;
-        const TOTAL_WAVES = 8;
-        const PREP_TIME_SECONDS = 5;
+    // 1. Gökyüzü/zemin gradient
+    let grad = c.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, this.palet.arka1);
+    grad.addColorStop(0.6, this.palet.arka2);
+    grad.addColorStop(1, this.palet.yolKenar); // Zemin rengi
+    c.fillStyle = grad;
+    c.fillRect(0, 0, W, H);
 
-        let lastTime = 0;
-        let deltaTime = 0;
-        let animationFrameId;
+    // 2. En uzak silüet: Uzak saatli şehir/dağ silüeti
+    c.fillStyle = `rgba(26, 46, 61, 0.7)`; // Hafif koyu, daha az opak
+    c.beginPath();
+    c.moveTo(0, H * 0.7);
+    c.lineTo(W * 0.1, H * 0.6);
+    c.lineTo(W * 0.2, H * 0.65);
+    c.lineTo(W * 0.3, H * 0.55);
+    c.lineTo(W * 0.4, H * 0.62);
+    c.lineTo(W * 0.5, H * 0.5); // Bir zirve
+    c.lineTo(W * 0.6, H * 0.58);
+    c.lineTo(W * 0.7, H * 0.52);
+    c.lineTo(W * 0.8, H * 0.6);
+    c.lineTo(W, H * 0.55);
+    c.lineTo(W, H);
+    c.lineTo(0, H);
+    c.closePath();
+    c.fill();
+    
+    // 3. Orta mesafe dekoru (binalar, küçük kuleler, dişli yapılar) - en az 4 farklı obje
+    c.fillStyle = `rgba(30, 50, 70, 0.8)`; // Daha belirgin ve koyu
+    
+    // Küçük kule 1
+    c.fillRect(W * 0.15, H * 0.65, 40, 80);
+    c.beginPath(); c.moveTo(W * 0.15, H * 0.65); c.lineTo(W * 0.15 + 20, H * 0.6); c.lineTo(W * 0.15 + 40, H * 0.65); c.fill(); // Çatı
+    
+    // Saatli bina 1
+    c.fillRect(W * 0.35, H * 0.6, 70, 100);
+    c.fillStyle = this.palet.vurgu; // Saat yüzü
+    c.beginPath(); c.arc(W * 0.35 + 35, H * 0.6 + 25, 15, 0, Math.PI * 2); c.fill();
+    c.fillStyle = `rgba(30, 50, 70, 0.8)`; // Eski renge dön
+    
+    // Dişli yapı 1
+    c.beginPath();
+    c.arc(W * 0.55, H * 0.68, 30, 0, Math.PI * 2);
+    for(let i = 0; i < 8; i++) { // Dişliler
+        let angle = i * Math.PI / 4;
+        c.moveTo(W * 0.55 + Math.cos(angle) * 30, H * 0.68 + Math.sin(angle) * 30);
+        c.lineTo(W * 0.55 + Math.cos(angle) * 40, H * 0.68 + Math.sin(angle) * 40);
+    }
+    c.fill();
 
-        let game = {
-            asama: 'menu', // menu, oyunda, dalga_hazirlaniyor, dalga_basladi, kazandi, kaybetti
-            dalga: 1,
-            can: PLAYER_INITIAL_HEALTH,
-            altin: PLAYER_INITIAL_GOLD,
-            skor: 0,
-            zamanYavaslatmaKullanimSayisi: 0,
-            timeScale: 1, // 1 for normal, 0.5 for slowed
-            slowTimeRemaining: 0,
-            enemyHealthMultiplier: 1, // Increases with time slow usage
-            enemies: [],
-            towers: [],
-            projectiles: [],
-            particles: [],
-            floatingTexts: [],
-            selectedTower: null,
-            waveTimer: 0, // For prep time
-            enemiesSpawnedThisWave: 0,
-            currentWaveEnemies: [], // Enemies for the current wave
-            lastSpawnTime: 0,
-            isGameRunning: false, // For game loop control
-        };
+    // Küçük kule 2
+    c.fillRect(W * 0.75, H * 0.63, 30, 90);
+    c.beginPath(); c.moveTo(W * 0.75, H * 0.63); c.lineTo(W * 0.75 + 15, H * 0.58); c.lineTo(W * 0.75 + 30, H * 0.63); c.fill(); // Çatı
 
-        // Global debug/test interface
-        window.OYUN_DURUMU = {
-            asama: game.asama,
-            dalga: game.dalga,
-            can: game.can,
-            skor: game.skor,
-        };
 
-        // --- UI Elements ---
-        const menuScreen = document.getElementById('menuScreen');
-        const baslaBtn = document.getElementById('baslaBtn');
-        const gameUI = document.getElementById('gameUI');
-        const playerHealthSpan = document.getElementById('playerHealth');
-        const playerGoldSpan = document.getElementById('playerGold');
-        const playerScoreSpan = document.getElementById('playerScore');
-        const currentWaveSpan = document.getElementById('currentWave');
-        const totalWavesSpan = document.getElementById('totalWaves');
-        const timeSlowBtn = document.getElementById('timeSlowBtn');
-        const wavePrepText = document.getElementById('wavePrepText');
-        const towerSelectionPanel = document.getElementById('towerSelectionPanel');
-        const towerInfoPanel = document.getElementById('towerInfoPanel');
-        const infoTowerName = document.getElementById('infoTowerName');
-        const infoTowerLevel = document.getElementById('infoTowerLevel');
-        const infoTowerDamage = document.getElementById('infoTowerDamage');
-        const infoTowerRange = document.getElementById('infoTowerRange');
-        const infoTowerFireRate = document.getElementById('infoTowerFireRate');
-        const upgradeTowerBtn = document.getElementById('upgradeTowerBtn');
-        const sellTowerBtn = document.getElementById('sellTowerBtn');
-        const upgradeCostSpan = document.getElementById('upgradeCost');
-        const sellValueSpan = document.getElementById('sellValue');
-        const closeInfoBtn = document.getElementById('closeInfoBtn');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const finalScoreLost = document.getElementById('finalScoreLost');
-        const restartBtnLost = document.getElementById('restartBtnLost');
-        const gameWonScreen = document.getElementById('gameWonScreen');
-        const finalScoreWon = document.getElementById('finalScoreWon');
-        const restartBtnWon = document.getElementById('restartBtnWon');
+    // Ana yapı: Saat Kulesi (Yolun bitişine yakın)
+    const towerX = this.yol[this.yol.length - 1].x - 120; // Yolun sonuna yakın
+    const towerY = this.yol[this.yol.length - 1].y - 300;
+    
+    c.fillStyle = "#4F5D6B"; // Ana kule için koyu taban
+    c.strokeStyle = `rgba(0,0,0,0.8)`;
+    c.lineWidth = 2;
+    
+    // Ana gövde
+    c.beginPath();
+    c.moveTo(towerX, towerY + 300);
+    c.lineTo(towerX, towerY + 100);
+    c.lineTo(towerX + 100, towerY);
+    c.lineTo(towerX + 200, towerY + 100);
+    c.lineTo(towerX + 200, towerY + 300);
+    c.closePath();
+    c.fill();
+    c.stroke();
 
-        // --- Game Configuration Data ---
-        const TOWER_TYPES = {
-            'Dişli Atıcı': {
-                name: 'Dişli Atıcı',
-                price: 75,
-                levels: [
-                    { damage: 15, range: 120, fireRate: 600, cost: 75, sell: 37 }, // Base
-                    { damage: 25, range: 150, fireRate: 500, cost: 100, sell: 87 }, // Level 1 upgrade
-                    { damage: 40, range: 180, fireRate: 400, cost: 150, sell: 162 }, // Level 2 upgrade
-                ],
-                draw: (ctx, x, y, angle) => {
-                    // Base (stone/dark metal)
-                    ctx.fillStyle = PALETTE.darkMetalStone;
-                    ctx.beginPath();
-                    ctx.arc(x, y, 18, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = PALETTE.deepShadow;
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
+    // Üst kısım ve saat yüzü platformu
+    c.fillStyle = "#6F8293";
+    c.beginPath();
+    c.moveTo(towerX + 20, towerY + 100);
+    c.lineTo(towerX + 100, towerY + 20);
+    c.lineTo(towerX + 180, towerY + 100);
+    c.lineTo(towerX + 100, towerY + 180);
+    c.closePath();
+    c.fill();
+    c.stroke();
 
-                    // Turret body (copper)
-                    ctx.save();
-                    ctx.translate(x, y);
-                    ctx.rotate(angle);
-                    ctx.fillStyle = PALETTE.copper;
-                    ctx.fillRect(-5, -25, 10, 30); // Body
-                    ctx.beginPath(); // Muzzle
-                    ctx.arc(0, -25, 6, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = PALETTE.brass;
-                    ctx.lineWidth = 1.5;
-                    ctx.stroke();
+    c.fillStyle = this.palet.vurgu; // Saat yüzü
+    c.beginPath();
+    c.arc(towerX + 100, towerY + 100, 40, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    
+    // Saat akrep ve yelkovan (t ile animasyonlu)
+    c.strokeStyle = "#333333";
+    c.lineWidth = 4;
+    c.beginPath();
+    c.moveTo(towerX + 100, towerY + 100);
+    c.lineTo(towerX + 100 + Math.cos(t * 0.5 - Math.PI/2) * 25, towerY + 100 + Math.sin(t * 0.5 - Math.PI/2) * 25); // Akrep (saat ibresi)
+    c.stroke();
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(towerX + 100, towerY + 100);
+    c.lineTo(towerX + 100 + Math.cos(t * 2 - Math.PI/2) * 35, towerY + 100 + Math.sin(t * 2 - Math.PI/2) * 35); // Yelkovan (dakika ibresi)
+    c.stroke();
 
-                    // Gear detail (brass)
-                    ctx.fillStyle = PALETTE.brass;
-                    ctx.beginPath();
-                    ctx.arc(0, -10, 8, 0, Math.PI * 2);
-                    ctx.fill();
-                    for(let i = 0; i < 8; i++){
-                        const ang = (i / 8) * Math.PI * 2;
-                        const x1 = Math.cos(ang) * 8;
-                        const y1 = Math.sin(ang) * 8;
-                        const x2 = Math.cos(ang) * 12;
-                        const y2 = Math.sin(ang) * 12;
-                        ctx.fillRect(x1 - 2, y1 - 2, x2 - x1 + 4, y2 - y1 + 4); // Cogs
-                    }
-                    ctx.fill();
-                    ctx.restore();
-                },
-                projectileType: 'cog',
-            },
-            'Zaman Kırıcı': {
-                name: 'Zaman Kırıcı',
-                price: 150,
-                levels: [
-                    { damage: 10, range: 150, fireRate: 300, cost: 150, sell: 75 }, // Base (faster firing, less damage)
-                    { damage: 18, range: 180, fireRate: 250, cost: 150, sell: 150 },
-                    { damage: 28, range: 220, fireRate: 200, cost: 200, sell: 250 },
-                ],
-                draw: (ctx, x, y, angle) => {
-                    // Base (dark metal)
-                    ctx.fillStyle = PALETTE.darkMetalStone;
-                    ctx.beginPath();
-                    ctx.arc(x, y, 20, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = PALETTE.deepShadow;
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-
-                    // Core (glowing aged ivory)
-                    ctx.save();
-                    ctx.translate(x, y);
-                    ctx.rotate(angle);
-                    ctx.fillStyle = PALETTE.agedIvory;
-                    ctx.shadowColor = PALETTE.highlightBlue;
-                    ctx.shadowBlur = 10;
-                    ctx.beginPath();
-                    ctx.arc(0, -10, 8, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.shadowBlur = 0; // Reset shadow
-
-                    // Panels (copper)
-                    ctx.fillStyle = PALETTE.copper;
-                    ctx.fillRect(-15, -30, 30, 10); // Top panel
-                    ctx.fillRect(-15, -5, 5, 20); // Left arm
-                    ctx.fillRect(10, -5, 5, 20); // Right arm
-
-                    // Antenna (brass)
-                    ctx.strokeStyle = PALETTE.brass;
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(0, -30);
-                    ctx.lineTo(0, -40);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.arc(0, -40, 4, 0, Math.PI * 2);
-                    ctx.fillStyle = PALETTE.brass;
-                    ctx.fill();
-
-                    ctx.restore();
-                },
-                projectileType: 'energyPulse',
-            },
-            'Kronometre Topu': {
-                name: 'Kronometre Topu',
-                price: 300,
-                levels: [
-                    { damage: 70, range: 180, fireRate: 1500, cost: 300, sell: 150 }, // Base (slow, high damage)
-                    { damage: 100, range: 200, fireRate: 1300, cost: 250, sell: 275 },
-                    { damage: 150, range: 230, fireRate: 1100, cost: 350, sell: 450 },
-                ],
-                draw: (ctx, x, y, angle) => {
-                    // Base (dark metal stone)
-                    ctx.fillStyle = PALETTE.darkMetalStone;
-                    ctx.beginPath();
-                    ctx.rect(x - 25, y - 25, 50, 50);
-                    ctx.fill();
-                    ctx.strokeStyle = PALETTE.deepShadow;
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-
-                    // Cannon (copper with brass bands)
-                    ctx.save();
-                    ctx.translate(x, y);
-                    ctx.rotate(angle);
-                    ctx.fillStyle = PALETTE.copper;
-                    ctx.fillRect(-10, -40, 20, 50); // Main barrel
-                    ctx.strokeStyle = PALETTE.brass;
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(-10, -40, 20, 50);
-                    ctx.beginPath();
-                    ctx.arc(0, -40, 10, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // Brass bands
-                    ctx.strokeStyle = PALETTE.brass;
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(-10, -20); ctx.lineTo(10, -20);
-                    ctx.moveTo(-10, -30); ctx.lineTo(10, -30);
-                    ctx.stroke();
-                    ctx.restore();
-                },
-                projectileType: 'energyOrb',
-            }
-        };
-
-        const ENEMY_TYPES = {
-            'Cogwalker': {
-                name: 'Cogwalker',
-                baseHealth: 60,
-                speed: 0.8,
-                value: 10,
-                draw: (ctx, x, y, progress) => {
-                    ctx.save();
-                    ctx.translate(x, y);
-                    // Simple oscillating animation
-                    const offset = Math.sin(progress * 0.1) * 3;
-                    ctx.translate(0, offset);
-
-                    // Body (main cog)
-                    ctx.fillStyle = PALETTE.copper;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 15, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = PALETTE.brass;
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-
-                    // Cogs (brass)
-                    for(let i = 0; i < 8; i++){
-                        const ang = (i / 8) * Math.PI * 2;
-                        const x1 = Math.cos(ang) * 15;
-                        const y1 = Math.sin(ang) * 15;
-                        const x2 = Math.cos(ang) * 20;
-                        const y2 = Math.sin(ang) * 20;
-                        ctx.fillRect(x1 - 3, y1 - 3, x2 - x1 + 6, y2 - y1 + 6);
-                    }
-                    ctx.fill();
-
-                    // Legs (dark metal)
-                    ctx.fillStyle = PALETTE.darkMetalStone;
-                    ctx.fillRect(-10, 15, 5, 10);
-                    ctx.fillRect(5, 15, 5, 10);
-
-                    // Antenna (brass)
-                    ctx.strokeStyle = PALETTE.brass;
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(0, -15);
-                    ctx.lineTo(0, -25);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.arc(0, -25, 2, 0, Math.PI * 2);
-                    ctx.fillStyle = PALETTE.brass;
-                    ctx.fill();
-
-                    ctx.restore();
-                }
-            },
-            'Gear-Golem': {
-                name: 'Gear-Golem',
-                baseHealth: 200,
-                speed: 0.6,
-                value: 25,
-                draw: (ctx, x, y, progress) => {
-                    ctx.save();
-                    ctx.translate(x, y);
-                    const offset = Math.sin(progress * 0.05) * 5;
-                    ctx.translate(0, offset);
-
-                    // Main body (dark metal stone)
-                    ctx.fillStyle = PALETTE.darkMetalStone;
-                    ctx.beginPath();
-                    ctx.rect(-20, -20, 40, 40);
-                    ctx.fill();
-                    ctx.strokeStyle = PALETTE.deepShadow;
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-
-                    // Central gear (brass)
-                    ctx.fillStyle = PALETTE.brass;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 15, 0, Math.PI * 2);
-                    ctx.fill();
-                    for(let i = 0; i < 12; i++){
-                        const ang = (i / 12) * Math.PI * 2;
-                        const x1 = Math.cos(ang) * 15;
-                        const y1 = Math.sin(ang) * 15;
-                        const x2 = Math.cos(ang) * 20;
-                        const y2 = Math.sin(ang) * 20;
-                        ctx.fillRect(x1 - 2, y1 - 2, x2 - x1 + 4, y2 - y1 + 4);
-                    }
-                    ctx.fill();
-
-                    // Legs (copper)
-                    ctx.fillStyle = PALETTE.copper;
-                    ctx.fillRect(-18, 20, 10, 15);
-                    ctx.fillRect(8, 20, 10, 15);
-                    ctx.fillRect(-18, -35, 10, 15); // Arms
-                    ctx.fillRect(8, -35, 10, 15);
-
-                    ctx.restore();
-                }
-            },
-            'Chronos-Bot': { // BOSS
-                name: 'Chronos-Bot',
-                baseHealth: 1500, // BOSS health
-                speed: 0.5,
-                value: 100,
-                isBoss: true,
-                draw: (ctx, x, y, progress) => {
-                    ctx.save();
-                    ctx.translate(x, y);
-                    const offset = Math.sin(progress * 0.03) * 7;
-                    ctx.translate(0, offset);
-
-                    // Main body (dark metal stone)
-                    ctx.fillStyle = PALETTE.darkMetalStone;
-                    ctx.beginPath();
-                    ctx.rect(-30, -30, 60, 60);
-                    ctx.fill();
-                    ctx.strokeStyle = PALETTE.deepShadow;
-                    ctx.lineWidth = 4;
-                    ctx.stroke();
-
-                    // Central glowing core (crimson red)
-                    ctx.fillStyle = PALETTE.crimsonRed;
-                    ctx.shadowColor = PALETTE.crimsonRed;
-                    ctx.shadowBlur = 15;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 20, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-
-                    // Large outer gears (brass)
-                    ctx.fillStyle = PALETTE.brass;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 25, 0, Math.PI * 2);
-                    ctx.fill();
-                    for(let i = 0; i < 16; i++){
-                        const ang = (i / 16) * Math.PI * 2;
-                        const x1 = Math.cos(ang) * 25;
-                        const y1 = Math.sin(ang) * 25;
-                        const x2 = Math.cos(ang) * 35;
-                        const y2 = Math.sin(ang) * 35;
-                        ctx.fillRect(x1 - 3, y1 - 3, x2 - x1 + 6, y2 - y1 + 6);
-                    }
-                    ctx.fill();
-
-                    // Legs/Supports (copper)
-                    ctx.fillStyle = PALETTE.copper;
-                    ctx.fillRect(-25, 30, 10, 20);
-                    ctx.fillRect(15, 30, 10, 20);
-                    ctx.fillRect(-25, -50, 10, 20); // Arms
-                    ctx.fillRect(15, -50, 10, 20);
-
-                    ctx.restore();
-                }
-            }
-        };
-
-        const WAVES = [
-            { enemies: [{ type: 'Cogwalker', count: 8 }], spawnInterval: 1000 },
-            { enemies: [{ type: 'Cogwalker', count: 12 }], spawnInterval: 900 },
-            { enemies: [{ type: 'Cogwalker', count: 10 }, { type: 'Gear-Golem', count: 2 }], spawnInterval: 800 },
-            { enemies: [{ type: 'Cogwalker', count: 10 }, { type: 'Gear-Golem', count: 5 }, { type: 'Chronos-Bot', count: 1 }], spawnInterval: 700 }, // BOSS
-            { enemies: [{ type: 'Cogwalker', count: 15 }, { type: 'Gear-Golem', count: 7 }], spawnInterval: 600 },
-            { enemies: [{ type: 'Cogwalker', count: 20 }, { type: 'Gear-Golem', count: 10 }], spawnInterval: 500 },
-            { enemies: [{ type: 'Cogwalker', count: 15 }, { type: 'Gear-Golem', count: 12 }], spawnInterval: 400 },
-            { enemies: [{ type: 'Cogwalker', count: 20 }, { type: 'Gear-Golem', count: 15 }, { type: 'Chronos-Bot', count: 2 }], spawnInterval: 350 }, // Second BOSS wave
-        ];
-
-        // --- Utility Functions ---
-        function getCanvasMousePos(event) {
-            const rect = canvas.getBoundingClientRect();
-            let clientX, clientY;
-            if (event.touches && event.touches.length > 0) {
-                clientX = event.touches[0].clientX;
-                clientY = event.touches[0].clientY;
-            } else {
-                clientX = event.clientX;
-                clientY = event.clientY;
-            }
-            return {
-                x: (clientX - rect.left) * (canvas.width / rect.width),
-                y: (clientY - rect.top) * (canvas.height / rect.height)
-            };
+    // 4. Yakın zemin dokusu (Dişli desenleri)
+    c.fillStyle = `rgba(140, 123, 106, 0.2)`; // Açık, belirsiz bir kaplama
+    const gridSize = 80;
+    for (let i = 0; i < W / gridSize; i++) {
+      for (let j = 0; j < H / gridSize; j++) {
+        c.beginPath();
+        c.arc(i * gridSize + gridSize / 2 + (j % 2) * 20, j * gridSize + gridSize / 2, 8, 0, Math.PI * 2);
+        for(let k = 0; k < 6; k++) { // Dişlilerin minik dişleri
+            let angle = k * Math.PI / 3;
+            c.moveTo(i * gridSize + gridSize / 2 + (j % 2) * 20 + Math.cos(angle) * 8, j * gridSize + gridSize / 2 + Math.sin(angle) * 8);
+            c.lineTo(i * gridSize + gridSize / 2 + (j % 2) * 20 + Math.cos(angle) * 12, j * gridSize + gridSize / 2 + Math.sin(angle) * 12);
         }
+        c.fill();
+      }
+    }
+    
+    // 5. Hareketli/animasyonlu bir öğe (Uçuşan kıvılcımlar/toz)
+    c.fillStyle = `rgba(255, 255, 200, ${0.4 + Math.sin(t * 0.8) * 0.1})`; // Solan/atan
+    for (let i = 0; i < 20; i++) {
+        let x = (i * 73 + t * 50) % (W + 50); // Ekran dışına çıkıp girmesini sağlamak
+        let y = (i * 97 + t * 30) % (H + 50);
+        c.beginPath();
+        c.arc(x - 25, y - 25, 2 + Math.sin(t + i) * 1, 0, Math.PI * 2);
+        c.fill();
+    }
 
-        function calculateDistance(x1, y1, x2, y2) {
-            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+    c.restore();
+  },
+
+  yolCiz(c, yol, t) {
+    c.save();
+    c.lineWidth = 40; // Yol genişliği
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+
+    // Yol kenarı
+    c.strokeStyle = this.palet.yolKenar;
+    c.beginPath();
+    c.moveTo(yol[0].x, yol[0].y);
+    for (let i = 1; i < yol.length; i++) {
+      c.lineTo(yol[i].x, yol[i].y);
+    }
+    c.stroke();
+
+    // Yol iç dolgu
+    c.lineWidth = 32; // İç yol biraz dar
+    c.strokeStyle = this.palet.yol;
+    c.beginPath();
+    c.moveTo(yol[0].x, yol[0].y);
+    for (let i = 1; i < yol.length; i++) {
+      c.lineTo(yol[i].x, yol[i].y);
+    }
+    c.stroke();
+
+    // Yol üzerine tema deseni (küçük dişliler)
+    c.fillStyle = `rgba(255, 255, 255, 0.08)`; // Çok belirsiz beyaz kaplama
+    c.lineWidth = 1;
+    for (let i = 0; i < yol.length - 1; i++) {
+      const p1 = yol[i];
+      const p2 = yol[i + 1];
+      const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+      const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+
+      for (let d = 20; d < dist; d += 40) {
+        const x = p1.x + Math.cos(angle) * d;
+        const y = p1.y + Math.sin(angle) * d;
+
+        c.save();
+        c.translate(x, y);
+        c.rotate(angle + t * 0.1); // Dişlileri hafifçe döndür
+        c.beginPath();
+        c.arc(0, 0, 8, 0, Math.PI * 2);
+        for(let k = 0; k < 6; k++) { // Dişli dişleri
+            let toothAngle = k * Math.PI / 3;
+            c.moveTo(Math.cos(toothAngle) * 8, Math.sin(toothAngle) * 8);
+            c.lineTo(Math.cos(toothAngle) * 12, Math.sin(toothAngle) * 12);
         }
+        c.fill();
+        c.restore();
+      }
+    }
+    
+    c.restore();
+  },
 
-        function getAngle(x1, y1, x2, y2) {
-            return Math.atan2(y2 - y1, x2 - x1);
+  dusmanCiz(c, d, t) {
+    c.save();
+    c.translate(d.x, d.y);
+    c.shadowColor = `rgba(0,0,0,0.5)`;
+    c.shadowBlur = 5;
+
+    // Yürüme animasyonu için salınım
+    const walkPhase = Math.sin(t * d.hiz * 0.05 + d.faz * 2) * (d.yaricap * 0.1);
+
+    // Gövde
+    c.fillStyle = d.renk;
+    c.beginPath();
+    c.arc(0, 0, d.yaricap, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = `rgba(0,0,0,0.6)`;
+    c.lineWidth = 1.5;
+    c.stroke();
+
+    // Baş
+    c.fillStyle = d.renk;
+    c.beginPath();
+    c.arc(d.yaricap * 0.8, -d.yaricap * 0.3 + walkPhase, d.yaricap * 0.5, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Detay (Gözler)
+    c.fillStyle = this.palet.vurgu;
+    c.beginPath();
+    c.arc(d.yaricap * 1.0, -d.yaricap * 0.4 + walkPhase, d.yaricap * 0.15, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Ayaklar (Dişli ayaklar)
+    c.fillStyle = d.renk;
+    c.strokeStyle = `rgba(0,0,0,0.6)`;
+    c.lineWidth = 1;
+
+    // Sol ayak
+    c.beginPath();
+    c.ellipse(-d.yaricap * 0.4, d.yaricap * 0.8 + walkPhase, d.yaricap * 0.4, d.yaricap * 0.2, Math.PI / 4, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Sağ ayak
+    c.beginPath();
+    c.ellipse(d.yaricap * 0.4, d.yaricap * 0.8 - walkPhase, d.yaricap * 0.4, d.yaricap * 0.2, -Math.PI / 4, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Üstteki küçük dişliler (animasyonlu)
+    c.fillStyle = this.palet.vurgu;
+    c.beginPath();
+    c.arc(0, -d.yaricap * 0.6, d.yaricap * 0.3, 0, Math.PI * 2);
+    c.fill();
+    c.save();
+    c.rotate(t * 0.5); // Detayı döndür
+    for(let i=0; i<4; i++) {
+      let angle = i * Math.PI / 2;
+      c.beginPath();
+      c.moveTo(Math.cos(angle) * d.yaricap * 0.3, Math.sin(angle) * d.yaricap * 0.3);
+      c.lineTo(Math.cos(angle) * d.yaricap * 0.4, Math.sin(angle) * d.yaricap * 0.4);
+      c.lineWidth = 1.5;
+      c.stroke();
+    }
+    c.restore();
+
+    c.restore();
+  },
+
+  kuleCiz(c, k, t) {
+    c.save();
+    c.translate(k.x, k.y);
+    c.shadowColor = `rgba(0,0,0,0.7)`;
+    c.shadowBlur = 8;
+    c.strokeStyle = `rgba(0,0,0,0.7)`;
+    c.lineWidth = 2;
+
+    const baseColor = k.tip.renk;
+    const detailColor = this.palet.vurgu;
+    const levelScale = 1 + k.seviye * 0.1; // Seviyeye göre kuleleri biraz büyüt/detaylandır
+
+    if (k.tip.ad === "Dişli Atıcı") {
+      // (b) geniş/alçak/kutu gövdeli (top gibi)
+      
+      // Taban (geniş, alçak)
+      c.fillStyle = baseColor;
+      c.fillRect(-20 * levelScale, -10 * levelScale, 40 * levelScale, 20 * levelScale);
+      c.strokeRect(-20 * levelScale, -10 * levelScale, 40 * levelScale, 20 * levelScale);
+
+      // Gövde (kutu benzeri)
+      c.fillStyle = `hsl(${parseInt(baseColor.substring(1,7), 16) % 360}, 40%, 40%)`; // Biraz daha koyu ton
+      c.fillRect(-15 * levelScale, -30 * levelScale, 30 * levelScale, 20 * levelScale);
+      c.strokeRect(-15 * levelScale, -30 * levelScale, 30 * levelScale, 20 * levelScale);
+
+      // Namlu (dönen dişli topu)
+      c.save();
+      c.rotate(k.aci);
+      c.fillStyle = this.palet.vurgu;
+      c.beginPath();
+      c.arc(20 * levelScale, 0, 10 * levelScale, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      
+      c.lineWidth = 1;
+      for(let i=0; i<6; i++) { // Namlu üzerindeki dişlilerin dişleri
+        let angle = i * Math.PI / 3;
+        c.moveTo(20 * levelScale + Math.cos(angle) * 10 * levelScale, Math.sin(angle) * 10 * levelScale);
+        c.lineTo(20 * levelScale + Math.cos(angle) * 14 * levelScale, Math.sin(angle) * 14 * levelScale);
+        c.stroke();
+      }
+
+      // Namlu flaşı
+      if (k.flas > 0) {
+        c.fillStyle = `rgba(255, 100, 0, ${k.flas})`;
+        c.beginPath();
+        c.arc(35 * levelScale, 0, 10 * levelScale, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.restore();
+
+      // Detay: Yandaki küçük dişliler (seviyeye göre artan)
+      c.fillStyle = detailColor;
+      if (k.seviye >= 2) {
+        c.beginPath(); c.arc(-18 * levelScale, -25 * levelScale, 4 * levelScale, 0, Math.PI * 2); c.fill(); c.stroke();
+      }
+      if (k.seviye >= 3) {
+        c.beginPath(); c.arc(18 * levelScale, -25 * levelScale, 4 * levelScale, 0, Math.PI * 2); c.fill(); c.stroke();
+      }
+
+    } else if (k.tip.ad === "Zaman Bükücü") {
+      // (a) uzun/ince/sivri kule (kristal gibi)
+      
+      // Taban (ince, yuvarlak)
+      c.fillStyle = baseColor;
+      c.beginPath();
+      c.arc(0, 0, 15 * levelScale, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+
+      // Gövde (kristal/sivri)
+      c.fillStyle = baseColor;
+      c.beginPath();
+      c.moveTo(-10 * levelScale, -5 * levelScale);
+      c.lineTo(10 * levelScale, -5 * levelScale);
+      c.lineTo(15 * levelScale, -40 * levelScale);
+      c.lineTo(0, -55 * levelScale);
+      c.lineTo(-15 * levelScale, -40 * levelScale);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      
+      // Namlu (kristal ucu)
+      c.save();
+      c.rotate(k.aci);
+      c.fillStyle = this.palet.mermi; // Zaman bükme için enerjik renk
+      c.beginPath();
+      c.moveTo(0, -55 * levelScale); // Zaten önceki şekilden döndürülmüş
+      c.lineTo(5 * levelScale, -65 * levelScale);
+      c.lineTo(-5 * levelScale, -65 * levelScale);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      
+      // Namlu flaşı (parlayan aura)
+      if (k.flas > 0) {
+        c.fillStyle = `rgba(180, 220, 255, ${k.flas * 0.8})`; // Maviye yakın parlama
+        c.beginPath();
+        c.arc(0, -60 * levelScale, 15 * levelScale * k.flas, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.restore();
+
+      // Detay: Yükselen enerji halkaları (seviyeye göre)
+      c.strokeStyle = detailColor;
+      c.lineWidth = 1.5;
+      if (k.seviye >= 2) {
+        c.beginPath(); c.arc(0, -20 * levelScale, 8 * levelScale, 0, Math.PI * 2); c.stroke();
+      }
+      if (k.seviye >= 3) {
+        c.beginPath(); c.arc(0, -35 * levelScale, 12 * levelScale, 0, Math.PI * 2); c.stroke();
+      }
+
+    } else if (k.tip.ad === "Kıvılcım Jeneratörü") {
+      // (c) köşeli/dikenli/asimetrik form (sarmal veya asimetrik)
+      
+      // Taban (üçgen formda)
+      c.fillStyle = baseColor;
+      c.beginPath();
+      c.moveTo(0, 10 * levelScale);
+      c.lineTo(-18 * levelScale, 0);
+      c.lineTo(-10 * levelScale, -15 * levelScale);
+      c.lineTo(10 * levelScale, -15 * levelScale);
+      c.lineTo(18 * levelScale, 0);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      // Gövde (dikenli, sarmal)
+      c.fillStyle = baseColor;
+      c.beginPath();
+      c.moveTo(0, -15 * levelScale);
+      c.lineTo(10 * levelScale, -30 * levelScale);
+      c.lineTo(0, -45 * levelScale);
+      c.lineTo(-10 * levelScale, -30 * levelScale);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      // Dikenler/detaylar
+      c.fillStyle = detailColor;
+      c.beginPath();
+      c.moveTo(-15 * levelScale, -20 * levelScale); c.lineTo(-25 * levelScale, -30 * levelScale); c.lineTo(-15 * levelScale, -30 * levelScale); c.closePath(); c.fill(); c.stroke();
+      c.beginPath();
+      c.moveTo(15 * levelScale, -20 * levelScale); c.lineTo(25 * levelScale, -30 * levelScale); c.lineTo(15 * levelScale, -30 * levelScale); c.closePath(); c.fill(); c.stroke();
+      
+      // Namlu (dönen manyetik alan yayıcı)
+      c.save();
+      c.rotate(k.aci);
+      c.fillStyle = this.palet.mermi;
+      c.beginPath();
+      c.arc(15 * levelScale, -40 * levelScale, 6 * levelScale, 0, Math.PI * 2); // Küçük küre yayıcı
+      c.fill();
+      c.stroke();
+      
+      // Namlu flaşı (kıvılcım efekti)
+      if (k.flas > 0) {
+        c.fillStyle = `rgba(255, 255, 0, ${k.flas})`;
+        for(let i=0; i<5; i++) {
+          let sparkAngle = Math.random() * Math.PI * 2;
+          let sparkRadius = 5 * levelScale + Math.random() * 10 * levelScale * k.flas;
+          c.beginPath();
+          c.arc(15 * levelScale + Math.cos(sparkAngle) * sparkRadius, -40 * levelScale + Math.sin(sparkAngle) * sparkRadius, 2, 0, Math.PI * 2);
+          c.fill();
         }
+      }
+      c.restore();
 
-        function getRandomColor(palette) {
-            const colors = Object.values(palette);
-            return colors[Math.floor(Math.random() * colors.length)];
+      // Detay: Seviyeye göre ek dikenler
+      if (k.seviye >= 2) {
+        c.beginPath(); c.moveTo(0, -45 * levelScale); c.lineTo(5 * levelScale, -55 * levelScale); c.lineTo(-5 * levelScale, -55 * levelScale); c.closePath(); c.fill(); c.stroke();
+      }
+      if (k.seviye >= 3) {
+        c.beginPath(); c.moveTo(-10 * levelScale, -15 * levelScale); c.lineTo(-18 * levelScale, -25 * levelScale); c.lineTo(-10 * levelScale, -25 * levelScale); c.closePath(); c.fill(); c.stroke();
+        c.beginPath(); c.moveTo(10 * levelScale, -15 * levelScale); c.lineTo(18 * levelScale, -25 * levelScale); c.lineTo(10 * levelScale, -25 * levelScale); c.closePath(); c.fill(); c.stroke();
+      }
+    }
+
+    c.restore();
+  }
+};
+
+/* ============================================================
+   SAVUNMA MOTORU v1 - test edilmiş, değiştirilmez
+   ============================================================ */
+(function(){
+  "use strict";
+
+  const canvas = document.getElementById("oyunCanvas");
+  const ctx = canvas.getContext("2d");
+  const T = (typeof TEMA !== "undefined") ? TEMA : {};
+  const P = Object.assign({
+    arka1:"#0f172a", arka2:"#1e293b", yol:"#475569", yolKenar:"#334155",
+    dusman:"#ef4444", dusman2:"#f97316", kule:"#38bdf8", mermi:"#fde047",
+    vurgu:"#f472b6", metin:"#e5e7eb"
+  }, T.palet || {});
+
+  // ---------- Sabitler ----------
+  const TOPLAM_DALGA = 10;
+  const BASLANGIC_CAN = 20;
+  const BASLANGIC_ALTIN = (T.baslangicAltin != null) ? T.baslangicAltin : 120;
+  const DALGA_ARASI = 5;              // saniye
+  const REF_W = 1280, REF_H = 720;    // referans çizim alanı
+
+  // ---------- Durum ----------
+  let asama = "menu";                 // menu | oyunda | kazandi | kaybetti
+  let can, altin, dalga, skor, combo, comboZaman;
+  let ekranSarsinti = 0, donmaSuresi = 0;   // JUICE: sarsıntı + vuruş anı donması
+  const ambiyansParcaciklari = Array.from({length:36}, () => ({
+    x: Math.random()*1280, y: Math.random()*720,
+    hiz: 6 + Math.random()*14, boyut: 1 + Math.random()*1.8, faz: Math.random()*6.28
+  }));
+  let dusmanlar, kuleler, mermiler, parcaciklar, yaziEfektleri;
+  let dalgaKuyrugu, dalgaAraSayac, dalgaAktif, spawnSayac, spawnKuyrugu;
+  let seciliKuleTipi = 0, seciliKule = null, zaman = 0;
+  let olcek = 1, kaydirX = 0, kaydirY = 0;
+
+  // ---------- Yol ----------
+  const yol = (T.yol && T.yol.length > 1) ? T.yol.slice() : [
+    {x:0,y:360},{x:260,y:360},{x:260,y:170},{x:640,y:170},
+    {x:640,y:540},{x:1000,y:540},{x:1000,y:300},{x:1280,y:300}
+  ];
+  const yolUzunluklari = [];
+  let yolToplam = 0;
+  for (let i=0;i<yol.length-1;i++){
+    const d = Math.hypot(yol[i+1].x-yol[i].x, yol[i+1].y-yol[i].y);
+    yolUzunluklari.push(d); yolToplam += d;
+  }
+  function yolNoktasi(mesafe){
+    let kalan = Math.max(0, mesafe);
+    for (let i=0;i<yolUzunluklari.length;i++){
+      if (kalan <= yolUzunluklari[i]){
+        const o = kalan / (yolUzunluklari[i] || 1);
+        return {x: yol[i].x + (yol[i+1].x-yol[i].x)*o,
+                y: yol[i].y + (yol[i+1].y-yol[i].y)*o,
+                aci: Math.atan2(yol[i+1].y-yol[i].y, yol[i+1].x-yol[i].x)};
+      }
+      kalan -= yolUzunluklari[i];
+    }
+    const s = yol[yol.length-1];
+    return {x:s.x, y:s.y, aci:0};
+  }
+
+  // ---------- Tip tanımları ----------
+  const varsayilanDusmanlar = [
+    {ad:"Asker", can:60, hiz:60, altin:12, yaricap:14, renk:P.dusman},
+    {ad:"Koşucu", can:40, hiz:95, altin:14, yaricap:12, renk:P.dusman2},
+    {ad:"Zırhlı", can:150, hiz:42, altin:22, yaricap:18, renk:P.vurgu}
+  ];
+  const varsayilanKuleler = [
+    {ad:"Nişancı", fiyat:50, menzil:150, hasar:18, atisHizi:1.1, mermiHizi:340, renk:P.kule},
+    {ad:"Top", fiyat:90, menzil:120, hasar:42, atisHizi:0.55, mermiHizi:260, renk:P.mermi, alan:46},
+    {ad:"Yavaşlatıcı", fiyat:70, menzil:135, hasar:8, atisHizi:0.9, mermiHizi:320, renk:P.vurgu, yavaslat:0.55}
+  ];
+  const DUSMAN_TIPLERI = (T.dusmanTipleri && T.dusmanTipleri.length) ? T.dusmanTipleri : varsayilanDusmanlar;
+  const KULE_TIPLERI  = (T.kuleTipleri && T.kuleTipleri.length)  ? T.kuleTipleri  : varsayilanKuleler;
+
+  // ---------- Yardımcı ----------
+  function rastgele(a,b){ return a + Math.random()*(b-a); }
+  function mesafe(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+  function boyutlandir(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    const o = Math.min(canvas.width/REF_W, canvas.height/REF_H);
+    olcek = o;
+    kaydirX = (canvas.width - REF_W*o)/2;
+    kaydirY = (canvas.height - REF_H*o)/2;
+  }
+  window.addEventListener("resize", boyutlandir);
+
+  function olayNoktasi(e){
+    const r = canvas.getBoundingClientRect();
+    const kx = (e.touches && e.touches[0]) ? e.touches[0].clientX :
+               (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : e.clientX;
+    const ky = (e.touches && e.touches[0]) ? e.touches[0].clientY :
+               (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientY : e.clientY;
+    const px = (kx - r.left) * (canvas.width / r.width);
+    const py = (ky - r.top) * (canvas.height / r.height);
+    return {x: (px - kaydirX)/olcek, y: (py - kaydirY)/olcek};
+  }
+
+  function yolaYakinMi(p, esik){
+    for (let i=0;i<yol.length-1;i++){
+      const a=yol[i], b=yol[i+1];
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const uzun = dx*dx+dy*dy || 1;
+      let t = ((p.x-a.x)*dx + (p.y-a.y)*dy)/uzun;
+      t = Math.max(0, Math.min(1, t));
+      const px=a.x+dx*t, py=a.y+dy*t;
+      if (Math.hypot(p.x-px, p.y-py) < esik) return true;
+    }
+    return false;
+  }
+
+  // ---------- Dalga üretimi ----------
+  function dalgaOlustur(n){
+    const bos = (n % 5 === 0);           // 5. ve 10. dalga boss
+    const adet = bos ? 1 + Math.floor(n/3) : 5 + n*2;
+    const gucCarpani = Math.pow(1.28, n-1);
+    const liste = [];
+    for (let i=0;i<adet;i++){
+      const tip = DUSMAN_TIPLERI[Math.min(DUSMAN_TIPLERI.length-1,
+                    Math.floor(Math.random()*Math.min(DUSMAN_TIPLERI.length, 1+Math.floor(n/3))))];
+      liste.push({tip:tip, bos: bos && i===0, guc:gucCarpani});
+    }
+    return liste;
+  }
+
+  function dusmanEkle(kayit){
+    const t = kayit.tip;
+    const bosCarpan = kayit.bos ? 6 : 1;
+    dusmanlar.push({
+      tip:t, mesafe:-rastgele(0,40),
+      maxCan: t.can*kayit.guc*bosCarpan, can: t.can*kayit.guc*bosCarpan,
+      hiz: t.hiz*(kayit.bos?0.72:1), altin: Math.round(t.altin*(kayit.bos?8:1)),
+      yaricap: (t.yaricap||14)*(kayit.bos?1.9:1), renk: t.renk||P.dusman,
+      bos: !!kayit.bos, yavaslama:1, yavaslamaSayac:0, faz: Math.random()*6.28,
+      vurulmaZaman:0, x:0, y:0, aci:0
+    });
+  }
+
+  // ---------- Oyun kontrolü ----------
+  function sifirla(){
+    can=BASLANGIC_CAN; altin=BASLANGIC_ALTIN; dalga=0; skor=0; combo=1; comboZaman=0;
+    dusmanlar=[]; kuleler=[]; mermiler=[]; parcaciklar=[]; yaziEfektleri=[];
+    dalgaKuyrugu=[]; spawnKuyrugu=[]; dalgaAraSayac=3; dalgaAktif=false; spawnSayac=0;
+    seciliKule=null; seciliKuleTipi=0; ekranSarsinti=0; donmaSuresi=0;
+    kulePaneliCiz();
+    hudGuncelle();
+  }
+
+  function basla(){
+    sifirla();
+    asama="oyunda";
+    document.getElementById("menuOverlay").classList.add("gizli");
+    document.getElementById("sonOverlay").classList.add("gizli");
+    document.getElementById("kuleMenu").classList.add("gizli");
+  }
+
+  function bitir(kazandiMi){
+    asama = kazandiMi ? "kazandi" : "kaybetti";
+    document.getElementById("sonBaslik").textContent = kazandiMi ? "Kazandın!" : "Kaybettin";
+    document.getElementById("sonMetin").textContent =
+      (kazandiMi ? "Tüm dalgaları püskürttün. " : "Savunma çöktü. ") + "Skor: " + skor;
+    document.getElementById("sonOverlay").classList.remove("gizli");
+    document.getElementById("kuleMenu").classList.add("gizli");
+  }
+
+  function uyariGoster(metin){
+    const u = document.getElementById("uyari");
+    u.textContent = metin;
+    u.classList.add("gorunur");
+    setTimeout(()=>u.classList.remove("gorunur"), 1400);
+  }
+
+  // ---------- HUD ----------
+  function hudGuncelle(){
+    document.getElementById("hudCan").textContent = Math.max(0, can);
+    document.getElementById("hudAltin").textContent = altin;
+    document.getElementById("hudDalga").textContent = dalga;
+    document.getElementById("hudToplamDalga").textContent = TOPLAM_DALGA;
+    document.getElementById("hudSkor").textContent = skor;
+    // JUICE: can azaldıkça kırmızı vinyet belirginleşir (renk dili / durum uyarısı)
+    const oran = can / BASLANGIC_CAN;
+    document.getElementById("vinyet").style.opacity =
+      oran < 0.35 ? String((1 - oran/0.35) * 0.85) : "0";
+    const c = document.getElementById("hudCombo");
+    if (combo > 1){ c.style.display="block";
+      document.getElementById("hudComboSayi").textContent = combo; }
+    else c.style.display="none";
+    Array.from(document.querySelectorAll(".kule-btn")).forEach((b,i)=>{
+      b.disabled = altin < KULE_TIPLERI[i].fiyat;
+      b.classList.toggle("secili", i===seciliKuleTipi);
+    });
+  }
+
+  function kulePaneliCiz(){
+    const panel = document.getElementById("kulePanel");
+    panel.innerHTML = "";
+    KULE_TIPLERI.forEach((k,i)=>{
+      const b = document.createElement("button");
+      b.className = "kule-btn" + (i===0 ? " secili" : "");
+      b.innerHTML = k.ad + "<br><span style='opacity:.7'>" + k.fiyat + " altın</span>";
+      b.addEventListener("click", (e)=>{ e.stopPropagation(); seciliKuleTipi=i; hudGuncelle(); });
+      panel.appendChild(b);
+    });
+  }
+
+  // ---------- Etkileşim ----------
+  function haritayaDokun(e){
+    if (asama !== "oyunda") return;
+    e.preventDefault();
+    const p = olayNoktasi(e);
+
+    // Kurulu kuleye dokunulduysa menü aç
+    for (const k of kuleler){
+      if (mesafe(p,k) < 26){ seciliKule = k; kuleMenusuAc(); return; }
+    }
+    // Yeni kule kur
+    const tip = KULE_TIPLERI[seciliKuleTipi];
+    if (altin < tip.fiyat){ uyariGoster("Yetersiz altın!"); return; }
+    if (yolaYakinMi(p, 34)){ uyariGoster("Yola kule kurulamaz!"); return; }
+    for (const k of kuleler){ if (mesafe(p,k) < 40){ uyariGoster("Çok yakın!"); return; } }
+    if (p.x<10||p.y<10||p.x>REF_W-10||p.y>REF_H-10) return;
+
+    kuleler.push({x:p.x, y:p.y, tip:tip, seviye:1, sayac:0, aci:-Math.PI/2,
+                  menzil:tip.menzil, hasar:tip.hasar, yatirim:tip.fiyat, flas:0});
+    altin -= tip.fiyat;
+    hudGuncelle();
+  }
+  canvas.addEventListener("click", haritayaDokun);
+  canvas.addEventListener("touchstart", haritayaDokun, {passive:false});
+
+  function kuleMenusuAc(){
+    if (!seciliKule) return;
+    const k = seciliKule;
+    document.getElementById("kmBaslik").textContent = k.tip.ad + " (Sv." + k.seviye + ")";
+    document.getElementById("kmBilgi").textContent =
+      "Hasar: " + Math.round(k.hasar) + " | Menzil: " + Math.round(k.menzil) +
+      " | Yükseltme: " + yukseltmeFiyati(k) + " altın | Satış: " + Math.floor(k.yatirim*0.6) + " altın";
+    document.getElementById("kmYukselt").disabled = (k.seviye>=3 || altin<yukseltmeFiyati(k));
+    document.getElementById("kuleMenu").classList.remove("gizli");
+  }
+  function yukseltmeFiyati(k){ return Math.round(k.tip.fiyat * 0.8 * k.seviye); }
+
+  document.getElementById("kmYukselt").addEventListener("click", ()=>{
+    const k = seciliKule; if (!k) return;
+    const f = yukseltmeFiyati(k);
+    if (k.seviye<3 && altin>=f){
+      altin-=f; k.yatirim+=f; k.seviye++;
+      k.hasar*=1.6; k.menzil*=1.15;
+    }
+    document.getElementById("kuleMenu").classList.add("gizli");
+    seciliKule=null; hudGuncelle();
+  });
+  document.getElementById("kmSat").addEventListener("click", ()=>{
+    if (seciliKule){
+      altin += Math.floor(seciliKule.yatirim*0.6);
+      kuleler = kuleler.filter(x=>x!==seciliKule);
+    }
+    document.getElementById("kuleMenu").classList.add("gizli");
+    seciliKule=null; hudGuncelle();
+  });
+  document.getElementById("kmKapat").addEventListener("click", ()=>{
+    document.getElementById("kuleMenu").classList.add("gizli"); seciliKule=null;
+  });
+  document.getElementById("baslaBtn").addEventListener("click", basla);
+  document.getElementById("yenidenBtn").addEventListener("click", basla);
+
+  // ---------- Efektler ----------
+  function patlamaEkle(x,y,renk,adet){
+    for (let i=0;i<(adet||10);i++){
+      const a = Math.random()*Math.PI*2, h = rastgele(60,190);
+      parcaciklar.push({x:x,y:y,vx:Math.cos(a)*h,vy:Math.sin(a)*h,
+                        omur:rastgele(0.3,0.75), yas:0, renk:renk, boyut:rastgele(2,4.5)});
+    }
+  }
+  function yaziEkle(x,y,metin,renk){
+    yaziEfektleri.push({x:x,y:y,metin:metin,renk:renk||P.metin,omur:0.9,yas:0});
+  }
+
+  // ---------- Güncelleme ----------
+  function guncelle(dt){
+    zaman += dt;
+    if (ekranSarsinti>0) ekranSarsinti = Math.max(0, ekranSarsinti - dt*2.2);  // JUICE: sönümlen
+    if (asama !== "oyunda") return;
+
+    // Combo zaman aşımı
+    if (combo>1){ comboZaman-=dt; if (comboZaman<=0){ combo=1; hudGuncelle(); } }
+
+    // Dalga yönetimi
+    if (!dalgaAktif && spawnKuyrugu.length===0 && dusmanlar.length===0){
+      dalgaAraSayac -= dt;
+      if (dalgaAraSayac<=0){
+        if (dalga >= TOPLAM_DALGA){ bitir(true); return; }
+        dalga++;
+        spawnKuyrugu = dalgaOlustur(dalga);
+        dalgaAktif = true; spawnSayac = 0;
+        uyariGoster("Dalga " + dalga + " geliyor!");
+        hudGuncelle();
+      }
+    }
+    if (dalgaAktif){
+      spawnSayac -= dt;
+      if (spawnSayac<=0 && spawnKuyrugu.length){
+        dusmanEkle(spawnKuyrugu.shift());
+        spawnSayac = 0.75;
+      }
+      if (spawnKuyrugu.length===0) dalgaAktif=false;
+    }
+    if (!dalgaAktif && spawnKuyrugu.length===0 && dusmanlar.length===0 && dalgaAraSayac<=0){
+      dalgaAraSayac = DALGA_ARASI;
+    }
+
+    // Düşmanlar
+    for (let i=dusmanlar.length-1;i>=0;i--){
+      const d = dusmanlar[i];
+      if (d.vurulmaZaman>0) d.vurulmaZaman = Math.max(0, d.vurulmaZaman - dt);
+      if (d.yavaslamaSayac>0){ d.yavaslamaSayac-=dt; if (d.yavaslamaSayac<=0) d.yavaslama=1; }
+      d.mesafe += d.hiz * d.yavaslama * dt;
+      const n = yolNoktasi(d.mesafe);
+      d.x=n.x; d.y=n.y; d.aci=n.aci;
+      if (T.dusmanGuncelle) { try { T.dusmanGuncelle(d, dt, zaman); } catch(e){} }
+      if (d.mesafe >= yolToplam){
+        dusmanlar.splice(i,1);
+        can -= d.bos ? 5 : 1;
+        combo=1;
+        ekranSarsinti = Math.min(1, ekranSarsinti + (d.bos ? 0.55 : 0.3));  // JUICE
+        patlamaEkle(d.x,d.y,"#ef4444",8);
+        hudGuncelle();
+        if (can<=0){ can=0; hudGuncelle(); bitir(false); return; }
+      }
+    }
+
+    // Kuleler
+    for (const k of kuleler){
+      k.sayac -= dt;
+      if (k.flas>0) k.flas-=dt;
+      let hedef=null, enYakin=1e9;
+      for (const d of dusmanlar){
+        const m = mesafe(k,d);
+        if (m<=k.menzil && d.mesafe>enYakin*0-1 && m<enYakin){ enYakin=m; hedef=d; }
+      }
+      if (hedef){
+        k.aci = Math.atan2(hedef.y-k.y, hedef.x-k.x);
+        if (k.sayac<=0){
+          k.sayac = 1/(k.tip.atisHizi||1);
+          k.flas = 0.08;
+          mermiler.push({x:k.x,y:k.y,hedef:hedef,hiz:k.tip.mermiHizi||320,
+                         hasar:k.hasar, renk:k.tip.renk||P.mermi,
+                         alan:k.tip.alan||0, yavaslat:k.tip.yavaslat||0, iz:[]});
         }
+      }
+    }
 
-        function updateUI() {
-            playerHealthSpan.textContent = game.can;
-            playerGoldSpan.textContent = game.altin;
-            playerScoreSpan.textContent = game.skor;
-            currentWaveSpan.textContent = game.dalga;
-            totalWavesSpan.textContent = TOTAL_WAVES;
-            timeSlowBtn.textContent = `⏳ Zamanı Yavaşlat (${game.zamanYavaslatmaKullanimSayisi})`;
+    // Mermiler
+    for (let i=mermiler.length-1;i>=0;i--){
+      const m = mermiler[i];
+      if (!m.hedef || m.hedef.can<=0 || dusmanlar.indexOf(m.hedef)===-1){ mermiler.splice(i,1); continue; }
+      const dx=m.hedef.x-m.x, dy=m.hedef.y-m.y, uz=Math.hypot(dx,dy)||1;
+      m.iz.push({x:m.x,y:m.y}); if (m.iz.length>6) m.iz.shift();
+      m.x += dx/uz*m.hiz*dt; m.y += dy/uz*m.hiz*dt;
+      if (uz < 14){
+        vurus(m, m.hedef);
+        mermiler.splice(i,1);
+      }
+    }
 
-            Object.values(TOWER_TYPES).forEach(towerConfig => {
-                const button = document.getElementById(`buy-${towerConfig.name.replace(/\s/g, '')}`);
-                if (button) {
-                    button.disabled = game.altin < towerConfig.price;
-                }
-            });
+    // Parçacıklar / yazılar
+    for (let i=parcaciklar.length-1;i>=0;i--){
+      const p=parcaciklar[i]; p.yas+=dt;
+      if (p.yas>=p.omur){ parcaciklar.splice(i,1); continue; }
+      p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=180*dt;
+    }
+    for (let i=yaziEfektleri.length-1;i>=0;i--){
+      const y=yaziEfektleri[i]; y.yas+=dt; y.y-=26*dt;
+      if (y.yas>=y.omur) yaziEfektleri.splice(i,1);
+    }
+    if (T.guncelle) { try { T.guncelle(dt, zaman, {dusmanlar,kuleler,dalga}); } catch(e){} }
+  }
 
-            window.OYUN_DURUMU = {
-                asama: game.asama,
-                dalga: game.dalga,
-                can: game.can,
-                skor: game.skor,
-            };
+  function vurus(m, d){
+    const hedefler = m.alan ? dusmanlar.filter(x=>mesafe(x,d)<=m.alan) : [d];
+    for (const h of hedefler){
+      h.can -= m.hasar;
+      h.vurulmaZaman = 0.14;  // JUICE: sıkışma-esneme animasyonu tetiklenir
+      if (m.yavaslat){ h.yavaslama=m.yavaslat; h.yavaslamaSayac=1.6; }
+      if (h.can<=0){
+        const idx = dusmanlar.indexOf(h);
+        if (idx>-1){
+          dusmanlar.splice(idx,1);
+          const kazanc = Math.round(h.altin*combo);
+          altin += kazanc; skor += Math.round(10*combo*(h.bos?5:1));
+          combo = Math.min(5, combo+1); comboZaman = 3;
+          patlamaEkle(h.x,h.y,h.renk, h.bos?22:11);
+          yaziEkle(h.x,h.y,"+"+kazanc, "#fbbf24");
+          if (h.bos){                          // JUICE: boss ölümünde ağırlık hissi
+            donmaSuresi = Math.max(donmaSuresi, 0.09);
+            ekranSarsinti = Math.min(1, ekranSarsinti + 0.7);
+          }
+          hudGuncelle();
         }
-
-        function showScreen(screenId) {
-            document.querySelectorAll('#uiOverlay > div').forEach(el => {
-                el.classList.add('hidden');
-                el.style.pointerEvents = 'none';
-            });
-            
-            const screen = document.getElementById(screenId);
-            if (screen) {
-                screen.classList.remove('hidden');
-                screen.style.pointerEvents = 'auto'; // Re-enable pointer events for the visible screen
-
-                // Specific adjustments for game UI
-                if(screenId === 'gameUI') {
-                    gameUI.classList.remove('hidden');
-                    towerSelectionPanel.classList.remove('hidden');
-                    towerSelectionPanel.style.pointerEvents = 'auto';
-                }
-            }
-            canvas.style.display = 'block';
-        }
-
-        // --- Game Classes ---
-
-        class Entity {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-            }
-        }
-
-        class Enemy extends Entity {
-            constructor(type, healthMultiplier = 1) {
-                super(PATH[0].x, PATH[0].y);
-                this.type = type;
-                this.config = ENEMY_TYPES[type];
-                this.health = this.config.baseHealth * healthMultiplier;
-                this.maxHealth = this.health;
-                this.speed = this.config.speed;
-                this.value = this.config.value;
-                this.pathIndex = 0;
-                this.targetX = PATH[1].x;
-                this.targetY = PATH[1].y;
-                this.angle = getAngle(this.x, this.y, this.targetX, this.targetY);
-                this.dead = false;
-                this.progress = 0; // For animation
-            }
-
-            update(dt) {
-                if (this.dead) return;
-
-                this.progress += dt; // For drawing animation
-
-                const actualSpeed = this.speed; // Speed already scaled by game.timeScale
-                const dist = actualSpeed * dt / 1000;
-
-                const dx = this.targetX - this.x;
-                const dy = this.targetY - this.y;
-                const currentDistToTarget = calculateDistance(this.x, this.y, this.targetX, this.targetY);
-
-                if (currentDistToTarget <= dist) {
-                    this.x = this.targetX;
-                    this.y = this.targetY;
-                    this.pathIndex++;
-
-                    if (this.pathIndex < PATH.length) {
-                        this.targetX = PATH[this.pathIndex].x;
-                        this.targetY = PATH[this.pathIndex].y;
-                        this.angle = getAngle(this.x, this.y, this.targetX, this.targetY);
-                    } else {
-                        game.can--;
-                        this.dead = true;
-                        if (game.can <= 0) {
-                            endGame(false);
-                        }
-                    }
-                } else {
-                    this.x += dx / currentDistToTarget * dist;
-                    this.y += dy / currentDistToTarget * dist;
-                }
-            }
-
-            draw() {
-                if (this.dead) return;
-                this.config.draw(ctx, this.x, this.y, this.progress);
-
-                // Health bar
-                const barWidth = 40;
-                const barHeight = 5;
-                const healthPercentage = this.health / this.maxHealth;
-                ctx.fillStyle = PALETTE.crimsonRed;
-                ctx.fillRect(this.x - barWidth / 2, this.y - 40, barWidth, barHeight);
-                ctx.fillStyle = PALETTE.highlightBlue;
-                ctx.fillRect(this.x - barWidth / 2, this.y - 40, barWidth * healthPercentage, barHeight);
-                ctx.strokeStyle = PALETTE.deepShadow;
-                ctx.strokeRect(this.x - barWidth / 2, this.y - 40, barWidth, barHeight);
-
-                // Boss health bar
-                if (this.config.isBoss) {
-                    ctx.fillStyle = PALETTE.darkMetalStone;
-                    ctx.fillRect(canvas.width / 2 - 150, 20, 300, 20);
-                    ctx.fillStyle = PALETTE.crimsonRed;
-                    ctx.fillRect(canvas.width / 2 - 150, 20, 300 * healthPercentage, 20);
-                    ctx.strokeStyle = PALETTE.brass;
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(canvas.width / 2 - 150, 20, 300, 20);
-                    ctx.fillStyle = PALETTE.agedIvory;
-                    ctx.textAlign = 'center';
-                    ctx.font = 'bold 16px Arial';
-                    ctx.fillText(`${this.config.name} Can: ${Math.round(this.health)}/${Math.round(this.maxHealth)}`, canvas.width / 2, 35);
-                }
-            }
-
-            takeDamage(amount) {
-                this.health -= amount;
-                game.floatingTexts.push(new FloatingText(`-${amount}`, this.x, this.y - 20, PALETTE.crimsonRed));
-                if (this.health <= 0) {
-                    this.dead = true;
-                    game.altin += this.value;
-                    game.skor += this.value;
-                    // Create particles for explosion
-                    for (let i = 0; i < 10; i++) {
-                        game.particles.push(new Particle(this.x, this.y, Math.random() * 6 - 3, Math.random() * 6 - 3, 5 + Math.random() * 5, getRandomColor(PALETTE), 600));
-                    }
-                }
-            }
-        }
-
-        class Tower extends Entity {
-            constructor(type, x, y) {
-                super(x, y);
-                this.type = type;
-                this.config = TOWER_TYPES[type];
-                this.level = 0; // 0 for base, 1 for upgrade 1, 2 for upgrade 2
-                this.damage = this.config.levels[this.level].damage;
-                this.range = this.config.levels[this.level].range;
-                this.fireRate = this.config.levels[this.level].fireRate;
-                this.lastShotTime = 0;
-                this.target = null;
-                this.angle = 0; // For turret rotation
-                this.firingEffectTime = 0; // For muzzle flash
-            }
-
-            update(dt) {
-                if (this.firingEffectTime > 0) {
-                    this.firingEffectTime -= dt;
-                }
-
-                // If no target or target is dead/out of range, find a new one
-                if (!this.target || this.target.dead || calculateDistance(this.x, this.y, this.target.x, this.target.y) > this.range) {
-                    this.target = null;
-                    // Find the closest enemy in range
-                    let closestEnemy = null;
-                    let minDistance = Infinity;
-
-                    for (const enemy of game.enemies) {
-                        if (!enemy.dead) {
-                            const dist = calculateDistance(this.x, this.y, enemy.x, enemy.y);
-                            if (dist <= this.range && dist < minDistance) {
-                                minDistance = dist;
-                                closestEnemy = enemy;
-                            }
-                        }
-                    }
-                    this.target = closestEnemy;
-                }
-
-                if (this.target) {
-                    // Rotate towards target
-                    this.angle = getAngle(this.x, this.y, this.target.x, this.target.y);
-
-                    // Shoot if fire rate allows
-                    if (game.isGameRunning && (performance.now() - this.lastShotTime) >= this.fireRate) {
-                        game.projectiles.push(new Projectile(this.x, this.y, this.target, this.damage, this.config.projectileType));
-                        this.lastShotTime = performance.now();
-                        this.firingEffectTime = 100; // Muzzle flash duration
-                    }
-                }
-            }
-
-            draw() {
-                this.config.draw(ctx, this.x, this.y, this.angle);
-
-                // Muzzle flash effect
-                if (this.firingEffectTime > 0) {
-                    ctx.save();
-                    ctx.translate(this.x, this.y);
-                    ctx.rotate(this.angle);
-                    ctx.fillStyle = PALETTE.agedIvory;
-                    ctx.shadowColor = PALETTE.agedIvory;
-                    ctx.shadowBlur = 5;
-                    ctx.beginPath();
-                    ctx.arc(0, -35, 8, 0, Math.PI * 2); // Position relative to turret barrel
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                    ctx.restore();
-                }
-            }
-
-            upgrade() {
-                if (this.level < this.config.levels.length - 1) {
-                    const nextLevel = this.level + 1;
-                    const upgradeCost = this.config.levels[nextLevel].cost - this.config.levels[this.level].cost; // Cost difference
-                    if (game.altin >= upgradeCost) {
-                        game.altin -= upgradeCost;
-                        this.level = nextLevel;
-                        this.damage = this.config.levels[this.level].damage;
-                        this.range = this.config.levels[this.level].range;
-                        this.fireRate = this.config.levels[this.level].fireRate;
-                        updateTowerInfoPanel(this); // Update panel after upgrade
-                        updateUI();
-                        game.floatingTexts.push(new FloatingText(`-${upgradeCost}`, this.x, this.y - 20, PALETTE.brass));
-                    } else {
-                        game.floatingTexts.push(new FloatingText('Yetersiz altın!', this.x, this.y - 20, PALETTE.crimsonRed));
-                    }
-                }
-            }
-
-            sell() {
-                game.altin += this.config.levels[this.level].sell;
-                game.towers = game.towers.filter(t => t !== this);
-                game.selectedTower = null;
-                towerInfoPanel.classList.add('hidden');
-                updateUI();
-                game.floatingTexts.push(new FloatingText(`+${this.config.levels[this.level].sell}`, this.x, this.y - 20, PALETTE.brass));
-                
-                // Unoccupy the tower slot
-                const soldTowerSlot = TOWER_SLOTS.find(slot => calculateDistance(slot.x, slot.y, this.x, this.y) < 1);
-                if (soldTowerSlot) {
-                    soldTowerSlot.occupied = false;
-                }
-            }
-        }
-
-        class Projectile extends Entity {
-            constructor(x, y, target, damage, type) {
-                super(x, y);
-                this.target = target;
-                this.damage = damage;
-                this.type = type;
-                this.speed = 400; // pixels per second
-                this.dead = false;
-                this.trail = []; // For trail effect
-                this.size = 5;
-            }
-
-            update(dt) {
-                if (this.dead || this.target.dead) {
-                    this.dead = true;
-                    return;
-                }
-
-                const actualSpeed = this.speed; // Speed already scaled by game.timeScale
-                const dist = actualSpeed * dt / 1000;
-
-                const dx = this.target.x - this.x;
-                const dy = this.target.y - this.y;
-                const currentDistToTarget = calculateDistance(this.x, this.y, this.target.x, this.target.y);
-
-                // Add current position to trail
-                this.trail.unshift({ x: this.x, y: this.y, alpha: 1 });
-                // Keep trail short
-                if (this.trail.length > 5) {
-                    this.trail.pop();
-                }
-
-                if (currentDistToTarget <= dist) {
-                    this.target.takeDamage(this.damage);
-                    this.dead = true;
-                } else {
-                    this.x += dx / currentDistToTarget * dist;
-                    this.y += dy / currentDistToTarget * dist;
-                }
-            }
-
-            draw() {
-                if (this.dead) return;
-
-                // Draw trail
-                for (let i = 0; i < this.trail.length; i++) {
-                    const segment = this.trail[i];
-                    ctx.globalAlpha = segment.alpha * (this.trail.length - i) / this.trail.length;
-                    ctx.fillStyle = this.getProjectileColor();
-                    ctx.beginPath();
-                    ctx.arc(segment.x, segment.y, this.size * (this.trail.length - i) / this.trail.length / 2, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                ctx.globalAlpha = 1;
-
-                // Draw projectile
-                ctx.fillStyle = this.getProjectileColor();
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            getProjectileColor() {
-                switch (this.type) {
-                    case 'cog': return PALETTE.brass;
-                    case 'energyPulse': return PALETTE.highlightBlue;
-                    case 'energyOrb': return PALETTE.crimsonRed;
-                    default: return PALETTE.agedIvory;
-                }
-            }
-        }
-
-        class Particle extends Entity {
-            constructor(x, y, vx, vy, size, color, lifetime) {
-                super(x, y);
-                this.vx = vx;
-                this.vy = vy;
-                this.size = size;
-                this.color = color;
-                this.lifetime = lifetime; // ms
-                this.currentLifetime = lifetime;
-                this.dead = false;
-            }
-
-            update(dt) {
-                this.currentLifetime -= dt;
-                if (this.currentLifetime <= 0) {
-                    this.dead = true;
-                    return;
-                }
-
-                const dtSeconds = dt / 1000;
-                this.x += this.vx * dtSeconds;
-                this.y += this.vy * dtSeconds;
-                this.vy += 9.8 * 0.1; // Simple gravity effect
-                this.size -= (dt / this.lifetime) * (this.size / 2); // Shrink over time
-            }
-
-            draw() {
-                if (this.dead) return;
-                ctx.globalAlpha = this.currentLifetime / this.lifetime;
-                ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1;
-            }
-        }
-
-        class FloatingText extends Entity {
-            constructor(text, x, y, color = 'white', duration = 1000, vy = -30) {
-                super(x, y);
-                this.text = text;
-                this.color = color;
-                this.duration = duration;
-                this.currentDuration = duration;
-                this.vy = vy;
-                this.dead = false;
-            }
-
-            update(dt) {
-                this.currentDuration -= dt;
-                if (this.currentDuration <= 0) {
-                    this.dead = true;
-                    return;
-                }
-                this.y += (this.vy * dt / 1000);
-            }
-
-            draw() {
-                if (this.dead) return;
-                ctx.globalAlpha = this.currentDuration / this.duration;
-                ctx.fillStyle = this.color;
-                ctx.font = 'bold 16px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(this.text, this.x, this.y);
-                ctx.globalAlpha = 1;
-            }
-        }
-
-
-        // --- Game Drawing Functions ---
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            calculatePathAndTowerSlots();
-            draw(); // Redraw immediately on resize
-        }
-
-        function calculatePathAndTowerSlots() {
-            // Define a path that makes sense for the clock tower theme.
-            // Starts bottom-left, winds to center, then up to the tower base.
-            const w = canvas.width;
-            const h = canvas.height;
-
-            PATH = [
-                { x: w * 0.1, y: h * 0.9 },
-                { x: w * 0.3, y: h * 0.9 },
-                { x: w * 0.4, y: h * 0.7 },
-                { x: w * 0.6, y: h * 0.7 },
-                { x: w * 0.7, y: h * 0.5 },
-                { x: w * 0.5, y: h * 0.3 },
-                { x: w * 0.4, y: h * 0.2 },
-                { x: w * 0.5, y: h * 0.1 }, // Destination: Clock tower base
-            ];
-
-            TOWER_SLOTS = [];
-            // Generate tower slots around the path.
-            // Iterate through the path segments to place slots
-            const pathWidth = GRID_SIZE * 0.7; // How far from the path the towers can be
-            for (let i = 0; i < PATH.length - 1; i++) {
-                const p1 = PATH[i];
-                const p2 = PATH[i + 1];
-
-                const dx = p2.x - p1.x;
-                const dy = p2.y - p1.y;
-                const segmentLength = calculateDistance(p1.x, p1.y, p2.x, p2.y);
-                if (segmentLength === 0) continue;
-
-                const normalX = -dy / segmentLength; // Perpendicular vector for offset
-                const normalY = dx / segmentLength;
-
-                // Place slots to both sides of the path
-                const numSteps = Math.floor(segmentLength / (GRID_SIZE * 1.5)); // Place slots every X distance
-                for (let j = 0; j <= numSteps; j++) {
-                    const factor = j / numSteps;
-                    const px = p1.x + dx * factor;
-                    const py = p1.y + dy * factor;
-
-                    // Offset from path for tower slots
-                    const offset = GRID_SIZE * 1.2;
-                    const slot1 = { x: px + normalX * offset, y: py + normalY * offset, occupied: false };
-                    const slot2 = { x: px - normalX * offset, y: py - normalY * offset, occupied: false };
-
-                    // Add only if not too close to existing slots and within canvas bounds
-                    const isTooClose = (newSlot) => TOWER_SLOTS.some(s => calculateDistance(s.x, s.y, newSlot.x, newSlot.y) < GRID_SIZE * 1.5);
-                    const isInBounds = (slot) => slot.x > GRID_SIZE / 2 && slot.x < w - GRID_SIZE / 2 && slot.y > GRID_SIZE / 2 && slot.y < h - GRID_SIZE / 2;
-
-                    if (isInBounds(slot1) && !isTooClose(slot1)) {
-                        TOWER_SLOTS.push(slot1);
-                    }
-                    if (isInBounds(slot2) && !isTooClose(slot2)) {
-                        TOWER_SLOTS.push(slot2);
-                    }
-                }
-            }
-        }
-
-        function drawBackground() {
-            // Gradient Sky
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, PALETTE.deepShadow);
-            gradient.addColorStop(0.7, PALETTE.darkMetalStone);
-            gradient.addColorStop(1, PALETTE.darkMetalStone);
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Background Gears (Decorative)
-            ctx.globalAlpha = 0.2;
-            for (let i = 0; i < 5; i++) {
-                const gearX = Math.random() * canvas.width;
-                const gearY = canvas.height * (0.3 + Math.random() * 0.5);
-                const gearSize = 50 + Math.random() * 100;
-                const gearColor = Math.random() > 0.5 ? PALETTE.copper : PALETTE.brass;
-                drawGear(ctx, gearX, gearY, gearSize, gearColor, Math.random() * Math.PI * 2);
-            }
-            ctx.globalAlpha = 1;
-
-            // Draw Path (metallic plates with rivets)
-            ctx.strokeStyle = PALETTE.deepShadow;
-            ctx.lineWidth = 30; // Path width
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.beginPath();
-            ctx.moveTo(PATH[0].x, PATH[0].y);
-            for (let i = 1; i < PATH.length; i++) {
-                ctx.lineTo(PATH[i].x, PATH[i].y);
-            }
-            ctx.stroke();
-
-            // Inner path color (more metallic)
-            ctx.strokeStyle = PALETTE.copper;
-            ctx.lineWidth = 25;
-            ctx.beginPath();
-            ctx.moveTo(PATH[0].x, PATH[0].y);
-            for (let i = 1; i < PATH.length; i++) {
-                ctx.lineTo(PATH[i].x, PATH[i].y);
-            }
-            ctx.stroke();
-
-            // Add rivets/details to path
-            ctx.fillStyle = PALETTE.darkMetalStone;
-            const rivetSpacing = 40;
-            for (let i = 0; i < PATH.length - 1; i++) {
-                const p1 = PATH[i];
-                const p2 = PATH[i + 1];
-                const dist = calculateDistance(p1.x, p1.y, p2.x, p2.y);
-                const numRivets = Math.floor(dist / rivetSpacing);
-                for (let j = 0; j <= numRivets; j++) {
-                    const factor = j / numRivets;
-                    const rx = p1.x + (p2.x - p1.x) * factor;
-                    const ry = p1.y + (p2.y - p1.y) * factor;
-                    ctx.beginPath();
-                    ctx.arc(rx, ry, 3, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-
-            // Draw Base Clock Tower (destination)
-            const towerBaseX = PATH[PATH.length - 1].x;
-            const towerBaseY = PATH[PATH.length - 1].y;
-            drawClockTowerBase(ctx, towerBaseX, towerBaseY, 70, 150);
-        }
-
-        function drawClockTowerBase(ctx, x, y, width, height) {
-            // Base stone block
-            ctx.fillStyle = PALETTE.darkMetalStone;
-            ctx.fillRect(x - width / 2, y - height, width, height);
-            ctx.strokeStyle = PALETTE.deepShadow;
-            ctx.lineWidth = 4;
-            ctx.strokeRect(x - width / 2, y - height, width, height);
-
-            // Clock face (aged Ivory)
-            ctx.fillStyle = PALETTE.agedIvory;
-            ctx.beginPath();
-            ctx.arc(x, y - height * 0.7, width * 0.4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = PALETTE.deepShadow;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // Clock hands (brass)
-            ctx.strokeStyle = PALETTE.brass;
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            // Hour hand
-            ctx.beginPath();
-            ctx.moveTo(x, y - height * 0.7);
-            ctx.lineTo(x + Math.cos(performance.now() * 0.00005) * width * 0.2, y - height * 0.7 + Math.sin(performance.now() * 0.00005) * width * 0.2);
-            ctx.stroke();
-            // Minute hand
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(x, y - height * 0.7);
-            ctx.lineTo(x + Math.cos(performance.now() * 0.0005) * width * 0.35, y - height * 0.7 + Math.sin(performance.now() * 0.0005) * width * 0.35);
-            ctx.stroke();
-
-            // Top spire (copper)
-            ctx.fillStyle = PALETTE.copper;
-            ctx.beginPath();
-            ctx.moveTo(x - width * 0.3, y - height);
-            ctx.lineTo(x + width * 0.3, y - height);
-            ctx.lineTo(x, y - height - 30);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = PALETTE.deepShadow;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // Gears on tower (decoration)
-            drawGear(ctx, x - width * 0.6, y - height * 0.5, 30, PALETTE.brass, 0);
-            drawGear(ctx, x + width * 0.6, y - height * 0.3, 25, PALETTE.copper, Math.PI / 4);
-        }
-
-        // Generic gear drawing helper
-        function drawGear(ctx, x, y, radius, color, rotation) {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(rotation);
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(0, 0, radius, 0, Math.PI * 2);
-            ctx.fill();
-            for(let i = 0; i < 12; i++){
-                const ang = (i / 12) * Math.PI * 2;
-                const x1 = Math.cos(ang) * radius;
-                const y1 = Math.sin(ang) * radius;
-                const x2 = Math.cos(ang) * (radius + 10);
-                const y2 = Math.sin(ang) * (radius + 10);
-                ctx.fillRect(x1 - 5, y1 - 5, x2 - x1 + 10, y2 - y1 + 10);
-            }
-            ctx.fill();
-            ctx.strokeStyle = PALETTE.darkMetalStone;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.restore();
-        }
-
-        function drawGameTitle() {
-            ctx.font = 'bold 30px serif';
-            ctx.textAlign = 'left';
-            ctx.fillStyle = PALETTE.brass;
-            ctx.shadowColor = PALETTE.deepShadow;
-            ctx.shadowBlur = 5;
-            ctx.fillText('Saat Kulesi Savunması', 20, 40);
-            ctx.shadowBlur = 0;
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawBackground();
-            drawGameTitle();
-
-            // Draw tower slots (only if placing tower or selected)
-            if (game.asama === 'oyunda' || game.selectedTowerType) {
-                TOWER_SLOTS.forEach(slot => {
-                    ctx.globalAlpha = slot.occupied ? 0.3 : 0.8;
-                    ctx.fillStyle = slot.occupied ? PALETTE.crimsonRed : PALETTE.highlightBlue;
-                    ctx.beginPath();
-                    ctx.arc(slot.x, slot.y, GRID_SIZE / 2, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1;
-                });
-            }
-
-            game.towers.forEach(tower => tower.draw());
-            game.projectiles.forEach(projectile => projectile.draw());
-            game.enemies.forEach(enemy => enemy.draw());
-            game.particles.forEach(particle => particle.draw());
-            game.floatingTexts.forEach(text => text.draw());
-        }
-
-        // --- Game Logic Functions ---
-
-        function initGame() {
-            game = {
-                asama: 'dalga_hazirlaniyor',
-                dalga: 1,
-                can: PLAYER_INITIAL_HEALTH,
-                altin: PLAYER_INITIAL_GOLD,
-                skor: 0,
-                zamanYavaslatmaKullanimSayisi: 0,
-                timeScale: 1,
-                slowTimeRemaining: 0,
-                enemyHealthMultiplier: 1,
-                enemies: [],
-                towers: [],
-                projectiles: [],
-                particles: [],
-                floatingTexts: [],
-                selectedTower: null,
-                selectedTowerType: null, // For placement
-                waveTimer: PREP_TIME_SECONDS * 1000,
-                enemiesSpawnedThisWave: 0,
-                currentWaveEnemies: [],
-                lastSpawnTime: 0,
-                isGameRunning: true,
-            };
-            // Clear all tower slots
-            TOWER_SLOTS.forEach(slot => slot.occupied = false);
-
-            showScreen('gameUI');
-            updateUI();
-            startNextWavePrep();
-            if (!animationFrameId) {
-                animationFrameId = requestAnimationFrame(gameLoop);
-            }
-        }
-
-        function startGame() {
-            initGame();
-        }
-
-        function restartGame() {
-            cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
-            initGame();
-        }
-
-        function startNextWavePrep() {
-            game.asama = 'dalga_hazirlaniyor';
-            game.waveTimer = PREP_TIME_SECONDS * 1000;
-            wavePrepText.classList.remove('hidden');
-            game.currentWaveEnemies = []; // Clear for new wave
-            game.enemiesSpawnedThisWave = 0;
-
-            // Generate enemies for the new wave
-            if (game.dalga <= TOTAL_WAVES) {
-                const waveConfig = WAVES[game.dalga - 1];
-                waveConfig.enemies.forEach(enemyType => {
-                    for (let i = 0; i < enemyType.count; i++) {
-                        // Health scales per wave and by time slow multiplier
-                        const healthMultiplier = 1 + (game.dalga - 1) * 0.25 + game.enemyHealthMultiplier * 0.1;
-                        game.currentWaveEnemies.push(new Enemy(enemyType.type, healthMultiplier));
-                    }
-                });
-            } else {
-                endGame(true); // Player won!
-                return;
-            }
-
-            updateUI();
-        }
-
-        function spawnEnemy() {
-            if (game.enemiesSpawnedThisWave < game.currentWaveEnemies.length) {
-                const enemy = game.currentWaveEnemies[game.enemiesSpawnedThisWave];
-                game.enemies.push(enemy);
-                game.enemiesSpawnedThisWave++;
-                game.lastSpawnTime = performance.now();
-            }
-        }
-
-        function endGame(won) {
-            game.isGameRunning = false;
-            cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
-            if (won) {
-                finalScoreWon.textContent = game.skor;
-                showScreen('gameWonScreen');
-            } else {
-                finalScoreLost.textContent = game.skor;
-                showScreen('gameOverScreen');
-            }
-        }
-
-        function handleCanvasClick(event) {
-            const pos = getCanvasMousePos(event);
-
-            // If a tower type is selected for placement
-            if (game.selectedTowerType) {
-                // Find the closest empty tower slot
-                let closestSlot = null;
-                let minDistance = Infinity;
-                TOWER_SLOTS.forEach(slot => {
-                    const dist = calculateDistance(pos.x, pos.y, slot.x, slot.y);
-                    if (dist < GRID_SIZE / 2 && dist < minDistance && !slot.occupied) {
-                        minDistance = dist;
-                        closestSlot = slot;
-                    }
-                });
-
-                if (closestSlot) {
-                    const towerConfig = TOWER_TYPES[game.selectedTowerType];
-                    if (game.altin >= towerConfig.price) {
-                        game.altin -= towerConfig.price;
-                        game.towers.push(new Tower(game.selectedTowerType, closestSlot.x, closestSlot.y));
-                        closestSlot.occupied = true;
-                        game.selectedTowerType = null; // Clear selection after placement
-                        towerSelectionPanel.querySelectorAll('.kule-btn').forEach(btn => btn.classList.remove('border-green-500', 'border-2')); // Remove highlight
-                        updateUI();
-                    } else {
-                        game.floatingTexts.push(new FloatingText('Yetersiz Altın!', pos.x, pos.y, PALETTE.crimsonRed));
-                    }
-                }
-            } else {
-                // Check if an existing tower was clicked
-                game.selectedTower = null;
-                towerInfoPanel.classList.add('hidden');
-                for (const tower of game.towers) {
-                    const dist = calculateDistance(pos.x, pos.y, tower.x, tower.y);
-                    if (dist < GRID_SIZE / 2) { // Assuming tower occupies a similar area to a grid cell
-                        game.selectedTower = tower;
-                        updateTowerInfoPanel(tower);
-                        return;
-                    }
-                }
-            }
-        }
-
-        function updateTowerInfoPanel(tower) {
-            if (!tower) {
-                towerInfoPanel.classList.add('hidden');
-                return;
-            }
-
-            towerInfoPanel.classList.remove('hidden');
-            infoTowerName.textContent = tower.config.name;
-            infoTowerLevel.textContent = tower.level === 0 ? 'Temel' : (tower.level === 1 ? 'Seviye 1' : 'Seviye 2 (Max)');
-            infoTowerDamage.textContent = tower.damage;
-            infoTowerRange.textContent = Math.round(tower.range);
-            infoTowerFireRate.textContent = `${Math.round(1000 / tower.fireRate)}/sn`;
-
-            sellValueSpan.textContent = tower.config.levels[tower.level].sell;
-
-            if (tower.level < tower.config.levels.length - 1) {
-                const nextLevel = tower.level + 1;
-                const upgradeCost = tower.config.levels[nextLevel].cost - tower.config.levels[tower.level].cost;
-                upgradeCostSpan.textContent = upgradeCost;
-                upgradeTowerBtn.disabled = game.altin < upgradeCost;
-                upgradeTowerBtn.classList.remove('hidden');
-            } else {
-                upgradeTowerBtn.classList.add('hidden');
-            }
-
-            // Position panel near the tower
-            const panelWidth = towerInfoPanel.offsetWidth;
-            const panelHeight = towerInfoPanel.offsetHeight;
-            let panelX = tower.x + GRID_SIZE / 2 + 10;
-            let panelY = tower.y - panelHeight / 2;
-
-            // Adjust if out of bounds
-            if (panelX + panelWidth > canvas.width - 20) panelX = tower.x - GRID_SIZE / 2 - panelWidth - 10;
-            if (panelY < 20) panelY = 20;
-            if (panelY + panelHeight > canvas.height - 20) panelY = canvas.height - panelHeight - 20;
-
-            towerInfoPanel.style.left = `${panelX}px`;
-            towerInfoPanel.style.top = `${panelY}px`;
-        }
-
-        // --- Game Loop ---
-        function gameLoop(currentTime) {
-            if (!lastTime) lastTime = currentTime;
-            deltaTime = currentTime - lastTime;
-            lastTime = currentTime;
-
-            // Apply time scale only to game logic updates (enemies, projectiles, tower firing)
-            // Timers like wave prep and slowTimeRemaining are updated with unscaled deltaTime.
-            const scaledDeltaTime = deltaTime * game.timeScale;
-
-            update(scaledDeltaTime);
-            draw();
-
-            if (game.isGameRunning) {
-                animationFrameId = requestAnimationFrame(gameLoop);
-            }
-        }
-
-        function update(dt) {
-            // Update game state for global access
-            window.OYUN_DURUMU.asama = game.asama;
-            window.OYUN_DURUMU.dalga = game.dalga;
-            window.OYUN_DURUMU.can = game.can;
-            window.OYUN_DURUMU.skor = game.skor;
-
-            if (game.asama === 'dalga_hazirlaniyor') {
-                game.waveTimer -= deltaTime; // Unscaled time for UI timer
-                wavePrepText.textContent = `Dalga ${game.dalga} Başlıyor... (${Math.ceil(game.waveTimer / 1000)})`;
-                if (game.waveTimer <= 0) {
-                    game.asama = 'dalga_basladi';
-                    wavePrepText.classList.add('hidden');
-                    game.lastSpawnTime = performance.now(); // Reset spawn timer for the actual wave start
-                }
-            } else if (game.asama === 'dalga_basladi') {
-                const waveConfig = WAVES[game.dalga - 1];
-                const spawnInterval = waveConfig.spawnInterval;
-
-                // Spawn enemies
-                if (game.enemiesSpawnedThisWave < game.currentWaveEnemies.length && (performance.now() - game.lastSpawnTime) >= spawnInterval) {
-                    spawnEnemy();
-                }
-
-                // Check for end of wave
-                const livingEnemies = game.enemies.filter(e => !e.dead);
-                if (game.enemiesSpawnedThisWave >= game.currentWaveEnemies.length && livingEnemies.length === 0) {
-                    if (game.dalga < TOTAL_WAVES) {
-                        game.dalga++;
-                        startNextWavePrep();
-                    } else {
-                        endGame(true); // All waves completed
-                    }
-                }
-            }
-
-            // Time slow update
-            if (game.slowTimeRemaining > 0) {
-                game.slowTimeRemaining -= deltaTime; // Unscaled time for timer itself
-                if (game.slowTimeRemaining <= 0) {
-                    game.timeScale = 1; // Revert to normal speed
-                }
-            }
-
-            // Update entities using the scaled deltaTime
-            game.towers.forEach(tower => tower.update(dt));
-            game.enemies.forEach(enemy => enemy.update(dt));
-            game.projectiles.forEach(projectile => projectile.update(dt));
-            game.particles.forEach(particle => particle.update(dt));
-            game.floatingTexts.forEach(text => text.update(dt));
-
-            // Clean up dead/off-screen entities
-            game.enemies = game.enemies.filter(e => !e.dead);
-            game.projectiles = game.projectiles.filter(p => !p.dead);
-            game.particles = game.particles.filter(p => !p.dead);
-            game.floatingTexts = game.floatingTexts.filter(t => !t.dead);
-
-            updateUI(); // Always update UI
-        }
-
-        // --- Event Listeners and Initial Setup ---
-
-        // Initialize tower selection panel buttons
-        function setupTowerSelectionPanel() {
-            towerSelectionPanel.innerHTML = '';
-            Object.values(TOWER_TYPES).forEach(towerConfig => {
-                const button = document.createElement('button');
-                button.id = `buy-${towerConfig.name.replace(/\s/g, '')}`;
-                button.className = `kule-btn btn-game flex flex-col items-center p-2 text-sm`;
-                button.innerHTML = `
-                    <span class="font-bold">${towerConfig.name}</span>
-                    <span>${towerConfig.price} Altın</span>
-                `;
-                button.onclick = () => {
-                    if (game.altin >= towerConfig.price) {
-                        game.selectedTowerType = towerConfig.name;
-                        // Highlight selected button
-                        towerSelectionPanel.querySelectorAll('.kule-btn').forEach(btn => btn.classList.remove('border-green-500', 'border-2'));
-                        button.classList.add('border-green-500', 'border-2');
-                    } else {
-                        game.floatingTexts.push(new FloatingText('Yetersiz Altın!', canvas.width/2, canvas.height * 0.8, PALETTE.crimsonRed));
-                    }
-                };
-                towerSelectionPanel.appendChild(button);
-            });
-        }
-
-
-        baslaBtn.addEventListener('click', startGame);
-        restartBtnLost.addEventListener('click', restartGame);
-        restartBtnWon.addEventListener('click', restartGame);
-
-        timeSlowBtn.addEventListener('click', () => {
-            if (game.asama === 'dalga_basladi' && game.slowTimeRemaining <= 0) {
-                game.timeScale = 0.5; // Slow down time
-                game.slowTimeRemaining = 5000; // 5 seconds slow time
-                game.zamanYavaslatmaKullanimSayisi++;
-                game.enemyHealthMultiplier += 0.1; // Next wave enemies are 10% stronger
-                game.floatingTexts.push(new FloatingText('Zaman Yavaşladı!', canvas.width/2, canvas.height/2, PALETTE.highlightBlue, 2000));
-                timeSlowBtn.disabled = true; // Disable during cooldown
-                setTimeout(() => timeSlowBtn.disabled = false, 5000); // Re-enable after 5s
-            }
-        });
-
-        canvas.addEventListener('click', handleCanvasClick);
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Prevent scrolling on mobile
-            handleCanvasClick(e);
-        }, { passive: false });
-
-        upgradeTowerBtn.addEventListener('click', () => {
-            if (game.selectedTower) {
-                game.selectedTower.upgrade();
-            }
-        });
-
-        sellTowerBtn.addEventListener('click', () => {
-            if (game.selectedTower) {
-                game.selectedTower.sell();
-            }
-        });
-
-        closeInfoBtn.addEventListener('click', () => {
-            game.selectedTower = null;
-            towerInfoPanel.classList.add('hidden');
-        });
-
-        window.addEventListener('resize', resizeCanvas);
-
-        // Initial setup calls
-        function initializeGameElements() {
-            resizeCanvas(); // Set canvas size and calculate path/slots
-            setupTowerSelectionPanel(); // Populate tower buttons
-            showScreen('menuScreen'); // Start with the menu
-            updateUI(); // Update initial UI values
-        }
-
-        initializeGameElements();
-    </script>
+      } else {
+        yaziEkle(h.x, h.y-10, "-"+Math.round(m.hasar), "#fca5a5");
+      }
+    }
+    patlamaEkle(m.x,m.y,m.renk,4);
+  }
+
+  // ---------- Çizim ----------
+  function varsayilanArkaplan(c,W,H,t){
+    const g = c.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,P.arka1); g.addColorStop(1,P.arka2);
+    c.fillStyle=g; c.fillRect(0,0,W,H);
+  }
+  function varsayilanYol(c){
+    c.lineCap="round"; c.lineJoin="round";
+    c.strokeStyle=P.yolKenar; c.lineWidth=46;
+    c.beginPath(); c.moveTo(yol[0].x,yol[0].y);
+    for (let i=1;i<yol.length;i++) c.lineTo(yol[i].x,yol[i].y);
+    c.stroke();
+    c.strokeStyle=P.yol; c.lineWidth=36; c.stroke();
+  }
+  function varsayilanDusman(c,d,t){
+    c.save(); c.translate(d.x,d.y);
+    const sal = Math.sin(t*6+d.faz)*0.12;
+    c.rotate(sal);
+    c.fillStyle="rgba(0,0,0,.28)";
+    c.beginPath(); c.ellipse(0,d.yaricap*0.8,d.yaricap*0.9,d.yaricap*0.35,0,0,6.29); c.fill();
+    c.fillStyle=d.renk;
+    c.beginPath(); c.arc(0,0,d.yaricap,0,6.29); c.fill();
+    c.fillStyle="rgba(255,255,255,.85)";
+    c.beginPath(); c.arc(-d.yaricap*0.3,-d.yaricap*0.25,d.yaricap*0.18,0,6.29);
+    c.arc(d.yaricap*0.3,-d.yaricap*0.25,d.yaricap*0.18,0,6.29); c.fill();
+    c.restore();
+  }
+  function varsayilanKule(c,k,t){
+    c.save(); c.translate(k.x,k.y);
+    c.fillStyle="rgba(0,0,0,.3)";
+    c.beginPath(); c.ellipse(0,14,20,7,0,0,6.29); c.fill();
+    c.fillStyle="#1f2937";
+    c.beginPath(); c.arc(0,0,19,0,6.29); c.fill();
+    c.fillStyle=k.tip.renk||P.kule;
+    c.beginPath(); c.arc(0,0,14,0,6.29); c.fill();
+    c.rotate(k.aci);
+    c.fillStyle="#111827"; c.fillRect(0,-4,26,8);
+    if (k.flas>0){ c.fillStyle="#fff"; c.beginPath(); c.arc(28,0,7,0,6.29); c.fill(); }
+    c.restore();
+    for (let i=0;i<k.seviye-1;i++){
+      c.fillStyle=P.vurgu;
+      c.beginPath(); c.arc(k.x-6+i*6, k.y-24, 3, 0, 6.29); c.fill();
+    }
+  }
+
+  function canBari(c,d){
+    if (d.can>=d.maxCan) return;
+    const g = d.bos?60:30, y=d.y-d.yaricap-10;
+    c.fillStyle="rgba(0,0,0,.6)"; c.fillRect(d.x-g/2,y,g,d.bos?7:4);
+    c.fillStyle= d.bos?"#f43f5e":"#22c55e";
+    c.fillRect(d.x-g/2,y,g*Math.max(0,d.can/d.maxCan),d.bos?7:4);
+  }
+
+  // ---------- PERFORMANS: Kule sprite önbelleği ----------
+  // Her kule tipi+seviye+açı kombinasyonu bir kez offscreen canvas'a çizilir,
+  // sonrasında sadece drawImage ile kopyalanır (gradient/shadow/path maliyeti
+  // her karede değil, sadece ilk seferde ödenir). Ateş flaşı önbelleğe alınmaz
+  // (üstteki ışık halesi zaten k.flas ile canlı pulslanıyor), böylece flaş
+  // efekti kaybolmaz.
+  const kuleSpriteOnbellek = new Map();
+  const ACI_ADIM = 32;  // 11.25°'lik dilimler; gözle fark edilmeyecek kadar ince
+
+  function kuleSpriteAl(k){
+    const tipIdx = KULE_TIPLERI.indexOf(k.tip);
+    const adim = (Math.PI*2)/ACI_ADIM;
+    const aciQ = ((Math.round(k.aci/adim) % ACI_ADIM) + ACI_ADIM) % ACI_ADIM;
+    const anahtar = tipIdx + "_" + k.seviye + "_" + aciQ;
+    let s = kuleSpriteOnbellek.get(anahtar);
+    if (s) return s;
+
+    const boyut = 96;
+    const off = document.createElement("canvas");
+    off.width = boyut; off.height = boyut;
+    const octx = off.getContext("2d");
+    octx.translate(boyut/2, boyut/2);
+    octx.save();
+    octx.beginPath(); octx.rect(-46,-46,92,92); octx.clip();
+    const sahteK = Object.assign({}, k, {x:0, y:0, aci: aciQ*adim, flas:0});
+    try { (T.kuleCiz || varsayilanKule)(octx, sahteK, 0); }
+    catch(e){ varsayilanKule(octx, sahteK, 0); }
+    octx.restore();
+
+    s = {canvas: off, boyut: boyut};
+    kuleSpriteOnbellek.set(anahtar, s);
+    return s;
+  }
+
+  function ambiyansCiz(c,t){
+    c.save(); c.globalAlpha=.3; c.fillStyle = P.vurgu;
+    for (const a of ambiyansParcaciklari){
+      const y = ((a.y + t*a.hiz) % (REF_H+20)) - 10;
+      const x = a.x + Math.sin(t*0.5+a.faz)*14;
+      c.beginPath(); c.arc(x,y,a.boyut,0,6.29); c.fill();
+    }
+    c.restore();
+  }
+
+  function ciz(){
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle="#05080f"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.setTransform(olcek,0,0,olcek,kaydirX,kaydirY);
+
+    // JUICE: ekran sarsıntısı (sadece dünyayı etkiler, HUD ayrı DOM katmanında olduğu için sarsılmaz)
+    if (ekranSarsinti>0.01){
+      const guc = ekranSarsinti*ekranSarsinti;
+      ctx.translate((Math.random()*2-1)*10*guc, (Math.random()*2-1)*10*guc);
+    }
+
+    try { (T.arkaplanCiz || varsayilanArkaplan)(ctx, REF_W, REF_H, zaman); }
+    catch(e){ varsayilanArkaplan(ctx, REF_W, REF_H, zaman); }
+
+    // JUICE: evrensel atmosfer katmanı — Gemini'nin arka planı ne kadar basit olursa
+    // olsun her sahneye otomatik derinlik katar (üstten yumuşak ışık + kenarlarda vinyet)
+    try {
+      ctx.save();
+      const isik = ctx.createLinearGradient(0,0,0,REF_H);
+      isik.addColorStop(0, "rgba(255,255,255,.10)");
+      isik.addColorStop(0.4, "rgba(255,255,255,0)");
+      ctx.fillStyle = isik; ctx.fillRect(0,0,REF_W,REF_H);
+      ctx.globalCompositeOperation = "multiply";
+      const vin = ctx.createRadialGradient(REF_W/2,REF_H/2,REF_H*0.35,
+                                            REF_W/2,REF_H/2,REF_H*0.85);
+      vin.addColorStop(0, "rgba(255,255,255,1)");
+      vin.addColorStop(1, "rgba(140,140,150,1)");
+      ctx.fillStyle = vin; ctx.fillRect(0,0,REF_W,REF_H);
+      ctx.restore();
+    } catch(e){}
+    ambiyansCiz(ctx, zaman);  // JUICE: her temada otomatik yüzen parıltı zerreleri
+    try { (T.yolCiz || varsayilanYol)(ctx, yol, zaman); }
+    catch(e){ varsayilanYol(ctx); }
+
+    // Seçili kule tipinin menzil önizlemesi yok; kurulu kulelerin menzili seçiliyken
+    if (seciliKule){
+      ctx.strokeStyle="rgba(56,189,248,.55)"; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(seciliKule.x,seciliKule.y,seciliKule.menzil,0,6.29); ctx.stroke();
+    }
+
+    for (const k of kuleler){
+      // JUICE: kule altında yumuşak ışık halesi (her tema için otomatik, Gemini'ye bağlı değil)
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const renk = (k.tip.renk || P.kule);
+      const glowR = 30 + Math.sin(zaman*2 + k.x*0.01)*3 + (k.flas>0 ? 16 : 0);
+      try {
+        const g = ctx.createRadialGradient(k.x,k.y,0,k.x,k.y,glowR);
+        g.addColorStop(0, renk+"33"); g.addColorStop(1, renk+"00");
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(k.x,k.y,glowR,0,6.29); ctx.fill();
+      } catch(e){}
+      ctx.restore();
+
+      // PERFORMANS: canlı çizim yerine önbellekten kopyala (bkz. kuleSpriteAl)
+      const sprite = kuleSpriteAl(k);
+      ctx.drawImage(sprite.canvas, k.x - sprite.boyut/2, k.y - sprite.boyut/2);
+    }
+    for (const d of dusmanlar){
+      // Kontrast halkası: eklenti düşmanı zeminle aynı renk yapsa bile ayrışsın
+      ctx.save();
+      ctx.strokeStyle="rgba(0,0,0,.55)"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(d.x,d.y,d.yaricap*1.05,0,6.29); ctx.stroke();
+      ctx.strokeStyle="rgba(255,255,255,.35)"; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(d.x,d.y,d.yaricap*1.05,0,6.29); ctx.stroke();
+      ctx.restore();
+
+      // JUICE: vurulunca sıkışma-esneme (squash & stretch)
+      let sx=1, sy=1;
+      if (d.vurulmaZaman>0){
+        const o = d.vurulmaZaman/0.14;
+        sx = 1 + 0.22*o; sy = 1 - 0.22*o;
+      }
+      ctx.save();
+      ctx.translate(d.x,d.y); ctx.scale(sx,sy); ctx.translate(-d.x,-d.y);
+      ctx.beginPath(); ctx.rect(d.x-d.yaricap*2, d.y-d.yaricap*2.4,
+                                d.yaricap*4, d.yaricap*4.4); ctx.clip();
+      try { (T.dusmanCiz || varsayilanDusman)(ctx,d,zaman); }
+      catch(e){ varsayilanDusman(ctx,d,zaman); }
+      ctx.restore();
+      canBari(ctx,d);
+    }
+    for (const m of mermiler){
+      ctx.strokeStyle=m.renk; ctx.lineWidth=2; ctx.globalAlpha=.5;
+      ctx.beginPath();
+      m.iz.forEach((p,i)=> i? ctx.lineTo(p.x,p.y) : ctx.moveTo(p.x,p.y));
+      ctx.stroke(); ctx.globalAlpha=1;
+      ctx.fillStyle=m.renk; ctx.beginPath(); ctx.arc(m.x,m.y,4,0,6.29); ctx.fill();
+    }
+    for (const p of parcaciklar){
+      ctx.globalAlpha = Math.max(0, 1-p.yas/p.omur);
+      ctx.fillStyle=p.renk;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.boyut,0,6.29); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+    ctx.textAlign="center"; ctx.font="bold 15px system-ui";
+    for (const y of yaziEfektleri){
+      ctx.globalAlpha = Math.max(0, 1-y.yas/y.omur);
+      ctx.fillStyle=y.renk; ctx.fillText(y.metin,y.x,y.y);
+    }
+    ctx.globalAlpha=1;
+
+    if (T.ustCiz){ try { T.ustCiz(ctx, REF_W, REF_H, zaman, {dalga,can,altin}); } catch(e){} }
+  }
+
+  // ---------- Döngü ----------
+  let sonZaman = performance.now();
+  function dongu(su){
+    let dt = (su - sonZaman)/1000;
+    sonZaman = su;
+    if (dt > 0.05) dt = 0.05;     // sekme arka plandayken sıçrama olmasın
+    if (donmaSuresi > 0){ donmaSuresi -= dt; dt = 0; }  // JUICE: boss ölümünde kısa "vuruş anı" donması
+    guncelle(dt);
+    ciz();
+    window.OYUN_DURUMU = {asama:asama, dalga:dalga||0, can:can||0, skor:skor||0, altin:altin||0};
+    requestAnimationFrame(dongu);
+  }
+
+  // ---------- Başlat ----------
+  boyutlandir();
+  sifirla();
+  asama="menu";
+  if (T.ad) { document.getElementById("menuBaslik").textContent = T.ad;
+              document.title = T.ad; }
+  if (T.aciklama) document.getElementById("menuAciklama").textContent = T.aciklama;
+  window.OYUN_DURUMU = {asama:"menu", dalga:0, can:BASLANGIC_CAN, skor:0, altin:BASLANGIC_ALTIN};
+  requestAnimationFrame(dongu);
+})();
+</script>
 </body>
 </html>
