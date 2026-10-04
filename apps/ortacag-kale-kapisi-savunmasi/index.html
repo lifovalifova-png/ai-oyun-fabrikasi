@@ -85,6 +85,10 @@
 </div>
 
 <script>
+/* v1.1 düzeltmesi: eklentilerin sık kullandığı çizim alanı boyutları */
+window.W = 1280; window.H = 720;
+</script>
+<script>
 /* ============================================================
    TEMA EKLENTİSİ (Gemini tarafından üretilir)
    ============================================================ */
@@ -521,6 +525,9 @@ const TEMA = {
   const canvas = document.getElementById("oyunCanvas");
   const ctx = canvas.getContext("2d");
   const T = (typeof TEMA !== "undefined") ? TEMA : {};
+  // v1.1 DÜZELTME: `(T.kuleCiz || varsayilan)(...)` çağrısında `this` kayboluyordu; `this.palet`
+  // kullanan eklentilerin çizimi hata verip sessizce varsayılan (düz) çizime düşüyordu.
+  for (const ad of Object.keys(T)){ if (typeof T[ad] === "function") T[ad] = T[ad].bind(T); }
   const P = Object.assign({
     arka1:"#0f172a", arka2:"#1e293b", yol:"#475569", yolKenar:"#334155",
     dusman:"#ef4444", dusman2:"#f97316", kule:"#38bdf8", mermi:"#fde047",
