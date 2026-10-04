@@ -96,6 +96,10 @@
 </div>
 
 <script>
+/* v1.1 düzeltmesi: eklentilerin sık kullandığı çizim alanı boyutları */
+window.W = 1280; window.H = 720;
+</script>
+<script>
 /* ============================================================
    TEMA EKLENTİSİ (Gemini tarafından üretilir)
    ============================================================ */
@@ -699,6 +703,9 @@ const TEMA = {
   const canvas = document.getElementById("oyunCanvas");
   const ctx = canvas.getContext("2d");
   const T = (typeof TEMA !== "undefined") ? TEMA : {};
+  // v1.1 DÜZELTME: `(T.kuleCiz || varsayilan)(...)` çağrısında `this` kayboluyordu; `this.palet`
+  // kullanan eklentilerin çizimi hata verip sessizce varsayılan (düz) çizime düşüyordu.
+  for (const ad of Object.keys(T)){ if (typeof T[ad] === "function") T[ad] = T[ad].bind(T); }
   const P = Object.assign({
     arka1:"#0f172a", arka2:"#1e293b", yol:"#475569", yolKenar:"#334155",
     dusman:"#ef4444", dusman2:"#f97316", kule:"#38bdf8", mermi:"#fde047",
@@ -1405,6 +1412,47 @@ const TEMA = {
     c.restore();
   }
 
+  /* v1.1 PERFORMANS: statik zemin önbelleği.
+     `this` düzeltmesinden sonra eklentilerin gerçek (çok katmanlı, gölgeli) arka planları
+     çizilmeye başladı; her karede yeniden çizmek bazı eklentilerde kare hızını 5–20 kat
+     düşürüyordu. Arka plan t=0 anındaki haliyle bir kez çizilir. Bedeli: eklentinin arka
+     plandaki ve yoldaki kendi animasyonu durur (motorun ambiyans zerreleri canlı kalır). */
+  let zeminKatmani = null, zeminAnahtar = "";
+  function zeminKatmaniAl(){
+    const s = Math.max(0.5, Math.min(2.5, olcek));
+    const anahtar = s.toFixed(3);
+    if (zeminKatmani && zeminAnahtar === anahtar) return zeminKatmani;
+    const cv = document.createElement("canvas");
+    cv.width = Math.ceil(REF_W*s); cv.height = Math.ceil(REF_H*s);
+    const c = cv.getContext("2d");
+    c.scale(s, s);
+    c.save();
+    try { (T.arkaplanCiz || varsayilanArkaplan)(c, REF_W, REF_H, 0); }
+    catch(e){ c.restore(); c.save(); varsayilanArkaplan(c, REF_W, REF_H, 0); }
+    c.restore();
+    // JUICE: evrensel atmosfer katmanı (üstten yumuşak ışık + kenarlarda vinyet) — v1 ile aynı
+    try {
+      c.save();
+      const isik = c.createLinearGradient(0,0,0,REF_H);
+      isik.addColorStop(0, "rgba(255,255,255,.10)");
+      isik.addColorStop(0.4, "rgba(255,255,255,0)");
+      c.fillStyle = isik; c.fillRect(0,0,REF_W,REF_H);
+      c.globalCompositeOperation = "multiply";
+      const vin = c.createRadialGradient(REF_W/2,REF_H/2,REF_H*0.35, REF_W/2,REF_H/2,REF_H*0.85);
+      vin.addColorStop(0, "rgba(255,255,255,1)");
+      vin.addColorStop(1, "rgba(140,140,150,1)");
+      c.fillStyle = vin; c.fillRect(0,0,REF_W,REF_H);
+      c.restore();
+    } catch(e){}
+    // Yol da statik katmana
+    c.save();
+    try { (T.yolCiz || varsayilanYol)(c, yol, 0); }
+    catch(e){ c.restore(); c.save(); varsayilanYol(c); }
+    c.restore();
+    zeminKatmani = cv; zeminAnahtar = anahtar;
+    return cv;
+  }
+
   function ciz(){
     ctx.setTransform(1,0,0,1,0,0);
     ctx.fillStyle="#05080f"; ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -1416,28 +1464,12 @@ const TEMA = {
       ctx.translate((Math.random()*2-1)*10*guc, (Math.random()*2-1)*10*guc);
     }
 
-    try { (T.arkaplanCiz || varsayilanArkaplan)(ctx, REF_W, REF_H, zaman); }
-    catch(e){ varsayilanArkaplan(ctx, REF_W, REF_H, zaman); }
+    // v1.1: statik zemin önbelleği — eklentinin arka planı, atmosfer ve yol bir kez
+    // ekran dışı tuvale çizilir, her karede yalnız kopyalanır (bkz. zeminKatmaniAl)
+    ctx.drawImage(zeminKatmaniAl(), 0, 0, REF_W, REF_H);
 
-    // JUICE: evrensel atmosfer katmanı — Gemini'nin arka planı ne kadar basit olursa
-    // olsun her sahneye otomatik derinlik katar (üstten yumuşak ışık + kenarlarda vinyet)
-    try {
-      ctx.save();
-      const isik = ctx.createLinearGradient(0,0,0,REF_H);
-      isik.addColorStop(0, "rgba(255,255,255,.10)");
-      isik.addColorStop(0.4, "rgba(255,255,255,0)");
-      ctx.fillStyle = isik; ctx.fillRect(0,0,REF_W,REF_H);
-      ctx.globalCompositeOperation = "multiply";
-      const vin = ctx.createRadialGradient(REF_W/2,REF_H/2,REF_H*0.35,
-                                            REF_W/2,REF_H/2,REF_H*0.85);
-      vin.addColorStop(0, "rgba(255,255,255,1)");
-      vin.addColorStop(1, "rgba(140,140,150,1)");
-      ctx.fillStyle = vin; ctx.fillRect(0,0,REF_W,REF_H);
-      ctx.restore();
-    } catch(e){}
     ambiyansCiz(ctx, zaman);  // JUICE: her temada otomatik yüzen parıltı zerreleri
-    try { (T.yolCiz || varsayilanYol)(ctx, yol, zaman); }
-    catch(e){ varsayilanYol(ctx); }
+    // v1.1: yol statik zemin katmanında (zeminKatmaniAl)
 
     // Seçili kule tipinin menzil önizlemesi yok; kurulu kulelerin menzili seçiliyken
     if (seciliKule){
