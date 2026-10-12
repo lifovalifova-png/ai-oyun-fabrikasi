@@ -280,5 +280,17 @@
     "slug": "elektrik-santrali-savunmasi",
     "kapak": true,
     "tarih": "2026-10-07"
+  },
+  {
+    "isim": "Lav Lambası Laboratuvarı",
+    "slug": "lav-lambasi-laboratuvari",
+    "kapak": true,
+    "tarih": "2026-10-12"
+  },
+  {
+    "isim": "Kapadokya Peri Bacaları",
+    "slug": "kapadokya-peri-bacalari",
+    "kapak": true,
+    "tarih": "2026-10-12"
   }
 ]

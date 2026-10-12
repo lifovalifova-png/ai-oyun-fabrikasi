@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-AI OYUN FABRİKASI - main.py
+AI OYUN FABRİKASI - main.py (v3)
 Günde 1 kez çalışır: Sheets'teki fikir havuzundan fikir alır,
 Gemini ile oyun üretir, test eder, GitHub'a push eder, loglar.
+
+v3: motor_sablon.html v3 (3 harita × 3 bölüm × 4 dalga, MEKANİK KANCALARI, kalibre denge).
+    Eklenti artık fikrin mekaniğini de yazar; kalite testi mekaniğin gerçekten çalıştığını ölçer.
+    Model: Gemini 3.8 Flash (ücretsiz katman) + otomatik yedek modeller.
+    Başarısız fikir yanmaz: bir kez daha denenir (TEKRAR), sonra BASARISIZ işaretlenir.
 
 Gerekli ortam değişkenleri:
   GEMINI_API_KEY : Google AI Studio API anahtarı
@@ -14,6 +19,10 @@ Gerekli dosya:
 import os
 import re
 import json
+import glob
+import shutil
+import hashlib
+import subprocess
 from datetime import datetime
 
 import gspread
@@ -24,13 +33,62 @@ from google import genai
 
 from test_bot import oyunu_test_et, gemini_cagir
 
+
+class _Yanit:
+    def __init__(self, text):
+        self.text = text
+
+
+def yazar_cagir(client, prompt):
+    """Eklentiyi yazdırır. ANTHROPIC_API_KEY varsa Claude, yoksa (ya da Claude hata verirse) Gemini."""
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        try:
+            import anthropic
+            ac = anthropic.Anthropic()          # anahtarı ortamdan okur
+            parcalar = []
+            # Uzun çıktıda zaman aşımı olmasın diye akış (stream) kullanılır
+            with ac.messages.stream(model=CLAUDE_MODEL, max_tokens=CLAUDE_MAX_TOKEN,
+                                    messages=[{"role": "user", "content": prompt}]) as akis:
+                for parca in akis.text_stream:
+                    parcalar.append(parca)
+                son = akis.get_final_message()
+            metin = "".join(parcalar)
+            k = son.usage
+            maliyet_usd = (k.input_tokens * (4 if "opus" in CLAUDE_MODEL else 2)
+                           + k.output_tokens * (20 if "opus" in CLAUDE_MODEL else 10)) / 1e6
+            print(f"🟣 Claude ({CLAUDE_MODEL}): {k.input_tokens} girdi + {k.output_tokens} çıktı token "
+                  f"≈ ${maliyet_usd:.3f}")
+            if metin.strip():
+                gemini_cagir.son_model = CLAUDE_MODEL
+                return _Yanit(metin)
+            print("⚠️ Claude boş yanıt döndürdü, Gemini'ye geçiliyor.")
+        except Exception as e:
+            print(f"⚠️ Claude çağrısı başarısız ({str(e)[:150]}), Gemini'ye geçiliyor.")
+    return gemini_cagir(client, MODEL, prompt)
+
 # ================== AYARLAR ==================
 SHEET_ADI = "AI Uygulama Fabrikası"   # Google Sheets dosya adı
 LOG_SEKMESI = "Loglar"                # Log sekmesi (A:Tarih B:Oyun C:API D:Durum E:Not)
 HAVUZ_SEKMESI = "FikirHavuzu"         # Fikir havuzu (A:Fikir B:Durum)
 REPO_ADI = "ai-oyun-fabrikasi"        # GitHub repo adı
-MODEL = "gemini-2.5-flash"
+# v3: modeller sıralı listedir; ilki kota/erişim sorunu verirse sonrakine geçilir.
+# Eklentiyi yazan model (günde en çok ~6 çağrı) ve ekran görüntüsünü puanlayan model ayrı
+# tutulur: ücretsiz katmanda kotalar model başınadır, böylece birbirinin hakkını yemezler.
+# GitHub > Settings > Secrets and variables > Actions > Variables bölümüne GEMINI_MODEL
+# eklenirse listenin başına o model geçer (kod değiştirmeden model denemek için).
+YAZAR_MODELLER = [m for m in (os.environ.get("GEMINI_MODEL"), "gemini-3.8-flash",
+                              "gemini-3.6-flash", "gemini-2.5-flash") if m]
+GOZ_MODELLER = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.6-flash", "gemini-2.5-flash"]
+MODEL = YAZAR_MODELLER                # geriye uyum: eski çağrılar listeyi alır
+
+# İSTEĞE BAĞLI CLAUDE (ücretli): GitHub Secrets'a ANTHROPIC_API_KEY eklenirse eklentiyi
+# Claude yazar; Gemini yalnız ekran görüntüsü puanlamada (ücretsiz) kalır. Anahtar yoksa
+# fabrika eskisi gibi tamamen Gemini ile çalışır. Claude hata verirse o çağrı Gemini'ye düşer.
+# Variables bölümüne CLAUDE_MODEL eklenerek model değiştirilebilir (ör. claude-opus-5-5).
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL") or "claude-sonnet-5-5"
+CLAUDE_MAX_TOKEN = 32000              # bir eklenti ~10-20 bin token; üst sınır maliyeti de sınırlar
 MAX_DENEME = 4
+ORNEK_KLASORU = "ornekler"            # Prompt'a örnek olarak giren referans eklentiler
 ANALYTICS_ID = "G-XXXXXXXXXX"         # Google Analytics 4 Ölçüm Kimliği (kurulumda değiştir)
 
 
@@ -63,119 +121,39 @@ def analytics_ekle(html):
 
 # ================== FİKİR HAVUZU ==================
 def havuzdan_fikir_al(havuz):
-    """B sütunu boş olan ilk fikri alır ve KULLANILDI işaretler."""
+    """v3: B sütunu boş olan ilk fikri alır; yoksa bir kez başarısız olmuş (TEKRAR) fikri alır.
+    Döner: (satır_no, fikir, önceki_durum) ya da None. Durum sonuçta durum_yaz() ile işaretlenir:
+    başarı → KULLANILDI, ilk başarısızlık → TEKRAR, ikinci başarısızlık → BASARISIZ.
+    (v1/v2'de fikir üretimden ÖNCE KULLANILDI yapılıyordu; başarısız günler fikir yakıyordu.)"""
     satirlar = havuz.get_all_values()
+    adaylar = []
     for i, satir in enumerate(satirlar, start=1):
         fikir = satir[0].strip() if len(satir) > 0 else ""
-        durum = satir[1].strip() if len(satir) > 1 else ""
-        if fikir and durum == "":
-            havuz.update_cell(i, 2, "KULLANILDI")
-            return fikir
-    return None
+        durum = satir[1].strip().upper() if len(satir) > 1 else ""
+        if not fikir or fikir.lower().startswith("fikir"):     # başlık satırı
+            continue
+        if durum == "":
+            return (i, fikir, "")
+        if durum == "TEKRAR":
+            adaylar.append((i, fikir, "TEKRAR"))
+    return adaylar[0] if adaylar else None
+
+
+def durum_yaz(havuz, satir_no, durum):
+    try:
+        havuz.update_cell(satir_no, 2, durum)
+    except Exception as e:
+        print(f"⚠️ Fikir durumu yazılamadı: {e}")
 
 
 # ================== ÜRETİM + KALİTE KONTROL ==================
-EKLENTI_KURALLARI = """
-Sen uzman bir oyun sanatçısı ve JavaScript geliştiricisisin. Tam bir oyun YAZMAYACAKSIN.
-Oyun motoru zaten hazır ve test edilmiş durumda (oyun döngüsü, dalgalar, kuleler, düşman
-hareketi, çarpışma, HUD, menüler, mobil destek hepsi motorda). Senin tek görevin, motora
-takılacak TEMA EKLENTİSİ yazmak: yani oyunun görünüşünü ve dengesini tanımlayan bir nesne.
+# v3: Gemini'ye giden kurallar ayrı dosyada (Python'a dokunmadan düzenlenebilsin diye).
+KURAL_DOSYASI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "eklenti_kurallari.txt")
+if not os.path.exists(KURAL_DOSYASI):
+    raise FileNotFoundError("eklenti_kurallari.txt bulunamadı: main.py ile aynı klasöre yükleyin.")
+with open(KURAL_DOSYASI, encoding="utf-8") as _f:
+    EKLENTI_KURALLARI = _f.read()
 
-ÇIKTI FORMATI: SADECE aşağıdaki yapıda tek bir JavaScript nesnesi yaz. Açıklama, markdown,
-``` işareti KULLANMA. `const TEMA = {` ile başla ve `};` ile bitir. Sonuna `// SON` yaz.
-
-const TEMA = {
-  ad: "Oyunun Türkçe adı",
-  aciklama: "Tek cümlelik Türkçe tanıtım",
-  palet: { arka1:"#hex", arka2:"#hex", yol:"#hex", yolKenar:"#hex",
-           dusman:"#hex", dusman2:"#hex", kule:"#hex", mermi:"#hex", vurgu:"#hex" },
-  yol: [ {x:0,y:360}, {x:300,y:360}, ... , {x:1280,y:300} ],   // 1280x720 alanda 5-9 nokta.
-        // ÇEŞİTLİLİK ZORUNLU: her oyunda farklı bir giriş/çıkış ve yön kombinasyonu seç.
-        // Giriş soldan (x<=0), sağdan (x>=1280), üstten (y<=0) veya alttan (y>=720) olabilir;
-        // çıkış GİRİŞTEN FARKLI bir kenardan olsun. Sadece dik açılı (90°) zikzak YETERLİ DEĞİL:
-        // çapraz segmentler, S kıvrımı, sarmal yaklaşımı gibi farklı desenler kullan. Örnek 3
-        // farklı desen: (a) sağ üstten girip sola-aşağı çapraz inen yol, (b) üstten girip S
-        // kıvrımıyla alta çıkan yol, (c) soldan girip merkezde spiral yapıp sağdan çıkan yol.
-  dusmanTipleri: [
-    {ad:"Türkçe ad", can:60, hiz:62, altin:12, yaricap:14, renk:"#hex"},
-    {ad:"Türkçe ad", can:42, hiz:96, altin:14, yaricap:12, renk:"#hex"},
-    {ad:"Türkçe ad", can:155, hiz:44, altin:23, yaricap:18, renk:"#hex"}
-  ],
-  kuleTipleri: [
-    {ad:"Türkçe ad", fiyat:50, menzil:150, hasar:18, atisHizi:1.2, mermiHizi:360, renk:"#hex"},
-    {ad:"Türkçe ad", fiyat:90, menzil:125, hasar:44, atisHizi:0.55, mermiHizi:270, renk:"#hex", alan:48},
-    {ad:"Türkçe ad", fiyat:70, menzil:135, hasar:8, atisHizi:0.9, mermiHizi:330, renk:"#hex", yavaslat:0.5}
-  ],
-  arkaplanCiz(c, W, H, t){ /* zorunlu */ },
-  yolCiz(c, yol, t){ /* zorunlu */ },
-  dusmanCiz(c, d, t){ /* zorunlu */ },
-  kuleCiz(c, k, t){ /* zorunlu */ }
-};
-// SON
-
-ÇİZİM KURALLARI (asıl işin bu, buraya yoğunlaş):
-- c = canvas 2d context, W=1280, H=720, t = geçen saniye (animasyon için kullan).
-
-* ÖLÇEK (kesin sınırlar, aşarsan oyun bozuk görünür):
-  - kuleCiz: TÜM çizim (0,0) merkezli olacak ve -30..+30 piksel kutusunu AŞMAYACAK.
-    Kule düşmandan en fazla 1.5 kat büyük görünmeli.
-  - dusmanCiz: TÜM çizim (0,0) merkezli, yarıçapı d.yaricap*1.4'ü aşmayacak.
-  - Bu sınırlar motorun tıklama alanıyla uyumludur; aşan çizim yanlış yerde görünür.
-
-* NAMLU YÖNÜ (sık yapılan hata):
-  - k.aci hedefin yönüdür ve 0 = SAĞ demektir. c.rotate(k.aci) çağırdıktan SONRA
-    namluyu +X yönünde (sağa doğru, örn. c.fillRect(0,-4,26,8)) çiz. YUKARI (negatif y)
-    çizersen kule yanlış yöne bakar. Taban ve gövdeyi rotate'ten ÖNCE çiz.
-
-* KONTRAST (görünürlük kuralı, ihlal edilirse oyun oynanamaz):
-  - Düşman renkleri arka plan renklerinden BELİRGİN ŞEKİLDE farklı olacak. Arka plan koyu
-    ise düşmanlar açık/canlı, arka plan açık ise düşmanlar koyu olacak. Yeşil zeminde yeşil
-    düşman, mavi gökte mavi düşman gibi eşleşmeler YASAK.
-  - Her düşman ve kulenin etrafına ince koyu kontur (c.stroke) çiz ki zeminden ayrışsın.
-  - palet.arka1 ve palet.arka2 birbirine yakın olabilir ama dusman/dusman2/kule renkleri
-    onlardan uzak tonlarda olmalı.
-
-* TEMA VARLIĞI:
-  - Konseptteki ANA YAPI arkaplanCiz içinde görünür şekilde çizilecek: kale savunmasında
-    surlar ve kapı, üs savunmasında üs binası, kovan savunmasında kovan gibi. Sadece
-    genel manzara (dağ, bulut) yeterli DEĞİLDİR.
-  - Yolun bittiği sağ/alt uçta savunulan yapı görünsün.
-
-* ARKA PLAN DERİNLİĞİ (ÇOK SIK İHLAL EDİLİYOR — dikkatle uygula):
-  - En az 5 KATMAN olacak, her biri arka plandan öne doğru: (1) gökyüzü/zemin gradient,
-    (2) en uzak silüet (dağ/gökdelen/derinlik hissi veren büyük şekil), (3) orta mesafe
-    dekoru (bina/ağaç/kaya/yapı grubu — en az 4 farklı obje), (4) yakın zemin dokusu
-    (nokta/çizgi/leke deseniyle toprak-kum-metal-su ne ise onun hissi), (5) hareketli/
-    animasyonlu bir öğe (ışık parıltısı, dalga, sis, uçuşan kıvılcım — t ile animasyonlu).
-  - YASAK: sadece "gradient + 1-2 basit üçgen dağ" ile bırakmak. Bu basit/boş sayılır ve
-    reddedilir. Her katman gerçekten farklı şekil ve derinlik hissi vermeli.
-  - Katmanlar arası kontrast/opaklıkla derinlik hissi ver: uzak katmanlar soluk/az kontrast,
-    yakın katmanlar net/yüksek kontrast olsun.
-
-- arkaplanCiz: yukarıdaki 5 katmanı bu fonksiyonda uygula.
-- yolCiz: yolu dokulu çiz (kenar + iç dolgu + üzerine tema deseni). Verilen `yol` dizisini kullan.
-- dusmanCiz: d.x, d.y, d.yaricap, d.renk, d.bos (boss ise true), d.faz (animasyon fazı) verilir.
-  Düşmanı EN AZ 4 parçadan oluştur (gövde + baş + detay + silah/kanat). Yürüme/salınım animasyonu
-  için t ve d.faz kullan. Tek daire/kare KESİNLİKLE YASAK.
-- kuleCiz: k.x, k.y, k.aci, k.tip.renk, k.seviye (1-3), k.flas (ateş anı) verilir.
-  Kuleyi EN AZ 4 parçadan oluştur (taban + gövde + namlu + detay). k.flas>0 iken namlu ucunda
-  parlama çiz. k.seviye arttıkça görsel detay ekle.
-  * SİLÜET FARKLILIĞI ZORUNLU: kuleTipleri'ndeki 3 kule SADECE RENK ile ayrılamaz, GÖVDE
-    ŞEKLİ de belirgin farklı olmalı. Örnek 3 aile: (a) uzun/ince/sivri kule (mızrak, kule,
-    anten gibi), (b) geniş/alçak/kutu gövdeli (top, kalkan, kutu gibi), (c) köşeli/dikenli/
-    asimetrik form (mancınık, pençe, kristal gibi). kuleCiz içinde k.tip.ad'a göre if/else
-    dallanıp HER dalda TAMAMEN FARKLI bir taban+gövde geometrisi çiz, sadece namlu/detay
-    rengini değiştirmek YETERLİ DEĞİLDİR.
-- Gölge, kontur ve c.shadowBlur ile derinlik ver. Renkler paletle uyumlu olsun.
-- Her çizim fonksiyonu c.save() ile başlayıp c.restore() ile bitmeli (dönüşüm sızmasın).
-- Not: motor çizimden önce c.translate(x,y) YAPMAZ; sen kendi save/translate'ini yaparsın.
-
-DENGE KURALLARI: Yukarıdaki sayısal aralıkları koru (düşman hızı 40-100, kule menzili 110-160,
-mermi hızı 250-400). Sadece temaya uygun isim ve renk değiştir, aşırı değer verme.
-
-YASAKLAR: Dış dosya/kütüphane, emoji, resim, ses YOK. window/document'e dokunma, oyun döngüsü
-yazma, setInterval kullanma. Sadece yukarıdaki TEMA nesnesini üret.
-"""
 
 
 def motor_sablonu_oku():
@@ -208,6 +186,26 @@ def eklenti_temizle(ham):
     return kod
 
 
+def js_sozdizimi_hatasi(kod):
+    """v3: Node varsa eklentiyi tarayıcıya vermeden önce sözdizimi denetimi (kesilmiş çıktıyı
+    ve eksik parantezi Playwright'a hiç sokmadan yakalar). Node yoksa sessizce geçer."""
+    node = shutil.which("node")
+    if not node:
+        return None
+    os.makedirs("temp_test", exist_ok=True)
+    yol = os.path.join("temp_test", "eklenti_kontrol.js")
+    with open(yol, "w", encoding="utf-8") as f:
+        f.write(kod + "\n;module.exports = TEMA;\n")
+    try:
+        r = subprocess.run([node, "--check", yol], capture_output=True, text=True, timeout=30)
+    except Exception:
+        return None
+    if r.returncode == 0:
+        return None
+    satirlar = [x for x in (r.stderr or "").splitlines() if x.strip()]
+    return "JavaScript sözdizimi hatası: " + " | ".join(satirlar[-3:])[:220]
+
+
 def eklenti_gecerli_mi(kod):
     """Eklentinin yapısal olarak sağlam olup olmadığını kontrol eder."""
     if not kod.startswith("const TEMA"):
@@ -215,13 +213,26 @@ def eklenti_gecerli_mi(kod):
     if kod.count("{") != kod.count("}"):
         return "Süslü parantezler eşleşmiyor (kod yarıda kesilmiş olabilir)"
     for zorunlu in ("arkaplanCiz", "yolCiz", "dusmanCiz", "kuleCiz",
-                    "dusmanTipleri", "kuleTipleri", "palet"):
+                    "dusmanTipleri", "kuleTipleri", "palet", "haritalar", "mekanik"):
         if zorunlu not in kod:
             return f"Zorunlu alan eksik: {zorunlu}"
-    for yasak in ("requestAnimationFrame", "setInterval", "document.", "window."):
+    for yasak in ("requestAnimationFrame", "setInterval", "setTimeout", "document.", "window.",
+                  "fetch(", "XMLHttpRequest", "localStorage"):
         if yasak in kod:
             return f"Yasak ifade kullanılmış: {yasak}"
-    return None
+    return js_sozdizimi_hatasi(kod)
+
+
+def ornek_eklenti_sec(fikir):
+    """v3: ornekler/ klasöründen bir referans eklenti seçer (fikre göre sabit, örnekler dönüşümlü).
+    Bu klasör fabrikanın 'örnek kütüphanesi'dir: en iyi oyunların eklentileri buraya eklendikçe
+    sonraki üretimler o çıtadan başlar."""
+    dosyalar = sorted(glob.glob(os.path.join(ORNEK_KLASORU, "*.js")))
+    if not dosyalar:
+        return ""
+    i = int(hashlib.md5(fikir.encode("utf-8")).hexdigest(), 16) % len(dosyalar)
+    with open(dosyalar[i], encoding="utf-8") as f:
+        return f.read()
 
 
 def eklenti_uret_ve_test_et(fikir, client):
@@ -234,11 +245,19 @@ def eklenti_uret_ve_test_et(fikir, client):
     for deneme in range(1, MAX_DENEME + 1):
         print(f"🛠️ Eklenti üretimi: {deneme}/{MAX_DENEME}")
 
-        prompt = f"""Oyun konsepti: "{fikir}"
-Önceki denemelerde alınan hatalar (varsa düzelt): {hata_gecmisi if hata_gecmisi else "Yok"}
-{EKLENTI_KURALLARI}"""
+        ornek = ornek_eklenti_sec(fikir)
+        prompt = f"""Oyun konsepti (BAŞLIK; KANCA; MEKANİK; HARİTALAR; İMZA KULE; İMZA DÜŞMAN):
+"{fikir}"
 
-        cevap = gemini_cagir(client, MODEL, prompt)
+Önceki denemelerde alınan hatalar (varsa MUTLAKA düzelt): {hata_gecmisi if hata_gecmisi else "Yok"}
+
+{EKLENTI_KURALLARI}
+
+ÖRNEK EKLENTİ — yalnız YAPIYI, mekanik kancalarının kullanımını ve çizim kalitesi çıtasını göster.
+Tema, çizimler, renkler, yollar ve isimler KOPYALANMAYACAK; senin oyunun tamamen farklı görünmeli:
+{ornek}"""
+
+        cevap = yazar_cagir(client, prompt)
         api_cagrisi += 1
         eklenti = eklenti_temizle(cevap.text)
 
@@ -259,7 +278,7 @@ def eklenti_uret_ve_test_et(fikir, client):
             f.write(tam_oyun)
 
         print("🤖 Robot oyuncu test ediyor...")
-        rapor = oyunu_test_et(test_yolu, client, MODEL, fikir)
+        rapor = oyunu_test_et(test_yolu, client, GOZ_MODELLER, fikir)
         api_cagrisi += rapor["api_cagrisi"]
 
         if rapor["gecti"]:
@@ -293,8 +312,10 @@ Görevin: YAPIYA VE SAYISAL DEĞERLERE HİÇ DOKUNMADAN, sadece çizim fonksiyon
   derinlik kat.
 - Kule seviyesine (k.seviye) göre görsel farklılık ekle.
 
-DEĞİŞMEZ: Nesne yapısı, alan isimleri, palet dışındaki sayısal değerler, yol dizisi,
-düşman/kule istatistikleri AYNI kalacak. Fonksiyonlar c.save()/c.restore() dengesini koruyacak.
+DEĞİŞMEZ: Nesne yapısı, alan isimleri, palet dışındaki sayısal değerler, haritalar ve yol
+dizileri, düşman/kule istatistikleri ve `mekanik` nesnesinin TAMAMI AYNI kalacak (mekanik
+koduna dokunma). Fonksiyonlar c.save()/c.restore() dengesini koruyacak. Düşman ve kule
+gövdeleri opak kalacak; tipe göre dallanmada son dal koşulsuz `else` kalacak.
 Dış kaynak, emoji, document/window kullanımı YOK.
 
 ÇIKTI: SADECE güncellenmiş eklenti kodu. `const TEMA = {{` ile başla, `}};` ile bitir,
@@ -302,7 +323,7 @@ sonuna `// SON` yaz. Markdown kullanma.
 
 MEVCUT EKLENTİ:
 {eklenti_kodu}"""
-    cevap = gemini_cagir(client, MODEL, prompt)
+    cevap = yazar_cagir(client, prompt)
     yeni = eklenti_temizle(cevap.text)
     return None if eklenti_gecerli_mi(yeni) else yeni
 
@@ -464,13 +485,15 @@ def main():
         if not fikir:
             log_yaz(log_sekmesi, "HAVUZ BOS", 0, "FAILED", "Fikir havuzu tükendi!")
             return
+        satir_no, fikir, onceki_durum = fikir
         oyun_adi = fikirden_baslik(fikir)
-        print(f"💡 Fikir: {fikir}")
+        print(f"💡 Fikir (satır {satir_no}{', ikinci deneme' if onceki_durum else ''}): {fikir}")
 
         # 2. Tema eklentisi üret + motora tak + robot oyuncuyla test et
         kod, api_cagrisi, rapor = eklenti_uret_ve_test_et(fikir, client)
         if kod is None:
             sebep = rapor if isinstance(rapor, str) else "Sebep kaydedilemedi"
+            durum_yaz(havuz, satir_no, "BASARISIZ" if onceki_durum == "TEKRAR" else "TEKRAR")
             log_yaz(log_sekmesi, oyun_adi, api_cagrisi, "FAILED", sebep[:250])
             return
 
@@ -488,7 +511,7 @@ def main():
                 cila_yolu = os.path.join("temp_test", "cila.html")
                 with open(cila_yolu, "w", encoding="utf-8") as f:
                     f.write(cilali_oyun)
-                cila_rapor = oyunu_test_et(cila_yolu, client, MODEL, fikir)
+                cila_rapor = oyunu_test_et(cila_yolu, client, GOZ_MODELLER, fikir)
                 api_cagrisi += cila_rapor["api_cagrisi"]
                 if cila_rapor["gecti"] and cila_rapor["puan"] >= rapor["puan"]:
                     kod, rapor = cilali_oyun, cila_rapor
@@ -503,10 +526,13 @@ def main():
         # 3. Kaydet + galeri + push (kapak: robot oyuncunun zaten çektiği ekran görüntüsü)
         slug = kaydet_ve_galeriyi_guncelle(oyun_adi, kod, rapor.get("kapak_png"))
         github_repoya_gonder(slug)
+        durum_yaz(havuz, satir_no, "KULLANILDI")
 
         # 4. Başarı logu (robot oyuncunun puanı ve yorumuyla)
+        mk = rapor.get("mekanik_ozet") or {}
         log_yaz(log_sekmesi, oyun_adi, api_cagrisi, "BASARILI",
-                f"Puan: {rapor['puan']}/10 - {rapor['yorum']}")
+                f"Puan: {rapor['puan']}/10 - {rapor['yorum']} | Model: {gemini_cagir.son_model}"
+                f" | Mekanik: {mk.get('mekanik')} | Bot: {mk.get('bot')}")
 
     except Exception as e:
         print(f"🚨 KRİTİK HATA: {e}")

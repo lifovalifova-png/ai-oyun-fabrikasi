@@ -37,6 +37,42 @@
   #vinyet{position:absolute;inset:0;z-index:9;pointer-events:none;opacity:0;
           transition:opacity .4s;
           background:radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(220,38,38,.55) 100%);}
+  #yetenekBtn{position:absolute;right:14px;bottom:86px;z-index:11;display:none;
+              background:rgba(17,24,39,.92);border:2px solid rgba(255,255,255,.2);
+              color:#e5e7eb;border-radius:12px;padding:10px 16px;font-size:14px;
+              font-weight:700;cursor:pointer;min-width:130px;}
+  #yetenekBtn:disabled{opacity:.45;cursor:not-allowed;}
+  #yetenekBtn.hedefleme{border-color:#fbbf24;box-shadow:0 0 0 3px rgba(251,191,36,.35);}
+  /* v2: bölüm/harita arayüzü */
+  #hizBtn{position:absolute;top:10px;right:14px;z-index:11;background:rgba(17,24,39,.85);
+          border:2px solid rgba(255,255,255,.18);color:#e5e7eb;border-radius:10px;
+          min-width:48px;min-height:40px;font-size:15px;font-weight:800;cursor:pointer;}
+  #hizBtn.aktif{border-color:#fbbf24;color:#fbbf24;}
+  #dalgaCagirBtn{position:absolute;left:14px;bottom:86px;z-index:11;display:none;
+                 background:rgba(17,24,39,.92);border:2px solid #fbbf24;color:#fde68a;
+                 border-radius:12px;padding:10px 16px;min-height:44px;font-size:14px;
+                 font-weight:700;cursor:pointer;}
+  #bolumKart{position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:12;
+             pointer-events:none;opacity:0;transition:opacity .35s;text-align:center;
+             background:rgba(17,24,39,.94);border:1px solid rgba(251,191,36,.45);
+             border-radius:14px;padding:10px 22px;color:#e5e7eb;min-width:220px;}
+  #bolumKart.gorunur{opacity:1;}
+  #bolumKart .kbaslik{font-weight:800;font-size:16px;}
+  #bolumKart .kyildiz{color:#fbbf24;font-size:26px;letter-spacing:4px;line-height:1.2;}
+  #bolumKart .kmetin{font-size:13px;color:#cbd5e1;}
+  #zorlukSecim{display:flex;gap:8px;justify-content:center;margin-top:12px;}
+  #zorlukSecim button{background:#1f2937;color:#cbd5e1;border:2px solid rgba(255,255,255,.14);
+                      border-radius:10px;padding:8px 14px;min-height:40px;font-weight:700;cursor:pointer;}
+  #zorlukSecim button.secili{border-color:#38bdf8;color:#fff;}
+  /* v3: mekanik rozeti, boss bandı, dar ekran kule paneli */
+  #hudMekanik{border-color:rgba(251,191,36,.55)!important;color:#fde68a;}
+  #menuNasil{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);border-radius:10px;
+             padding:8px 12px;color:#fde68a;font-size:14px;line-height:1.45;margin:6px 0 10px;}
+  @media (max-width:520px){
+    #kulePanel{gap:5px;padding:8px 6px;flex-wrap:nowrap;}
+    .kule-btn{min-width:0;flex:1 1 0;padding:6px 4px;font-size:11px;}
+    #hud{gap:6px;font-size:12px;padding:8px;} #hud .kutu{padding:4px 8px;}
+  }
   .text-3xl{font-size:30px;} .text-2xl{font-size:24px;} .text-sm{font-size:13px;}
   .font-bold{font-weight:700;} .mb-3{margin-bottom:12px;} .mb-2{margin-bottom:8px;}
   .text-slate-300{color:#cbd5e1;} .text-slate-400{color:#94a3b8;}
@@ -49,13 +85,20 @@
   <div id="hud">
     <div class="kutu">Can: <span id="hudCan">20</span></div>
     <div class="kutu">Altın: <span id="hudAltin">0</span></div>
-    <div class="kutu">Dalga: <span id="hudDalga">0</span>/<span id="hudToplamDalga">10</span></div>
+    <div class="kutu">Dalga: <span id="hudDalga">0</span>/<span id="hudToplamDalga">36</span></div>
+    <div class="kutu">Bölüm: <span id="hudBolum">1</span>/<span id="hudToplamBolum">9</span></div>
+    <div class="kutu" id="hudHarita"></div>
     <div class="kutu">Skor: <span id="hudSkor">0</span></div>
-    <div class="kutu" id="hudCombo" style="display:none">Combo x<span id="hudComboSayi">1</span></div>
+    <div class="kutu" id="hudCombo" style="display:none">Seri ×<span id="hudComboSayi">1</span></div>
+    <div class="kutu" id="hudMekanik" style="display:none"></div>
   </div>
 
   <div id="uyari"></div>
   <div id="vinyet"></div>
+  <button id="yetenekBtn"></button>
+  <button id="hizBtn" title="Oyun hızı">1×</button>
+  <button id="dalgaCagirBtn"></button>
+  <div id="bolumKart"></div>
 
   <div id="kulePanel"></div>
 
@@ -63,9 +106,13 @@
     <div class="panel">
       <h1 id="menuBaslik" class="text-3xl font-bold mb-3">Steampunk zeplin savunması</h1>
       <p id="menuAciklama" class="text-slate-300 mb-2"></p>
+      <p id="menuNasil" style="display:none"></p>
       <p class="text-slate-400 text-sm">Kule seçmek için alttaki panele, yerleştirmek için haritaya dokun.
-         Kurulu kuleye dokunarak yükselt veya sat.</p>
+         Kurulu kuleye dokunarak yükselt veya sat. 3 harita, 9 bölüm, 36 dalga;
+         her bölüm sonunda ilerlemen kaydedilir.</p>
+      <div id="zorlukSecim"><button data-z="kolay">Kolay</button><button data-z="normal">Normal</button><button data-z="zor">Zor</button></div>
       <button id="baslaBtn" class="btn">Oyunu Başlat</button>
+      <button id="devamBtn" class="btn ikincil" style="display:none"></button>
     </div>
   </div>
 
@@ -74,6 +121,7 @@
       <h2 id="sonBaslik" class="text-3xl font-bold mb-2">Oyun Bitti</h2>
       <p id="sonMetin" class="text-slate-300"></p>
       <button id="yenidenBtn" class="btn">Yeniden Başlat</button>
+      <button id="sonDevamBtn" class="btn ikincil" style="display:none"></button>
     </div>
   </div>
 
@@ -89,7 +137,7 @@
 </div>
 
 <script>
-/* v1.1 düzeltmesi: eklentilerin sık kullandığı çizim alanı boyutları */
+/* v2: eklentilerin sık kullandığı çizim alanı boyutları (bkz. motor_v2 sapma listesi) */
 window.W = 1280; window.H = 720;
 </script>
 <script>
@@ -948,7 +996,11 @@ const TEMA = {
 };
 
 /* ============================================================
-   SAVUNMA MOTORU v1 - test edilmiş, değiştirilmez
+   (motor aşağıda)
+/* ============================================================
+   SAVUNMA MOTORU v3 — v2 çekirdeği (3 harita × 3 bölüm × 4 dalga, bütçe tabanlı denge,
+   sabit adım, tohum, kayıt) + v1.2 görünürlük güvencesi + MEKANİK KANCALARI.
+   v2 değişiklikleri "v2:", v3 değişiklikleri "v3:" yorumuyla işaretli.
    ============================================================ */
 (function(){
   "use strict";
@@ -956,61 +1008,192 @@ const TEMA = {
   const canvas = document.getElementById("oyunCanvas");
   const ctx = canvas.getContext("2d");
   const T = (typeof TEMA !== "undefined") ? TEMA : {};
-  // v1.1 DÜZELTME: `(T.kuleCiz || varsayilan)(...)` çağrısında `this` kayboluyordu; `this.palet`
-  // kullanan eklentilerin çizimi hata verip sessizce varsayılan (düz) çizime düşüyordu.
-  for (const ad of Object.keys(T)){ if (typeof T[ad] === "function") T[ad] = T[ad].bind(T); }
-  const P = Object.assign({
+  /* v2 DÜZELTME: motor eklenti fonksiyonlarını `(T.kuleCiz || varsayilan)(...)` biçiminde
+     çağırıyordu; bu çağrıda `this` kaybolur. Fabrikadaki 47 eklentinin 38'i çizimde
+     `this.palet` kullanıyor → v1'de bu çizimler hata verip sessizce varsayılan (düz)
+     çizime düşüyordu. Tüm fonksiyonlar TEMA'ya bağlanır; çağrı biçimi değişmez. */
+  for (const ad of Object.keys(T)){
+    if (typeof T[ad] === "function") T[ad] = T[ad].bind(T);
+  }
+  if (Array.isArray(T.haritalar)) for (const h of T.haritalar){
+    if (h && typeof h.zeminCiz === "function") h.zeminCiz = h.zeminCiz.bind(T);
+  }
+  const PALET_TABAN = Object.assign({
     arka1:"#0f172a", arka2:"#1e293b", yol:"#475569", yolKenar:"#334155",
     dusman:"#ef4444", dusman2:"#f97316", kule:"#38bdf8", mermi:"#fde047",
     vurgu:"#f472b6", metin:"#e5e7eb"
   }, T.palet || {});
+  // v2: P artık sabit değil; harita değişince o haritanın paletiyle yerinde güncellenir.
+  const P = Object.assign({}, PALET_TABAN);
 
-  // ---------- Sabitler ----------
-  const TOPLAM_DALGA = 10;
-  const BASLANGIC_CAN = 20;
-  const BASLANGIC_ALTIN = (T.baslangicAltin != null) ? T.baslangicAltin : 120;
-  const DALGA_ARASI = 5;              // saniye
+  /* ---------- v2: DENGE — tüm denge sabitleri tek yerde (§4.3) ----------
+     Bot kalibrasyonu (Oturum 3) yalnız bu nesneyi değiştirir. */
+  const DENGE = {
+    haritaSayisi: 3, bolumPerHarita: 3, dalgaPerBolum: 4,      // 3 × 3 × 4 = 36 dalga (§4.2)
+    baslangicCan: 20,
+    // v3: eklentinin başlangıç altını 100–200 aralığına sıkıştırılır (Gemini uç değer veremesin)
+    baslangicAltin: (T.baslangicAltin != null) ? Math.max(100, Math.min(200, +T.baslangicAltin || 150)) : 150,
+    ilkBekleme: 3,              // oyun başında ilk dalgaya kadar sn (v1 ile aynı)
+    dalgaArasi: 6,              // sn (§4.3; v1'de 5'ti ve hata yüzünden hiç uygulanmıyordu)
+    erkenCagirmaAltin: 3,       // "Dalgayı çağır": kalan tam saniye × bu kadar altın
+    zorluk: { kolay: 0.75, normal: 1.0, zor: 1.17 },
+    // B(g) = K × (taban + dogrusal·g) × ustel^g × ritim(g)
+    butceTaban: 40, butceDogrusal: 9, butceUstel: 1.075,
+    ritimHaritaBasi: 0.8, ritimBoss: 1.6, ritimNormal: 1.0,
+    // tehdit = can × (hız/60)^hizUs × (1 + zırh) / bolen
+    tehditHizUs: 0.7, tehditBolen: 10,
+    // Öldürme ödülü = birim tehdidi × odulKatsayi. Belgedeki 0.35 v1 düşmanında öldürme
+    // başına ~2 altın veriyor (v1: 12). v1'in ilk dalga gelirini koruyan değer: 2.0.
+    // Oturum 3'te bot kalibre edecek (sapma listesinde).
+    odulKatsayi: 1.0,
+    // v3: seri (combo) artık yalnız SKORU çarpar. v1/v2'de altını da çarpıyordu; ölçümde
+    // ekonomiyi kartopu gibi büyütüp her zorluğu kolaylaştıran asıl kaldıraç buydu.
+    comboAltin: false,
+    // v3: HARİTA KAPSAMA KATSAYISI — aynı bütçe, kıvrımlı uzun yolda kolay, düz kısa yolda zor
+    // geliyordu (eklentiden eklentiye zorluk 3 kat oynuyordu). Haritanın en iyi 10 kule
+    // noktasının ortalama yol kapsaması referansa bölünür, düşman gücü bununla ölçeklenir.
+    kapsamaRef: 30, kapsamaUs: 1.0, kapsamaAlt: 0.6, kapsamaUst: 1.8,
+    verimRef: 0.348, verimUs: 1.0, verimAlt: 0.6, verimUst: 1.6,
+    // v3: ÖDÜL AZALMASI — gelir bütçeyle aynı hızda büyüyünce geç oyunda altın taşıyordu
+    // (bot 140 kule + 30 000 artık altın). Ödül (B(1)/B(g))^us ile yavaşça azalır.
+    odulAzalmaUs: 0.4,
+    ritimBossIlk: 1.25,          // ilk haritanın boss dalgaları (yeni oyuncunun ilk duvarı)
+    // v3: zor modda çarpan ilk haritada kademeli artar (oyuncu başlangıç altınıyla ilk boss'u
+    // geçemiyordu: zor koşuların yarısı 4. dalgada bitiyordu). Kolay mod baştan uygulanır.
+    zorlukRampa: 12,
+    // v3: mekanik kancalarının ekonomiye etkisi sınırlı (eklenti hatası dengeyi bozamasın)
+    mekanikAltinOran: 0.5,      // dalga başına mekanikten gelen altın ≤ dalga ödülünün yarısı
+    ekDusmanMax: 40, canliDusmanMax: 90, mekanikCanArtiMax: 3,
+    // Şablon adetleri: [taban, dalga başına artış, tavan]
+    sablonAdet: { suru:[10, 0.5, 30], tank:[3, 1/6, 10], akin:[8, 1/3, 22],
+                  karisik:[7, 1/3, 24], ciftKol:[8, 1/3, 26], bossEskort:[4, 0.2, 14] },
+    spawnAralik: { suru:0.45, tank:1.1, akin:0.35, karisik:0.75, ciftKol:0.6, boss:0.8 },
+    minGuc: 0.6,                // birim gücü bunun altına düşerse adet azaltılır
+    boss: { can: 6, hiz: 0.72, yaricap: 1.9, kaleHasar: 5,
+            butcePayi: [0.40, 0.42, 0.48] },   // harita 3'te boss daha güçlü (§4.2)
+    tipAcilim: [2, 4, 99],      // harita başına açık düşman tipi sayısı (§4.2)
+    haritaGecisCan: 5, haritaGecisIade: 1.0, haritaGecisSure: 1.5,
+    yildizEsik: [0, 0.15],      // bölümde kaybedilen can / başlangıç: ≤0 → 3★, ≤0.15 → 2★
+    satisOrani: 0.6, yukseltmeFiyat: 0.8, yukseltmeHasar: 1.6, yukseltmeMenzil: 1.15,
+    maxSeviye: 3, comboMax: 5, comboSure: 3, zirhTavan: 0.8,
+    // v3: harita başına tonlama (gündüz → akşam → gece). Eklenti kendi paletini verse de uygulanır.
+    tonlama: [null, {renk:"#ff8a3d", guc:0.10}, {renk:"#14204a", guc:0.24}]
+  };
+  const D = DENGE;
+  const DALGA_PER_HARITA = D.bolumPerHarita * D.dalgaPerBolum;          // 12
+  const TOPLAM_DALGA = D.haritaSayisi * DALGA_PER_HARITA;               // 36
+  const TOPLAM_BOLUM = D.haritaSayisi * D.bolumPerHarita;               // 9
+  const BASLANGIC_CAN = D.baslangicCan;
   const REF_W = 1280, REF_H = 720;    // referans çizim alanı
+
+  /* ---------- v2: tohumlu RNG (§4.4) ----------
+     Oyun mantığını etkileyen rastgelelik (dalga içeriği, doğma aralığı) tohumdan gelir.
+     Her dalga kendi alt tohumunu kullanır: dalga içeriği oyuncunun ne yaptığından
+     bağımsızdır ve kayıttan devam edilince aynı dalga aynı içerikle gelir.
+     Görsel rastgelelik (parçacık, sarsıntı) Math.random'da kalır; oyun sonucunu etkilemez. */
+  function rngOlustur(s){
+    let a = s >>> 0;
+    return function(){
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function tohumKaristir(t, n){
+    let h = (t ^ Math.imul(n + 0x9E3779B9, 0x85EBCA6B)) >>> 0;
+    h = Math.imul(h ^ (h >>> 16), 0x7FEB352D) >>> 0;
+    h = Math.imul(h ^ (h >>> 15), 0x846CA68B) >>> 0;
+    return (h ^ (h >>> 16)) >>> 0;
+  }
+  const URL_P = (function(){ try { return new URLSearchParams(location.search); } catch(e){ return null; } })();
+  const URL_TOHUM = (URL_P && URL_P.has("tohum")) ? (parseInt(URL_P.get("tohum"), 10) >>> 0) : null;
+  const URL_ZORLUK = (URL_P && URL_P.get("zorluk")) || null;
 
   // ---------- Durum ----------
   let asama = "menu";                 // menu | oyunda | kazandi | kaybetti
   let can, altin, dalga, skor, combo, comboZaman;
   let ekranSarsinti = 0, donmaSuresi = 0;   // JUICE: sarsıntı + vuruş anı donması
+  // v2: koşu durumu
+  let tohum = 0, zorluk = (URL_ZORLUK && D.zorluk[URL_ZORLUK]) ? URL_ZORLUK : "normal";
+  let haritaNo = 0;                   // 0..2
+  let araVerildi = false;             // v2 (§4.1.1): dalga bitince ara yalnız BİR kez kurulur
+  let araKalan = 0, araAktif = false; // dalga arası sayacı
+  let gecis = null;                   // harita geçişi {t, hedef, uygulandi}
+  let bolumCanBasi = 0;               // bölüm başındaki can (yıldız hesabı)
+  let hizCarpani = 1;                 // 1× / 2×
+  let bossBant = null;                // v3: boss giriş bandı {t, ad}
+  let sinirsizCanTest = false;        // yalnız MOTOR_TEST ile açılır
+  const sizinti = [];                 // rota bazında sızıntı sayacı
+  const olaylar = [];                 // test için olay günlüğü (dalga başı/sonu, geçiş, kayıt)
+  const spawnKaydi = [];              // test için gerçekten doğan birimler
+
+  // ---------- MEKANİK MODÜLLERİ (tema seçer, motor uygular) ----------
+  const MOD = T.moduller || {};
+  let toplanabilirler = [], toplanabilirSayac = 6;
+  let yetenek = null;   // {kalan, tip, hedefleme}
+  let kahraman = null;  // {x, y, hedefX, hedefY, can, maxCan, sayac, secili, oluSayac}
+  const YETENEK_SURE = 22;
   const ambiyansParcaciklari = Array.from({length:36}, () => ({
     x: Math.random()*1280, y: Math.random()*720,
     hiz: 6 + Math.random()*14, boyut: 1 + Math.random()*1.8, faz: Math.random()*6.28
   }));
   let dusmanlar, kuleler, mermiler, parcaciklar, yaziEfektleri;
-  let dalgaKuyrugu, dalgaAraSayac, dalgaAktif, spawnSayac, spawnKuyrugu;
+  let dalgaAktif, spawnSayac, spawnKuyrugu, spawnAralik = 0.75;
   let seciliKuleTipi = 0, seciliKule = null, zaman = 0;
   let olcek = 1, kaydirX = 0, kaydirY = 0;
 
-  // ---------- Yol ----------
-  const yol = (T.yol && T.yol.length > 1) ? T.yol.slice() : [
+  /* ---------- v2: Rotalar ve haritalar (§4.2) ----------
+     v1 eklentisi: tek `yol` → üç haritada da aynı rota (geriye uyum).
+     Haritaları olan eklenti (T.haritalar[], Oturum 4'te tam sözleşme gelecek):
+     şimdilik her haritadan yalnız {ad, palet, rotalar | yol, zeminCiz} okunur. */
+  const VARSAYILAN_YOL = [
     {x:0,y:360},{x:260,y:360},{x:260,y:170},{x:640,y:170},
     {x:640,y:540},{x:1000,y:540},{x:1000,y:300},{x:1280,y:300}
   ];
-  const yolUzunluklari = [];
-  let yolToplam = 0;
-  for (let i=0;i<yol.length-1;i++){
-    const d = Math.hypot(yol[i+1].x-yol[i].x, yol[i+1].y-yol[i].y);
-    yolUzunluklari.push(d); yolToplam += d;
-  }
-  function yolNoktasi(mesafe){
-    let kalan = Math.max(0, mesafe);
-    for (let i=0;i<yolUzunluklari.length;i++){
-      if (kalan <= yolUzunluklari[i]){
-        const o = kalan / (yolUzunluklari[i] || 1);
-        return {x: yol[i].x + (yol[i+1].x-yol[i].x)*o,
-                y: yol[i].y + (yol[i+1].y-yol[i].y)*o,
-                aci: Math.atan2(yol[i+1].y-yol[i].y, yol[i+1].x-yol[i].x)};
-      }
-      kalan -= yolUzunluklari[i];
+  function rotaHazirla(noktalar){
+    const n = noktalar.map(p => ({x:+p.x, y:+p.y}));
+    const u = []; let toplam = 0;
+    for (let i=0;i<n.length-1;i++){
+      const d = Math.hypot(n[i+1].x-n[i].x, n[i+1].y-n[i].y);
+      u.push(d); toplam += d;
     }
-    const s = yol[yol.length-1];
+    return {n, u, toplam};
+  }
+  function rotaNoktasi(r, mesafe){
+    let kalan = Math.max(0, mesafe);
+    for (let i=0;i<r.u.length;i++){
+      if (kalan <= r.u[i]){
+        const o = kalan / (r.u[i] || 1), a = r.n[i], b = r.n[i+1];
+        return {x: a.x + (b.x-a.x)*o, y: a.y + (b.y-a.y)*o, aci: Math.atan2(b.y-a.y, b.x-a.x)};
+      }
+      kalan -= r.u[i];
+    }
+    const s = r.n[r.n.length-1];
     return {x:s.x, y:s.y, aci:0};
   }
-
+  const HARITALAR = (function(){
+    const v1Yol = (T.yol && T.yol.length > 1) ? T.yol.slice() : VARSAYILAN_YOL;
+    const kaynak = (Array.isArray(T.haritalar) && T.haritalar.length) ? T.haritalar : null;
+    const liste = [];
+    for (let i=0;i<D.haritaSayisi;i++){
+      const h = kaynak ? (kaynak[Math.min(i, kaynak.length-1)] || {}) : {};
+      let ham = (Array.isArray(h.rotalar) && h.rotalar.length) ? h.rotalar : [h.yol || v1Yol];
+      ham = ham.filter(r => Array.isArray(r) && r.length > 1);
+      if (!ham.length) ham = [v1Yol];
+      liste.push({
+        ad: h.ad || ((i+1) + ". Harita"),
+        palet: Object.assign({}, PALET_TABAN, h.palet || {}),
+        rotalar: ham.map(rotaHazirla),
+        imza: JSON.stringify(ham),        // rota değişti mi? (kule iadesi kararı)
+        zeminCiz: (typeof h.zeminCiz === "function") ? h.zeminCiz : null
+      });
+    }
+    return liste;
+  })();
+  function harita(){ return HARITALAR[haritaNo]; }
+  function anaRota(){ return HARITALAR[haritaNo].rotalar[0]; }
   // ---------- Tip tanımları ----------
   const varsayilanDusmanlar = [
     {ad:"Asker", can:60, hiz:60, altin:12, yaricap:14, renk:P.dusman},
@@ -1024,6 +1207,108 @@ const TEMA = {
   ];
   const DUSMAN_TIPLERI = (T.dusmanTipleri && T.dusmanTipleri.length) ? T.dusmanTipleri : varsayilanDusmanlar;
   const KULE_TIPLERI  = (T.kuleTipleri && T.kuleTipleri.length)  ? T.kuleTipleri  : varsayilanKuleler;
+
+  /* ---------- v3: MEKANİK KANCALARI ----------
+     Sorun: fikir havuzundaki her fikrin bir mekaniği vardı (sis, büyüyen düşman, mevsim…) ama
+     eklenti yalnız görünüş + sayı verebiliyordu → üretilen her oyun aynı oyunun kaplamasıydı.
+     Çözüm: eklenti `mekanik` nesnesinde kancalar yazar; motor onları güvenle çağırır.
+       - Her çağrı try/catch içinde; bir kanca 25 kez hata verirse kapatılır (oyun bozulmaz).
+       - Kanca yalnız motorun her adımda sıfırladığı ÇARPANLARI ve sınırlı API'yi kullanır;
+         motor değerleri sıkıştırır (hız 0–3×, hasar 0–4×, menzil 0.3–2.5×…).
+       - Mekanikten gelen altın, can ve ek düşman dalga başına sınırlıdır.
+     Kalite testi window.MOTOR_MEKANIK'i okur: kanca var mı, hata var mı, gerçekten etki etti mi. */
+  const MK = (T.mekanik && typeof T.mekanik === "object") ? T.mekanik : null;
+  const DONGU = (MK && MK.dongu && Array.isArray(MK.dongu.fazlar) && MK.dongu.fazlar.length) ? {
+    her: Math.max(1, Math.min(12, (MK.dongu.her|0) || 3)),
+    fazlar: MK.dongu.fazlar.slice(0, 8).map((f, i) => ({
+      ad: String((f && f.ad) || ("Faz " + (i+1))).slice(0, 24),
+      renk: (f && typeof f.renk === "string") ? f.renk : null,
+      karartma: Math.max(0, Math.min(0.6, +(f && f.karartma) || 0))}))
+  } : null;
+  const MK_KANCALAR = ["basla", "dalgaBasladi", "fazDegisti", "dusmanDogdu", "dusmanGuncelle",
+                       "kuleGuncelle", "kuleAtti", "hasar", "dusmanOldu", "dusmanKacti", "kuleKuruldu", "ciz", "adim"];
+  const mkDurum = {var: !!MK, ad: MK ? String(MK.ad || "").slice(0, 24) : null,
+    aciklama: MK ? String(MK.aciklama || "").slice(0, 220) : null, dongu: !!DONGU,
+    kancalar: MK ? MK_KANCALAR.filter(k => typeof MK[k] === "function") : [],
+    cagri: {}, hata: {}, sonHata: {}, kapali: [],
+    etki: {hiz:0, gorunmez:0, hasarAlma:0, boyut:0, canDegisti:0, kule:0, hasar:0,
+           altin:0, can:0, ekDusman:0, faz:0, ciz:0, atis:0, kacti:0, itme:0}};
+  const mkKapali = {};
+  let fazNo = 0, mkEkAltin = 0, mkEkDusman = 0, mkCanArti = 0, mkRng = Math.random, sonGuc = 1;
+  const mkBellek = {};
+  function mkHata(ad, e){
+    mkDurum.hata[ad] = (mkDurum.hata[ad] || 0) + 1;
+    mkDurum.sonHata[ad] = String(e && e.message || e).slice(0, 120);
+    if (mkDurum.hata[ad] >= 25 && !mkKapali[ad]){ mkKapali[ad] = true; mkDurum.kapali.push(ad); }
+  }
+  function mk(ad, a, b, c, e){
+    if (!MK || mkKapali[ad]) return undefined;
+    const f = MK[ad]; if (typeof f !== "function") return undefined;
+    mkDurum.cagri[ad] = (mkDurum.cagri[ad] || 0) + 1;
+    try { return f.call(MK, a, b, c, e); } catch(err){ mkHata(ad, err); return undefined; }
+  }
+  function fazHesapla(g){ return DONGU ? Math.floor(Math.max(0, g-1) / DONGU.her) % DONGU.fazlar.length : 0; }
+  function sinir(v, a, b, varsayilan){ v = +v; return (v === v) ? Math.max(a, Math.min(b, v)) : varsayilan; }
+  // Kancaların gördüğü oyun API'si (tek nesne; değerler canlı okunur)
+  const O = {
+    get dalga(){ return dalga; }, get faz(){ return fazNo; },
+    get fazAd(){ return DONGU ? DONGU.fazlar[fazNo].ad : ""; },
+    get zaman(){ return zaman; }, get harita(){ return haritaNo; }, get zorluk(){ return zorluk; },
+    get altin(){ return altin; }, get can(){ return can; },
+    get dusmanlar(){ return dusmanlar; }, get kuleler(){ return kuleler; },
+    bellek: mkBellek, W: REF_W, H: REF_H,
+    altinEkle(n){
+      n = Math.round(sinir(n, -1000, 200, 0)); if (!n) return 0;
+      if (n > 0){
+        const tavan = Math.max(40, butce(Math.max(1, dalga)) * D.odulKatsayi * D.mekanikAltinOran);
+        n = Math.min(n, Math.max(0, Math.floor(tavan - mkEkAltin))); mkEkAltin += n;
+      }
+      altin = Math.max(0, altin + n); mkDurum.etki.altin += n; if (n) hudGuncelle(); return n;
+    },
+    canEkle(n){
+      n = Math.round(sinir(n, -5, 3, 0)); if (!n) return 0;
+      if (n > 0){ n = Math.min(n, D.mekanikCanArtiMax - mkCanArti); if (n <= 0) return 0; mkCanArti += n; }
+      if (sinirsizCanTest && n < 0) return 0;
+      can = Math.min(BASLANGIC_CAN, can + n); mkDurum.etki.can += n; hudGuncelle();
+      if (can <= 0 && asama === "oyunda"){ can = 0; bitir(false); }
+      return n;
+    },
+    dusmanEkle(tipIndeks, ayar){
+      ayar = ayar || {};
+      if (mkEkDusman >= D.ekDusmanMax || dusmanlar.length >= D.canliDusmanMax) return null;
+      const ti = Math.max(0, Math.min(DUSMAN_TIPLERI.length-1, tipIndeks|0));
+      const yakin = ayar.yakin && dusmanlar.indexOf(ayar.yakin) >= 0 ? ayar.yakin : null;
+      const rota = yakin ? yakin.rota : Math.max(0, Math.min(harita().rotalar.length-1, ayar.rota|0));
+      dusmanEkle({tip: ti, bos: false, guc: sonGuc * sinir(ayar.canOrani, 0.1, 2, 0.5), rota, ofset: 0}, true);
+      const yeni = dusmanlar[dusmanlar.length-1];
+      yeni.mesafe = yakin ? Math.max(0, yakin.mesafe - 6) : Math.max(0, +ayar.mesafe || 0);
+      const n = rotaNoktasi(harita().rotalar[yeni.rota] || anaRota(), yeni.mesafe);
+      yeni.x = yeni.px = n.x; yeni.y = yeni.py = n.y;
+      yeni.altin = Math.max(1, Math.round(yeni.altin * 0.5));   // ek düşmandan yarım ödül (çiftlik olmasın)
+      mkEkDusman++; mkDurum.etki.ekDusman++;
+      return yeni;
+    },
+    yakinKuleler(x, y, r){ const l = []; for (const k of kuleler) if (Math.hypot(k.x-x, k.y-y) <= r) l.push(k); return l; },
+    yakinDusmanlar(x, y, r){ const l = []; for (const q of dusmanlar) if (q.mesafe >= 0 && Math.hypot(q.x-x, q.y-y) <= r) l.push(q); return l; },
+    parcacik(x, y, renk, adet){ patlamaEkle(+x||0, +y||0, renk || "#ffffff", Math.max(1, Math.min(30, adet|0 || 8))); },
+    yazi(x, y, metin, renk){ yaziEkle(+x||0, +y||0, String(metin).slice(0, 24), renk); },
+    uyari(metin){ uyariGoster(String(metin).slice(0, 60)); },
+    rastgele(){ return mkRng(); },
+    // Düşmanı yolda geri iter (en çok 80 px; aynı düşman 1.5 sn'de bir)
+    geriIt(q, px){
+      if (!q || dusmanlar.indexOf(q) < 0) return false;
+      q.ozel = q.ozel || {};
+      if (zaman - (q.ozel._itme || -9) < 1.5) return false;
+      q.mesafe = Math.max(0, q.mesafe - sinir(px, 0, 80, 40)); q.ozel._itme = zaman;
+      mkDurum.etki.itme++; return true;
+    },
+    yolUzunlugu(rotaNo){ const r = harita().rotalar[rotaNo|0] || anaRota(); return r.toplam; },
+    yolNoktasi(oran, rotaNo){
+      const r = harita().rotalar[rotaNo|0] || anaRota();
+      return rotaNoktasi(r, r.toplam * sinir(oran, 0, 1, 0));
+    }
+  };
+  function haritaBilgisi(){ return {no: haritaNo, ad: HARITALAR[haritaNo].ad, toplam: D.haritaSayisi}; }
 
   // ---------- Yardımcı ----------
   function rastgele(a,b){ return a + Math.random()*(b-a); }
@@ -1051,71 +1336,437 @@ const TEMA = {
     return {x: (px - kaydirX)/olcek, y: (py - kaydirY)/olcek};
   }
 
+  // v2: kurulum yasağı haritanın TÜM rotalarına uygulanır
   function yolaYakinMi(p, esik){
-    for (let i=0;i<yol.length-1;i++){
-      const a=yol[i], b=yol[i+1];
-      const dx=b.x-a.x, dy=b.y-a.y;
-      const uzun = dx*dx+dy*dy || 1;
-      let t = ((p.x-a.x)*dx + (p.y-a.y)*dy)/uzun;
-      t = Math.max(0, Math.min(1, t));
-      const px=a.x+dx*t, py=a.y+dy*t;
-      if (Math.hypot(p.x-px, p.y-py) < esik) return true;
+    const rotalar = harita().rotalar;
+    for (let r=0;r<rotalar.length;r++){
+      const yol = rotalar[r].n;
+      for (let i=0;i<yol.length-1;i++){
+        const a=yol[i], b=yol[i+1];
+        const dx=b.x-a.x, dy=b.y-a.y;
+        const uzun = dx*dx+dy*dy || 1;
+        let t = ((p.x-a.x)*dx + (p.y-a.y)*dy)/uzun;
+        t = Math.max(0, Math.min(1, t));
+        const px=a.x+dx*t, py=a.y+dy*t;
+        if (Math.hypot(p.x-px, p.y-py) < esik) return true;
+      }
     }
     return false;
   }
 
-  // ---------- Dalga üretimi ----------
-  function dalgaOlustur(n){
-    const bos = (n % 5 === 0);           // 5. ve 10. dalga boss
-    const adet = bos ? 1 + Math.floor(n/3) : 5 + n*2;
-    const gucCarpani = Math.pow(1.28, n-1);
-    const liste = [];
-    for (let i=0;i<adet;i++){
-      const tip = DUSMAN_TIPLERI[Math.min(DUSMAN_TIPLERI.length-1,
-                    Math.floor(Math.random()*Math.min(DUSMAN_TIPLERI.length, 1+Math.floor(n/3))))];
-      liste.push({tip:tip, bos: bos && i===0, guc:gucCarpani});
+  /* ---------- v2: Bütçe tabanlı dalga üretici (§4.3) ----------
+     v1: sabit adet + 1.28^n güç + rastgele tip → her dalga aynı his, zorluk ya düz ya uçuk.
+     v2: her dalganın bir tehdit bütçesi var; şablon adedi ve tipleri seçer, birim gücü
+     bütçeyi doldurur. Tehdit puanını motor hesaplar (eklentinin sayısal hatası dengeyi
+     bozamaz). Plan saf fonksiyondur: (tohum, dalga no, zorluk) → aynı içerik. */
+  function tehditHesapla(canD, hiz, zirh){
+    return canD * Math.pow(Math.max(1, hiz)/60, D.tehditHizUs) * (1 + (zirh||0)) / D.tehditBolen;
+  }
+  function tipZirh(t){ return Math.max(0, Math.min(D.zirhTavan, +t.zirh || 0)); }
+  function tipTehdit(i, bos){
+    const t = DUSMAN_TIPLERI[i];
+    const c = (+t.can || 60) * (bos ? D.boss.can : 1);
+    const h = (+t.hiz || 60) * (bos ? D.boss.hiz : 1);
+    return tehditHesapla(c, h, tipZirh(t));
+  }
+  function dalgaBilgisi(g){
+    const bolumIci = ((g-1) % D.dalgaPerBolum) + 1;
+    const h = Math.min(D.haritaSayisi-1, Math.floor((g-1) / DALGA_PER_HARITA));
+    const haritaIlk = ((g-1) % DALGA_PER_HARITA) === 0;
+    const boss = bolumIci === D.dalgaPerBolum;
+    return {bolumIci, harita:h, haritaIlk, boss,
+            bolum: Math.floor((g-1) / D.dalgaPerBolum) + 1,
+            ritim: boss ? (h === 0 ? D.ritimBossIlk : D.ritimBoss) : (haritaIlk ? D.ritimHaritaBasi : D.ritimNormal)};
+  }
+  // v3: zorluk çarpanı tek yerde; ödül bu çarpandan BAĞIMSIZ hesaplanır (aksi halde kolay modda
+  // düşman zayıflarken altın da azalıyor, zorluklar birbirine benziyordu)
+  function zorlukK(g){
+    let K = D.zorluk[zorluk] || 1;
+    if (K > 1 && D.zorlukRampa > 0) K = 1 + (K - 1) * Math.min(1, g / D.zorlukRampa);
+    return K;
+  }
+  function butce(g){
+    const K = zorlukK(g);
+    return K * (D.butceTaban + D.butceDogrusal*g) * Math.pow(D.butceUstel, g) * dalgaBilgisi(g).ritim;
+  }
+  function acikTipler(h){
+    const n = Math.min(DUSMAN_TIPLERI.length, D.tipAcilim[h] || DUSMAN_TIPLERI.length);
+    const l = []; for (let i=0;i<Math.max(1,n);i++) l.push(i);
+    return l;
+  }
+  // Şablon zinciri: art arda aynı şablon gelmez. Seçim yalnız tohuma ve dalga no'ya bağlı.
+  const sablonOnbellek = new Map();
+  function sablonAl(g){
+    if (g < 1) return null;
+    if (sablonOnbellek.has(g)) return sablonOnbellek.get(g);
+    const bilgi = dalgaBilgisi(g);
+    let s;
+    if (bilgi.boss) s = "boss";
+    else {
+      const onceki = sablonAl(g-1);
+      const aday = ["suru", "tank", "akin", "karisik"];
+      if (HARITALAR[bilgi.harita].rotalar.length >= 2) aday.push("ciftKol");
+      const uygun = aday.filter(a => a !== onceki);
+      const r = rngOlustur(tohumKaristir(tohum, 1000 + g));
+      s = uygun[Math.floor(r() * uygun.length)];
     }
-    return liste;
+    sablonOnbellek.set(g, s);
+    return s;
+  }
+  function adetHesapla(anahtar, g){
+    const a = D.sablonAdet[anahtar];
+    return Math.max(1, Math.min(a[2], Math.floor(a[0] + a[1]*g)));
+  }
+  const kapsamaOnbellek = [];
+  function haritaKatsayisi(h){
+    if (kapsamaOnbellek[h] !== undefined) return kapsamaOnbellek[h];
+    const ornek = [];
+    for (const r of HARITALAR[h].rotalar) for (let m = 0; m <= r.toplam; m += 12){
+      const p = rotaNoktasi(r, m); if (p.x >= 0 && p.x <= REF_W && p.y >= 0 && p.y <= REF_H) ornek.push(p);
+    }
+    const yakin = (p, esik) => { for (const r of HARITALAR[h].rotalar){ const yl = r.n;
+      for (let i=0;i<yl.length-1;i++){ const a=yl[i], b=yl[i+1], dx=b.x-a.x, dy=b.y-a.y, u=dx*dx+dy*dy||1;
+        let t=((p.x-a.x)*dx+(p.y-a.y)*dy)/u; t=Math.max(0,Math.min(1,t));
+        if (Math.hypot(p.x-a.x-dx*t, p.y-a.y-dy*t) < esik) return true; } } return false; };
+    const kap = [];
+    for (let y = 70; y <= 640; y += 34) for (let x = 30; x <= 1250; x += 34){
+      if (yakin({x, y}, 36)) continue;
+      let n = 0; for (const p of ornek) if ((p.x-x)*(p.x-x)+(p.y-y)*(p.y-y) <= 140*140) n++;
+      kap.push(n);
+    }
+    kap.sort((a, b) => b - a);
+    const ust = kap.slice(0, 10); const ort = ust.length ? ust.reduce((a, b) => a + b, 0) / ust.length : D.kapsamaRef;
+    const k = Math.max(D.kapsamaAlt, Math.min(D.kapsamaUst, Math.pow(ort / D.kapsamaRef, D.kapsamaUs)));
+    kapsamaOnbellek[h] = k;
+    return k;
+  }
+  let verimOnbellek = null;
+  function kuleVerimi(){
+    if (verimOnbellek !== null) return verimOnbellek;
+    let top = 0, n = 0;
+    for (const t of KULE_TIPLERI){
+      const f = Math.max(1, +t.fiyat || 60);
+      top += (+t.hasar || 10) * (+t.atisHizi || 1) * (t.alan ? 1.8 : 1) * (t.yavaslat ? 1.25 : 1) / f; n++;
+    }
+    const ham = n ? top / n : D.verimRef;
+    verimOnbellek = Math.max(D.verimAlt, Math.min(D.verimUst, Math.pow(ham / D.verimRef, D.verimUs)));
+    return verimOnbellek;
+  }
+  function odulAzalma(g){
+    const b1 = (D.butceTaban + D.butceDogrusal) * D.butceUstel;
+    const bg = (D.butceTaban + D.butceDogrusal * g) * Math.pow(D.butceUstel, g);
+    return Math.pow(b1 / bg, D.odulAzalmaUs);
+  }
+  function dalgaPlani(g){
+    const bilgi = dalgaBilgisi(g);
+    const r = rngOlustur(tohumKaristir(tohum, g));
+    const acik = acikTipler(bilgi.harita);
+    const sablon = sablonAl(g);
+    const B = butce(g);
+    const rotaSay = HARITALAR[bilgi.harita].rotalar.length;
+    const hepsi = acik.slice();
+    const canaGore = hepsi.slice().sort((a,b)=> (+DUSMAN_TIPLERI[a].can||0) - (+DUSMAN_TIPLERI[b].can||0));
+    const hizaGore = hepsi.slice().sort((a,b)=> (+DUSMAN_TIPLERI[b].hiz||0) - (+DUSMAN_TIPLERI[a].hiz||0));
+    const ilkYari = l => l.slice(0, Math.max(1, Math.ceil(l.length/2)));
+    let havuz, anahtar = sablon;
+    if (sablon === "suru") havuz = ilkYari(canaGore);
+    else if (sablon === "tank") havuz = ilkYari(canaGore.slice().reverse());
+    else if (sablon === "akin") havuz = ilkYari(hizaGore);
+    else { havuz = hepsi; if (sablon === "boss") anahtar = "bossEskort"; }
+
+    let adet = adetHesapla(anahtar, g);
+    const tipler = [];
+    for (let i=0;i<adet;i++) tipler.push(havuz[Math.floor(r() * havuz.length)]);
+
+    let bossTip = null, bossGuc = 0, eskortButce = B;
+    if (sablon === "boss"){
+      bossTip = canaGore[canaGore.length-1];            // açık tiplerin en dayanıklısı
+      const pay = D.boss.butcePayi[bilgi.harita] || 0.4;
+      bossGuc = (B * pay) / tipTehdit(bossTip, true);
+      eskortButce = B * (1 - pay);
+    }
+    // Birim gücü bütçeyi doldurur; çok düşerse adet azaltılır (anlamsız zayıf kalabalık olmasın)
+    let taban = 0; for (const t of tipler) taban += tipTehdit(t, false);
+    let guc = eskortButce / (taban || 1);
+    while (guc < D.minGuc && tipler.length > 3){
+      taban -= tipTehdit(tipler.pop(), false);
+      guc = eskortButce / (taban || 1);
+    }
+    const birimler = [];
+    const kk = haritaKatsayisi(bilgi.harita) * kuleVerimi();   // v3: harita kapsaması × kule verimi
+    guc *= kk; bossGuc *= kk;
+    for (let i=0;i<tipler.length;i++){
+      const rota = (sablon === "ciftKol" && rotaSay >= 2) ? (i % 2) : 0;
+      birimler.push({tip: tipler[i], bos: false, guc, rota, ofset: r()*40});
+    }
+    if (bossTip !== null){
+      // Boss eskortun ortasında gelir
+      birimler.splice(Math.floor(birimler.length/2), 0,
+        {tip: bossTip, bos: true, guc: bossGuc, rota: 0, ofset: r()*40});
+    }
+    return {g, sablon, butce: B, ritim: bilgi.ritim, bolum: bilgi.bolum,
+            harita: bilgi.harita, aralik: D.spawnAralik[sablon] || 0.75, birimler};
   }
 
-  function dusmanEkle(kayit){
-    const t = kayit.tip;
-    const bosCarpan = kayit.bos ? 6 : 1;
+  function dusmanEkle(b, mekanikten){
+    const t = DUSMAN_TIPLERI[b.tip];
+    const maxCan = (+t.can || 60) * b.guc * (b.bos ? D.boss.can : 1);
+    const hiz = (+t.hiz || 60) * (b.bos ? D.boss.hiz : 1);
+    const zirh = tipZirh(t);
+    const r = harita().rotalar[Math.min(b.rota, harita().rotalar.length-1)];
+    const n = rotaNoktasi(r, 0);
     dusmanlar.push({
-      tip:t, mesafe:-rastgele(0,40),
-      maxCan: t.can*kayit.guc*bosCarpan, can: t.can*kayit.guc*bosCarpan,
-      hiz: t.hiz*(kayit.bos?0.72:1), altin: Math.round(t.altin*(kayit.bos?8:1)),
-      yaricap: (t.yaricap||14)*(kayit.bos?1.9:1), renk: t.renk||P.dusman,
-      bos: !!kayit.bos, yavaslama:1, yavaslamaSayac:0, faz: Math.random()*6.28,
-      vurulmaZaman:0, x:0, y:0, aci:0
+      tip:t, ad:t.ad, tipIndeks:b.tip,          // v1.2: eklenti tipe göre dallanabilsin
+      rota: Math.min(b.rota, harita().rotalar.length-1), mesafe:-b.ofset,
+      maxCan, can: maxCan, hiz, zirh,
+      // v2: ödül birimin gerçek tehdidiyle orantılı (§4.3); v1'deki tip.altin kullanılmaz
+      // v3: ödül haritanın kapsama katsayısından bağımsız (kolay haritada fazla altın olmasın)
+      // ve geç dalgalarda yavaşça azalır (bkz. odulAzalma)
+      altin: Math.max(1, Math.round(tehditHesapla(maxCan / (haritaKatsayisi(haritaNo) * kuleVerimi()) / zorlukK(Math.max(1, dalga)), hiz, zirh)
+                                    * D.odulKatsayi * odulAzalma(Math.max(1, dalga)))),
+      yaricap: (t.yaricap||14)*(b.bos?D.boss.yaricap:1), renk: t.renk||P.dusman,
+      bos: !!b.bos, yavaslama:1, yavaslamaSayac:0, faz: Math.random()*6.28,
+      vurulmaZaman:0, x:n.x, y:n.y, px:n.x, py:n.y, aci:n.aci,
+      // v3: mekanik alanları (motor her adımda çarpanları sıfırlar, kanca ayarlar)
+      hizCarpani:1, hedeflenebilir:true, hasarAlma:1, boyut:1, kaleHasari: b.bos ? D.boss.kaleHasar : 1,
+      dogusCan: maxCan, ozel:{}
     });
+    const yeniD = dusmanlar[dusmanlar.length-1];
+    if (b.bos && !mekanikten) bossBant = {t: 0, ad: t.ad || "Boss"};
+    if (!mekanikten && !b.bos) sonGuc = b.guc;
+    mk("dusmanDogdu", yeniD, O);
+    spawnKaydi.push(dalga + ":" + b.tip + (b.bos ? "B" : "") + ":" + b.rota + ":" + Math.round(maxCan));
+    if (spawnKaydi.length > 4000) spawnKaydi.shift();
   }
 
   // ---------- Oyun kontrolü ----------
+  function modulleriKur(){
+    toplanabilirler = []; toplanabilirSayac = 6;
+    yetenek = null; kahraman = null;
+    const yb = document.getElementById("yetenekBtn");
+    yb.style.display = "none"; yb.classList.remove("hedefleme");
+
+    if (MOD.yetenek && MOD.yetenek.tip){
+      yetenek = {kalan: 8, tip: MOD.yetenek.tip, hedefleme: false};
+      yb.style.display = "block";
+      if (MOD.yetenek.renk) yb.style.borderColor = MOD.yetenek.renk;
+    }
+    if (MOD.kahraman){
+      const n = rotaNoktasi(anaRota(), anaRota().toplam * 0.7);
+      kahraman = {x: n.x, y: n.y - 50, hedefX: n.x, hedefY: n.y - 50,
+                  can: MOD.kahraman.canDeger || 120, maxCan: MOD.kahraman.canDeger || 120,
+                  sayac: 0, secili: false, oluSayac: 0};
+    }
+  }
+
+  function yetenekMetniGuncelle(){
+    if (!yetenek) return;
+    const yb = document.getElementById("yetenekBtn");
+    const ad = (MOD.yetenek && MOD.yetenek.ad) || "Yetenek";
+    if (yetenek.hedefleme){ yb.textContent = ad + " — hedef seç!"; yb.disabled = false; }
+    else if (yetenek.kalan <= 0){ yb.textContent = "⚡ " + ad; yb.disabled = false; }
+    else { yb.textContent = ad + " (" + Math.ceil(yetenek.kalan) + "s)"; yb.disabled = true; }
+  }
+
+  function yetenekUygula(p){
+    // p: yildirim için hedef nokta, diğerleri için null
+    const tip = yetenek.tip;
+    if (tip === "yildirim"){
+      let hedef = null, enYakin = 95;
+      for (const d of dusmanlar){ const m = Math.hypot(d.x-p.x, d.y-p.y);
+        if (m < enYakin){ enYakin = m; hedef = d; } }
+      patlamaEkle(p.x, p.y, (MOD.yetenek.renk || "#fbbf24"), 26);
+      ekranSarsinti = Math.min(1, ekranSarsinti + 0.5);
+      if (hedef) vurus({alan: 95, hasar: 130, yavaslat: 0,
+                        renk: (MOD.yetenek.renk || "#fbbf24"), x: p.x, y: p.y}, hedef);
+    } else if (tip === "dondur"){
+      for (const d of dusmanlar){ d.yavaslama = 0.15; d.yavaslamaSayac = 3; }
+      uyariGoster((MOD.yetenek.ad || "Dondurma") + "!");
+    } else if (tip === "altin"){
+      altin += 80; yaziEkle(REF_W/2, REF_H/2, "+80", "#fbbf24");
+    } else if (tip === "onarim"){
+      can = Math.min(BASLANGIC_CAN, can + 4);
+      uyariGoster("+4 Can!");
+    }
+    yetenek.kalan = YETENEK_SURE; yetenek.hedefleme = false;
+    document.getElementById("yetenekBtn").classList.remove("hedefleme");
+    hudGuncelle();
+  }
+
+  document.getElementById("yetenekBtn").addEventListener("click", (e)=>{
+    e.stopPropagation();
+    if (!yetenek || asama !== "oyunda" || yetenek.kalan > 0) return;
+    if (yetenek.tip === "yildirim"){
+      yetenek.hedefleme = !yetenek.hedefleme;
+      document.getElementById("yetenekBtn").classList.toggle("hedefleme", yetenek.hedefleme);
+      if (yetenek.hedefleme) uyariGoster("Haritada hedef seç!");
+      yetenekMetniGuncelle();
+    } else {
+      yetenekUygula(null);
+    }
+  });
+
+  function modulleriGuncelle(dt){
+    // Toplanabilir: belirli aralıklarla haritada bonus nesne belirir
+    if (MOD.toplanabilir){
+      toplanabilirSayac -= dt;
+      if (toplanabilirSayac <= 0 && toplanabilirler.length < 2){
+        toplanabilirler.push({x: rastgele(100, REF_W-100), y: rastgele(120, REF_H-120),
+                              omur: 6, yas: 0});
+        toplanabilirSayac = rastgele(8, 14);
+      }
+      for (let i = toplanabilirler.length-1; i >= 0; i--){
+        toplanabilirler[i].yas += dt;
+        if (toplanabilirler[i].yas >= toplanabilirler[i].omur) toplanabilirler.splice(i, 1);
+      }
+    }
+    // Yetenek: bekleme süresi
+    if (yetenek && yetenek.kalan > 0){ yetenek.kalan -= dt; yetenekMetniGuncelle(); }
+    // Kahraman: hareket + yakın dövüş + hasar alma + yeniden doğma
+    if (kahraman){
+      const kh = kahraman;
+      if (kh.oluSayac > 0){
+        kh.oluSayac -= dt;
+        if (kh.oluSayac <= 0){ kh.can = kh.maxCan;
+          const n = rotaNoktasi(anaRota(), anaRota().toplam * 0.7); kh.x = kh.hedefX = n.x; kh.y = kh.hedefY = n.y - 50; }
+      } else {
+        const dx = kh.hedefX - kh.x, dy = kh.hedefY - kh.y, uz = Math.hypot(dx, dy);
+        if (uz > 4){ kh.x += dx/uz * 120 * dt; kh.y += dy/uz * 120 * dt; }
+        kh.sayac -= dt;
+        let hedef = null, enY = 60;
+        for (const d of dusmanlar){ const m = mesafe(kh, d); if (m < enY){ enY = m; hedef = d; } }
+        if (hedef && kh.sayac <= 0){
+          kh.sayac = 0.8;
+          vurus({alan: 0, hasar: (MOD.kahraman.hasar || 22), yavaslat: 0,
+                 renk: (MOD.kahraman.renk || "#e5e7eb"), x: kh.x, y: kh.y}, hedef);
+        }
+        let tehdit = 0;
+        for (const d of dusmanlar){ if (mesafe(kh, d) < 45) tehdit++; }
+        if (tehdit > 0){
+          kh.can -= tehdit * 8 * dt;
+          if (kh.can <= 0){ kh.can = 0; kh.oluSayac = 8; kh.secili = false;
+            patlamaEkle(kh.x, kh.y, "#e5e7eb", 14);
+            uyariGoster(((MOD.kahraman.ad) || "Kahraman") + " düştü! (8s)"); }
+        }
+      }
+    }
+  }
+
+  function varsayilanToplanabilirCiz(c, n, t){
+    const nabiz = 1 + Math.sin(t*5 + n.x)*0.15;
+    const solma = n.yas > n.omur-1.2 ? Math.max(0, (n.omur-n.yas)/1.2) : 1;
+    c.save(); c.globalAlpha = solma; c.translate(n.x, n.y); c.scale(nabiz, nabiz);
+    const renk = (MOD.toplanabilir && MOD.toplanabilir.renk) || "#fbbf24";
+    c.shadowColor = renk; c.shadowBlur = 14;
+    c.fillStyle = renk;
+    c.beginPath();
+    for (let i = 0; i < 5; i++){
+      const a1 = -Math.PI/2 + i*1.2566, a2 = a1 + 0.6283;
+      c.lineTo(Math.cos(a1)*12, Math.sin(a1)*12);
+      c.lineTo(Math.cos(a2)*5.5, Math.sin(a2)*5.5);
+    }
+    c.closePath(); c.fill();
+    c.shadowBlur = 0; c.strokeStyle = "rgba(0,0,0,.5)"; c.lineWidth = 1.5; c.stroke();
+    c.restore();
+  }
+
+  function varsayilanKahramanCiz(c, kh, t){
+    c.save(); c.translate(kh.x, kh.y);
+    const renk = (MOD.kahraman && MOD.kahraman.renk) || "#e5e7eb";
+    c.fillStyle = "rgba(0,0,0,.3)";
+    c.beginPath(); c.ellipse(0, 16, 13, 5, 0, 0, 6.29); c.fill();
+    const adim = Math.sin(t*8)*2;
+    c.strokeStyle = "rgba(0,0,0,.6)"; c.lineWidth = 1.5;
+    c.fillStyle = renk;
+    c.fillRect(-6, -8 + adim*0.3, 12, 18); c.strokeRect(-6, -8 + adim*0.3, 12, 18);
+    c.beginPath(); c.arc(0, -14 + adim*0.3, 7, 0, 6.29); c.fill(); c.stroke();
+    const savur = kh.sayac > 0.55 ? -0.9 : 0.35;   // saldırı animasyonu
+    c.save(); c.rotate(savur);
+    c.fillStyle = "#94a3b8"; c.fillRect(8, -16, 4, 20); c.strokeRect(8, -16, 4, 20);
+    c.restore();
+    c.restore();
+  }
+
+  function modulleriCiz(c, t){
+    for (const n of toplanabilirler){
+      try { (T.toplanabilirCiz || varsayilanToplanabilirCiz)(c, n, t); }
+      catch(e){ varsayilanToplanabilirCiz(c, n, t); }
+    }
+    if (kahraman && kahraman.oluSayac <= 0){
+      const kh = kahraman;
+      if (kh.secili){
+        c.strokeStyle = "rgba(251,191,36,.8)"; c.lineWidth = 2;
+        c.beginPath(); c.arc(kh.x, kh.y, 24, 0, 6.29); c.stroke();
+      }
+      try { (T.kahramanCiz || varsayilanKahramanCiz)(c, kh, t); }
+      catch(e){ varsayilanKahramanCiz(c, kh, t); }
+      if (kh.can < kh.maxCan){
+        c.fillStyle = "rgba(0,0,0,.6)"; c.fillRect(kh.x-16, kh.y-30, 32, 4);
+        c.fillStyle = "#22c55e";
+        c.fillRect(kh.x-16, kh.y-30, 32*Math.max(0, kh.can/kh.maxCan), 4);
+      }
+    }
+  }
+
   function sifirla(){
-    can=BASLANGIC_CAN; altin=BASLANGIC_ALTIN; dalga=0; skor=0; combo=1; comboZaman=0;
+    can=BASLANGIC_CAN; altin=D.baslangicAltin; dalga=0; skor=0; combo=1; comboZaman=0;
     dusmanlar=[]; kuleler=[]; mermiler=[]; parcaciklar=[]; yaziEfektleri=[];
-    dalgaKuyrugu=[]; spawnKuyrugu=[]; dalgaAraSayac=3; dalgaAktif=false; spawnSayac=0;
+    spawnKuyrugu=[]; dalgaAktif=false; spawnSayac=0; spawnAralik=0.75;
     seciliKule=null; seciliKuleTipi=0; ekranSarsinti=0; donmaSuresi=0;
+    araVerildi=false; araAktif=false; araKalan=0; gecis=null; bolumCanBasi=BASLANGIC_CAN;
+    bossBant=null; fazNo=0; mkEkAltin=0; mkEkDusman=0; mkCanArti=0; sonGuc=1;
+    for (const k of Object.keys(mkBellek)) delete mkBellek[k];
+    sizinti.length = 0; olaylar.length = 0; spawnKaydi.length = 0;
+    haritaKur(0);
+    modulleriKur();          // MEKANİK MODÜLLERİ: kahraman/yetenek/toplanabilir kurulumu
     kulePaneliCiz();
     hudGuncelle();
   }
 
-  function basla(){
-    sifirla();
+  // v2: harita paletini uygular, rota başına sızıntı sayacını hazırlar
+  function haritaKur(i){
+    haritaNo = i;
+    Object.assign(P, HARITALAR[i].palet);
+    // v3: eklenti çizimde `this.palet` kullanıyor; haritanın paleti eklentiye de yansısın
+    if (T.palet && typeof T.palet === "object") T.palet = Object.assign({}, HARITALAR[i].palet);
+    for (let r=0;r<HARITALAR[i].rotalar.length;r++) sizinti[r] = sizinti[r] || 0;
+    kuleSpriteOnbellek.clear();
+  }
+
+  function yeniTohum(){
+    if (URL_TOHUM !== null) return URL_TOHUM;
+    return (Math.floor(Math.random()*4294967295) ^ (Date.now() & 0xffffffff)) >>> 0;
+  }
+
+  function oyunaGir(){
     asama="oyunda";
     document.getElementById("menuOverlay").classList.add("gizli");
     document.getElementById("sonOverlay").classList.add("gizli");
     document.getElementById("kuleMenu").classList.add("gizli");
   }
 
+  function basla(){
+    tohum = yeniTohum();
+    sablonOnbellek.clear();
+    sifirla();
+    oyunaGir();
+    araBaslat(D.ilkBekleme);
+    olayEkle("baslat");
+    mkRng = rngOlustur(tohumKaristir(tohum, 4999));
+    mk("basla", O);
+  }
+
   function bitir(kazandiMi){
     asama = kazandiMi ? "kazandi" : "kaybetti";
+    araAktif = false;
     document.getElementById("sonBaslik").textContent = kazandiMi ? "Kazandın!" : "Kaybettin";
     document.getElementById("sonMetin").textContent =
-      (kazandiMi ? "Tüm dalgaları püskürttün. " : "Savunma çöktü. ") + "Skor: " + skor;
+      (kazandiMi ? "Üç haritayı da savundun. " : "Savunma çöktü. ") + "Skor: " + skor;
+    if (kazandiMi) kayitSil();
+    devamButonlariniGuncelle();
     document.getElementById("sonOverlay").classList.remove("gizli");
     document.getElementById("kuleMenu").classList.add("gizli");
+    hudGuncelle();
   }
 
   function uyariGoster(metin){
@@ -1125,6 +1776,167 @@ const TEMA = {
     setTimeout(()=>u.classList.remove("gorunur"), 1400);
   }
 
+  function olayEkle(tur, ek){
+    olaylar.push(Object.assign({tur, dalga, zaman: Math.round(zaman*1000)/1000}, ek || {}));
+    if (olaylar.length > 600) olaylar.shift();
+  }
+
+  /* ---------- v2: Dalga akışı (§4.1.1 düzeltmesi + §4.2 bölüm/harita) ----------
+     v1 hatası: son düşman ölünce `dalgaAraSayac` zaten ≤0 olduğundan sonraki dalga aynı
+     karede başlıyordu; DALGA_ARASI hiç uygulanmıyordu. v2'de dalga bitişi bir kez
+     algılanır (araVerildi), ara açıkça kurulur ve yalnız sayaç bitince/çağırınca biter. */
+  function araBaslat(sn){
+    araAktif = true; araKalan = sn;
+    olayEkle("araBasladi", {sure: sn});
+  }
+
+  function sonrakiDalga(){
+    if (dalga >= TOPLAM_DALGA) return;
+    araAktif = false; araVerildi = false;
+    dalga++;
+    const plan = dalgaPlani(dalga);
+    if (((dalga-1) % D.dalgaPerBolum) === 0){           // bölüm başı
+      bolumCanBasi = can;
+      for (const k of kuleler) k.bolumHasar = 0;
+    }
+    // v3: mekanik sayaçları dalga başına; döngü fazı dalga başında değişir
+    mkEkAltin = 0; mkEkDusman = 0; mkCanArti = 0;
+    mkRng = rngOlustur(tohumKaristir(tohum, 5000 + dalga));
+    const yeniFaz = fazHesapla(dalga);
+    if (DONGU && yeniFaz !== fazNo){
+      fazNo = yeniFaz; mkDurum.etki.faz++;
+      setTimeout(()=>uyariGoster(DONGU.fazlar[fazNo].ad + "!"), 900);
+      mk("fazDegisti", O);
+    }
+    spawnKuyrugu = plan.birimler.slice();
+    spawnAralik = plan.aralik;
+    dalgaAktif = true; spawnSayac = 0;
+    uyariGoster((plan.sablon === "boss" ? "Boss dalgası " : "Dalga ") + dalga + " geliyor!");
+    olayEkle("dalgaBasladi", {sablon: plan.sablon, faz: fazNo});
+    mk("dalgaBasladi", O);
+    hudGuncelle();
+  }
+
+  function dalgaBitti(){
+    araVerildi = true;
+    olayEkle("dalgaBitti");
+    if (dalga >= TOPLAM_DALGA){ bitir(true); return; }
+    if (dalga % D.dalgaPerBolum === 0){
+      bolumSonu();
+      if (dalga % DALGA_PER_HARITA === 0){             // harita sonu → geçiş
+        gecis = {t: 0, hedef: Math.min(D.haritaSayisi-1, haritaNo+1), uygulandi: false};
+        olayEkle("gecisBasladi", {hedef: gecis.hedef});
+        return;                                         // ara, geçiş bitince kurulur
+      }
+      kayitYaz();
+    }
+    araBaslat(D.dalgaArasi);
+  }
+
+  // Bölüm sonu kartı: yıldız, kalan can, en iyi kule (kısa, dokunmayı engellemez)
+  function bolumSonu(){
+    const kayip = Math.max(0, bolumCanBasi - can) / BASLANGIC_CAN;
+    const yildiz = kayip <= D.yildizEsik[0] ? 3 : (kayip <= D.yildizEsik[1] ? 2 : 1);
+    let enIyi = null;
+    for (const k of kuleler) if (!enIyi || k.bolumHasar > enIyi.bolumHasar) enIyi = k;
+    const bolumNo = dalga / D.dalgaPerBolum;
+    const kart = document.getElementById("bolumKart");
+    kart.innerHTML = "";
+    const b = document.createElement("div"); b.className = "kbaslik";
+    b.textContent = "Bölüm " + bolumNo + " tamam";
+    const y = document.createElement("div"); y.className = "kyildiz";
+    y.textContent = "★".repeat(yildiz) + "☆".repeat(3 - yildiz);
+    const m = document.createElement("div"); m.className = "kmetin";
+    m.textContent = "Can " + Math.max(0,can) + "/" + BASLANGIC_CAN +
+      (enIyi && enIyi.bolumHasar > 0 ? " · En iyi kule: " + enIyi.tip.ad + " (Sv." + enIyi.seviye + ")" : "");
+    kart.appendChild(b); kart.appendChild(y); kart.appendChild(m);
+    kart.classList.add("gorunur");
+    clearTimeout(bolumSonu._z);
+    bolumSonu._z = setTimeout(()=>kart.classList.remove("gorunur"), 3200);
+    olayEkle("bolumSonu", {bolum: bolumNo, yildiz, enIyi: enIyi ? enIyi.tip.ad : null});
+  }
+
+  // Harita geçişi: perdenin ortasında uygulanır (§4.2)
+  function haritaDegistir(hedef){
+    const eski = HARITALAR[haritaNo], yeni = HARITALAR[hedef];
+    const once = {kuleOnce: kuleler.length, canOnce: can, altinOnce: altin};
+    let iade = 0;
+    if (eski.imza !== yeni.imza){
+      // Rota değişti: kuleler yatırımın %100'üyle iade edilip kaldırılır
+      for (const k of kuleler) iade += Math.floor(k.yatirim * D.haritaGecisIade);
+      kuleler = []; seciliKule = null;
+      document.getElementById("kuleMenu").classList.add("gizli");
+    }
+    // Rota aynıysa (v1 eklentisi) kuleler yerinde kalır: kaldırmanın gerekçesi yok
+    altin += iade;
+    can = Math.min(BASLANGIC_CAN, can + D.haritaGecisCan);
+    mermiler = [];
+    haritaKur(hedef);
+    if (kahraman){ const n = rotaNoktasi(anaRota(), anaRota().toplam*0.7);
+      kahraman.x = kahraman.hedefX = n.x; kahraman.y = kahraman.hedefY = n.y - 50; }
+    uyariGoster(yeni.ad + (iade ? " · Kuleler iade edildi: +" + iade + " altın" : ""));
+    olayEkle("haritaDegisti", Object.assign({harita: hedef + 1, iade,
+             kuleSonra: kuleler.length, canSonra: can, altinSonra: altin}, once));
+    hudGuncelle();
+  }
+
+  /* ---------- v2: Kayıt noktası (§4.2) ----------
+     Her bölüm sonunda localStorage'a yazılır. Belgedeki alanlara (bölüm, altın, can, skor,
+     tohum) kuleler de eklendi: aynı harita içinde devam ederken kuleler olmadan kayıt
+     anlamsız kalıyordu. Depolama kapalıysa (gizli sekme, iframe kısıtı) sessizce atlanır. */
+  const KAYIT_ANAHTARI = "savunma_v3:" + String(T.ad || document.title || "oyun")
+    .toLowerCase().replace(/[^a-z0-9ğüşıöç]+/g, "-").slice(0, 60);
+  function kayitYaz(){
+    const veri = {v:2, tohum, zorluk, dalga, altin, can, skor, harita: haritaNo,
+      kuleler: kuleler.map(k => ({t: KULE_TIPLERI.indexOf(k.tip), x: Math.round(k.x),
+                                  y: Math.round(k.y), s: k.seviye, yt: k.yatirim}))};
+    try { localStorage.setItem(KAYIT_ANAHTARI, JSON.stringify(veri)); olayEkle("kayit"); }
+    catch(e){ olayEkle("kayitYok"); }
+    devamButonlariniGuncelle();
+  }
+  function kayitOku(){
+    try {
+      const v = JSON.parse(localStorage.getItem(KAYIT_ANAHTARI) || "null");
+      return (v && v.v === 2 && v.dalga > 0 && v.dalga < TOPLAM_DALGA) ? v : null;
+    } catch(e){ return null; }
+  }
+  function kayitSil(){ try { localStorage.removeItem(KAYIT_ANAHTARI); } catch(e){} }
+  function devamButonlariniGuncelle(){
+    const k = kayitOku();
+    const metin = k ? "Devam et · Bölüm " + (k.dalga / D.dalgaPerBolum + 1) : "";
+    for (const id of ["devamBtn", "sonDevamBtn"]){
+      const b = document.getElementById(id);
+      b.style.display = k ? "inline-block" : "none";
+      b.textContent = metin;
+    }
+  }
+  function devamEt(){
+    const k = kayitOku();
+    if (!k) { basla(); return; }
+    tohum = k.tohum >>> 0; zorluk = D.zorluk[k.zorluk] ? k.zorluk : "normal";
+    zorlukDugmeleriniGuncelle();
+    sablonOnbellek.clear();
+    sifirla();
+    haritaKur(Math.max(0, Math.min(D.haritaSayisi-1, k.harita|0)));
+    dalga = k.dalga; altin = k.altin; can = k.can; skor = k.skor; bolumCanBasi = can;
+    for (const s of (k.kuleler || [])){
+      const tip = KULE_TIPLERI[s.t]; if (!tip) continue;
+      const kule = kuleOlustur(s.x, s.y, tip);
+      for (let i=1;i<s.s && i<D.maxSeviye;i++) kuleSeviyeArtir(kule);
+      kule.yatirim = s.yt || kule.yatirim;
+      kuleler.push(kule);
+    }
+    araVerildi = true;
+    fazNo = fazHesapla(dalga);
+    oyunaGir();
+    araBaslat(D.dalgaArasi);
+    olayEkle("devam", {kayitDalga: k.dalga});
+    mkRng = rngOlustur(tohumKaristir(tohum, 4999));
+    mk("basla", O);
+    uyariGoster("Bölüm " + (k.dalga / D.dalgaPerBolum + 1) + " · Kayıttan devam");
+    hudGuncelle();
+  }
+
   // ---------- HUD ----------
   function hudGuncelle(){
     document.getElementById("hudCan").textContent = Math.max(0, can);
@@ -1132,6 +1944,20 @@ const TEMA = {
     document.getElementById("hudDalga").textContent = dalga;
     document.getElementById("hudToplamDalga").textContent = TOPLAM_DALGA;
     document.getElementById("hudSkor").textContent = skor;
+    document.getElementById("hudBolum").textContent = Math.max(1, Math.ceil(dalga / D.dalgaPerBolum));
+    document.getElementById("hudToplamBolum").textContent = TOPLAM_BOLUM;
+    document.getElementById("hudHarita").textContent = harita().ad;
+    if (MK){
+      const r = document.getElementById("hudMekanik");
+      let metin = mkDurum.ad || "Mekanik";
+      if (DONGU){
+        const kalan = DONGU.her - ((Math.max(1, dalga) - 1) % DONGU.her);
+        metin = DONGU.fazlar[fazNo].ad + (DONGU.fazlar.length > 1 ?
+          " · " + kalan + " dalga sonra " + DONGU.fazlar[(fazNo+1) % DONGU.fazlar.length].ad : "");
+      }
+      if (r.textContent !== metin) r.textContent = metin;
+      if (r.style.display !== "block") r.style.display = "block";
+    }
     // JUICE: can azaldıkça kırmızı vinyet belirginleşir (renk dili / durum uyarısı)
     const oran = can / BASLANGIC_CAN;
     document.getElementById("vinyet").style.opacity =
@@ -1145,6 +1971,44 @@ const TEMA = {
       b.classList.toggle("secili", i===seciliKuleTipi);
     });
   }
+
+  // v2: "Dalgayı çağır" düğmesi — yalnız değer değişince DOM'a yazılır
+  let cagirSonMetin = "";
+  function cagirDugmesiGuncelle(){
+    const b = document.getElementById("dalgaCagirBtn");
+    const gorunur = asama === "oyunda" && araAktif && !gecis && dalga < TOPLAM_DALGA;
+    const stil = gorunur ? "block" : "none";
+    if (b.style.display !== stil) b.style.display = stil;
+    if (!gorunur) return;
+    const bonus = Math.floor(araKalan) * D.erkenCagirmaAltin;
+    const metin = "Dalgayı çağır" + (bonus > 0 ? " (+" + bonus + " altın)" : "");
+    if (metin !== cagirSonMetin){ cagirSonMetin = metin; b.textContent = metin; }
+  }
+  function dalgayiCagir(){
+    if (asama !== "oyunda" || !araAktif || gecis) return false;
+    const bonus = Math.floor(araKalan) * D.erkenCagirmaAltin;
+    if (bonus > 0){ altin += bonus; yaziEkle(REF_W/2, 120, "+" + bonus + " altın", "#fbbf24"); }
+    olayEkle("erkenCagri", {bonus});
+    sonrakiDalga();
+    cagirDugmesiGuncelle();
+    return true;
+  }
+  document.getElementById("dalgaCagirBtn").addEventListener("click", (e)=>{
+    e.stopPropagation(); dalgayiCagir();
+  });
+  document.getElementById("hizBtn").addEventListener("click", (e)=>{
+    e.stopPropagation();
+    hizCarpani = hizCarpani === 1 ? 2 : 1;
+    e.currentTarget.textContent = hizCarpani + "×";
+    e.currentTarget.classList.toggle("aktif", hizCarpani > 1);
+  });
+  function zorlukDugmeleriniGuncelle(){
+    document.querySelectorAll("#zorlukSecim button").forEach(b =>
+      b.classList.toggle("secili", b.dataset.z === zorluk));
+  }
+  document.querySelectorAll("#zorlukSecim button").forEach(b => b.addEventListener("click", (e)=>{
+    e.stopPropagation(); zorluk = b.dataset.z; zorlukDugmeleriniGuncelle();
+  }));
 
   function kulePaneliCiz(){
     const panel = document.getElementById("kulePanel");
@@ -1164,6 +2028,38 @@ const TEMA = {
     e.preventDefault();
     const p = olayNoktasi(e);
 
+    // MODÜL 1: Yetenek hedefleme aktifse tıklanan noktaya yeteneği kullan
+    if (yetenek && yetenek.hedefleme && yetenek.kalan <= 0){
+      yetenekUygula(p);
+      return;
+    }
+    // MODÜL 2: Yerde duran toplanabilir varsa önce onu topla
+    for (let i = toplanabilirler.length-1; i >= 0; i--){
+      const n = toplanabilirler[i];
+      if (mesafe(p, n) < 26){
+        toplanabilirler.splice(i, 1);
+        const kazanc = n.deger || 25;
+        altin += kazanc;
+        yaziEkle(n.x, n.y, "+" + kazanc, (MOD.toplanabilir && MOD.toplanabilir.renk) || "#fbbf24");
+        patlamaEkle(n.x, n.y, (MOD.toplanabilir && MOD.toplanabilir.renk) || "#fbbf24", 10);
+        hudGuncelle();
+        return;
+      }
+    }
+    // MODÜL 3: Kahraman seçili ise tıklanan yere gönder; kahramana tıklamak seçer
+    if (kahraman && kahraman.oluSayac <= 0){
+      if (mesafe(p, kahraman) < 26){
+        kahraman.secili = !kahraman.secili;
+        uyariGoster(kahraman.secili ? "Hedef nokta seç!" : "Kahraman serbest");
+        return;
+      }
+      if (kahraman.secili){
+        kahraman.hedefX = p.x; kahraman.hedefY = p.y;
+        kahraman.secili = false;
+        return;
+      }
+    }
+
     // Kurulu kuleye dokunulduysa menü aç
     for (const k of kuleler){
       if (mesafe(p,k) < 26){ seciliKule = k; kuleMenusuAc(); return; }
@@ -1175,13 +2071,26 @@ const TEMA = {
     for (const k of kuleler){ if (mesafe(p,k) < 40){ uyariGoster("Çok yakın!"); return; } }
     if (p.x<10||p.y<10||p.x>REF_W-10||p.y>REF_H-10) return;
 
-    kuleler.push({x:p.x, y:p.y, tip:tip, seviye:1, sayac:0, aci:-Math.PI/2,
-                  menzil:tip.menzil, hasar:tip.hasar, yatirim:tip.fiyat, flas:0});
+    const yeniK = kuleOlustur(p.x, p.y, tip);
+    kuleler.push(yeniK);
     altin -= tip.fiyat;
+    mk("kuleKuruldu", yeniK, O);
     hudGuncelle();
   }
   canvas.addEventListener("click", haritayaDokun);
   canvas.addEventListener("touchstart", haritayaDokun, {passive:false});
+
+  // v2: kule oluşturma/yükseltme tek yerde (kayıttan yükleme ve test aynı kodu kullanır)
+  function kuleOlustur(x, y, tip){
+    return {x, y, tip, ad: tip.ad, tipIndeks: KULE_TIPLERI.indexOf(tip), seviye:1, sayac:0,
+            aci:-Math.PI/2, menzil:tip.menzil, hasar:tip.hasar,
+            yatirim:tip.fiyat, flas:0, bolumHasar:0, toplamHasar:0,
+            dogus:0, parlama:0,                                   // v3: kurulum pop / yükseltme halkası
+            hasarCarpani:1, atisCarpani:1, menzilCarpani:1, aktif:true, ozel:{}};
+  }
+  function kuleSeviyeArtir(k){
+    k.seviye++; k.hasar *= D.yukseltmeHasar; k.menzil *= D.yukseltmeMenzil; k.parlama = 0.6;
+  }
 
   function kuleMenusuAc(){
     if (!seciliKule) return;
@@ -1189,25 +2098,24 @@ const TEMA = {
     document.getElementById("kmBaslik").textContent = k.tip.ad + " (Sv." + k.seviye + ")";
     document.getElementById("kmBilgi").textContent =
       "Hasar: " + Math.round(k.hasar) + " | Menzil: " + Math.round(k.menzil) +
-      " | Yükseltme: " + yukseltmeFiyati(k) + " altın | Satış: " + Math.floor(k.yatirim*0.6) + " altın";
-    document.getElementById("kmYukselt").disabled = (k.seviye>=3 || altin<yukseltmeFiyati(k));
+      " | Yükseltme: " + yukseltmeFiyati(k) + " altın | Satış: " + Math.floor(k.yatirim*D.satisOrani) + " altın";
+    document.getElementById("kmYukselt").disabled = (k.seviye>=D.maxSeviye || altin<yukseltmeFiyati(k));
     document.getElementById("kuleMenu").classList.remove("gizli");
   }
-  function yukseltmeFiyati(k){ return Math.round(k.tip.fiyat * 0.8 * k.seviye); }
+  function yukseltmeFiyati(k){ return Math.round(k.tip.fiyat * D.yukseltmeFiyat * k.seviye); }
 
   document.getElementById("kmYukselt").addEventListener("click", ()=>{
     const k = seciliKule; if (!k) return;
     const f = yukseltmeFiyati(k);
-    if (k.seviye<3 && altin>=f){
-      altin-=f; k.yatirim+=f; k.seviye++;
-      k.hasar*=1.6; k.menzil*=1.15;
+    if (k.seviye<D.maxSeviye && altin>=f){
+      altin-=f; k.yatirim+=f; kuleSeviyeArtir(k);
     }
     document.getElementById("kuleMenu").classList.add("gizli");
     seciliKule=null; hudGuncelle();
   });
   document.getElementById("kmSat").addEventListener("click", ()=>{
     if (seciliKule){
-      altin += Math.floor(seciliKule.yatirim*0.6);
+      altin += Math.floor(seciliKule.yatirim*D.satisOrani);
       kuleler = kuleler.filter(x=>x!==seciliKule);
     }
     document.getElementById("kuleMenu").classList.add("gizli");
@@ -1218,7 +2126,8 @@ const TEMA = {
   });
   document.getElementById("baslaBtn").addEventListener("click", basla);
   document.getElementById("yenidenBtn").addEventListener("click", basla);
-
+  document.getElementById("devamBtn").addEventListener("click", devamEt);
+  document.getElementById("sonDevamBtn").addEventListener("click", devamEt);
   // ---------- Efektler ----------
   function patlamaEkle(x,y,renk,adet){
     for (let i=0;i<(adet||10);i++){
@@ -1231,51 +2140,85 @@ const TEMA = {
     yaziEfektleri.push({x:x,y:y,metin:metin,renk:renk||P.metin,omur:0.9,yas:0});
   }
 
-  // ---------- Güncelleme ----------
+  // ---------- Güncelleme (v2: sabit adımla çağrılır, dt = 1/60 sn) ----------
   function guncelle(dt){
     zaman += dt;
     if (ekranSarsinti>0) ekranSarsinti = Math.max(0, ekranSarsinti - dt*2.2);  // JUICE: sönümlen
+    efektleriGuncelle(dt);
     if (asama !== "oyunda") return;
+
+    // v2: harita geçişi perdesi (1.5 sn); ortasında harita değişir, sonunda ara başlar
+    if (gecis){
+      gecis.t += dt;
+      if (!gecis.uygulandi && gecis.t >= D.haritaGecisSure/2){
+        haritaDegistir(gecis.hedef); gecis.uygulandi = true; kayitYaz();
+      }
+      if (gecis.t >= D.haritaGecisSure){ gecis = null; araBaslat(D.dalgaArasi); }
+      cagirDugmesiGuncelle();
+      return;
+    }
 
     // Combo zaman aşımı
     if (combo>1){ comboZaman-=dt; if (comboZaman<=0){ combo=1; hudGuncelle(); } }
 
-    // Dalga yönetimi
-    if (!dalgaAktif && spawnKuyrugu.length===0 && dusmanlar.length===0){
-      dalgaAraSayac -= dt;
-      if (dalgaAraSayac<=0){
-        if (dalga >= TOPLAM_DALGA){ bitir(true); return; }
-        dalga++;
-        spawnKuyrugu = dalgaOlustur(dalga);
-        dalgaAktif = true; spawnSayac = 0;
-        uyariGoster("Dalga " + dalga + " geliyor!");
-        hudGuncelle();
-      }
+    // v2: dalga arası — sayaç biterse sonraki dalga
+    if (araAktif){
+      araKalan -= dt;
+      if (araKalan <= 0) sonrakiDalga();
     }
+    cagirDugmesiGuncelle();
+
     if (dalgaAktif){
       spawnSayac -= dt;
       if (spawnSayac<=0 && spawnKuyrugu.length){
         dusmanEkle(spawnKuyrugu.shift());
-        spawnSayac = 0.75;
+        spawnSayac = spawnAralik;
       }
       if (spawnKuyrugu.length===0) dalgaAktif=false;
     }
-    if (!dalgaAktif && spawnKuyrugu.length===0 && dusmanlar.length===0 && dalgaAraSayac<=0){
-      dalgaAraSayac = DALGA_ARASI;
+    // v2 (§4.1.1): dalga bitişi yalnız bir kez algılanır
+    if (dalga > 0 && !araVerildi && !araAktif && !dalgaAktif &&
+        spawnKuyrugu.length===0 && dusmanlar.length===0){
+      dalgaBitti();
+      if (asama !== "oyunda") return;
     }
 
+    if (bossBant){ bossBant.t += dt; if (bossBant.t > 1.8) bossBant = null; }
+    if (MK && MK.adim) mk("adim", dt, O);
     // Düşmanlar
     for (let i=dusmanlar.length-1;i>=0;i--){
       const d = dusmanlar[i];
       if (d.vurulmaZaman>0) d.vurulmaZaman = Math.max(0, d.vurulmaZaman - dt);
       if (d.yavaslamaSayac>0){ d.yavaslamaSayac-=dt; if (d.yavaslamaSayac<=0) d.yavaslama=1; }
-      d.mesafe += d.hiz * d.yavaslama * dt;
-      const n = yolNoktasi(d.mesafe);
+      // v3: mekanik — çarpanlar her adım sıfırlanır, kanca yeniden ayarlar
+      if (MK){
+        d.hizCarpani = 1; d.hedeflenebilir = true; d.hasarAlma = 1;
+        const onceBoyut = d.boyut, onceMax = d.maxCan;
+        mk("dusmanGuncelle", d, dt, O);
+        d.hizCarpani = sinir(d.hizCarpani, 0, 3, 1);
+        d.hasarAlma = sinir(d.hasarAlma, 0, 4, 1);
+        d.boyut = sinir(d.boyut, 0.4, 2.5, 1);
+        d.maxCan = sinir(d.maxCan, 1, d.dogusCan * 4, d.dogusCan);
+        d.can = sinir(d.can, -1e9, d.maxCan, d.maxCan);
+        d.kaleHasari = Math.round(sinir(d.kaleHasari, 0, 5, 1));
+        const e = mkDurum.etki;
+        if (d.hizCarpani !== 1) e.hiz++;
+        if (d.hedeflenebilir === false) e.gorunmez++;
+        if (d.hasarAlma !== 1) e.hasarAlma++;
+        if (d.boyut !== onceBoyut) e.boyut++;
+        if (d.maxCan !== onceMax) e.canDegisti++;
+        if (d.can <= 0){ dusmanOldur(d, null); continue; }   // kanca öldürdüyse ödül verilir
+      }
+      d.mesafe += d.hiz * d.yavaslama * (MK ? d.hizCarpani : 1) * dt;
+      const r = harita().rotalar[d.rota] || anaRota();
+      const n = rotaNoktasi(r, d.mesafe);
       d.x=n.x; d.y=n.y; d.aci=n.aci;
       if (T.dusmanGuncelle) { try { T.dusmanGuncelle(d, dt, zaman); } catch(e){} }
-      if (d.mesafe >= yolToplam){
+      if (d.mesafe >= r.toplam){
         dusmanlar.splice(i,1);
-        can -= d.bos ? 5 : 1;
+        sizinti[d.rota] = (sizinti[d.rota] || 0) + 1;
+        if (MK){ mk("dusmanKacti", d, O); mkDurum.etki.kacti++; }
+        if (!sinirsizCanTest) can -= (d.kaleHasari != null) ? d.kaleHasari : (d.bos ? D.boss.kaleHasar : 1);
         combo=1;
         ekranSarsinti = Math.min(1, ekranSarsinti + (d.bos ? 0.55 : 0.3));  // JUICE
         patlamaEkle(d.x,d.y,"#ef4444",8);
@@ -1288,18 +2231,35 @@ const TEMA = {
     for (const k of kuleler){
       k.sayac -= dt;
       if (k.flas>0) k.flas-=dt;
+      // v3: mekanik — kule çarpanları
+      if (MK){
+        k.hasarCarpani = 1; k.atisCarpani = 1; k.menzilCarpani = 1; k.aktif = true;
+        mk("kuleGuncelle", k, dt, O);
+        k.hasarCarpani = sinir(k.hasarCarpani, 0, 4, 1);
+        k.atisCarpani = sinir(k.atisCarpani, 0, 4, 1);
+        k.menzilCarpani = sinir(k.menzilCarpani, 0.3, 2.5, 1);
+        if (k.hasarCarpani !== 1 || k.atisCarpani !== 1 || k.menzilCarpani !== 1 || k.aktif === false)
+          mkDurum.etki.kule++;
+        if (k.aktif === false || k.atisCarpani <= 0) continue;
+      }
+      if (k.tip.destek) continue;                          // v3: destek kulesi ateş etmez
+      const menzil = k.menzil * (MK ? k.menzilCarpani : 1);
       let hedef=null, enYakin=1e9;
       for (const d of dusmanlar){
+        if (d.hedeflenebilir === false) continue;         // v3: sis / yeraltı / karanlık
         const m = mesafe(k,d);
-        if (m<=k.menzil && d.mesafe>enYakin*0-1 && m<enYakin){ enYakin=m; hedef=d; }
+        // v2 (§4.1.2): v1'deki `d.mesafe>enYakin*0-1` her zaman `d.mesafe>-1` demekti;
+        // niyeti açık yazıldı: yola henüz girmemiş (doğma ofsetindeki) düşman hedeflenmez.
+        if (m<=menzil && d.mesafe >= 0 && m<enYakin){ enYakin=m; hedef=d; }
       }
       if (hedef){
         k.aci = Math.atan2(hedef.y-k.y, hedef.x-k.x);
         if (k.sayac<=0){
-          k.sayac = 1/(k.tip.atisHizi||1);
+          k.sayac = 1/((k.tip.atisHizi||1) * (MK ? k.atisCarpani : 1));
           k.flas = 0.08;
-          mermiler.push({x:k.x,y:k.y,hedef:hedef,hiz:k.tip.mermiHizi||320,
-                         hasar:k.hasar, renk:k.tip.renk||P.mermi,
+          if (MK && MK.kuleAtti){ mk("kuleAtti", k, hedef, O); mkDurum.etki.atis++; }
+          mermiler.push({x:k.x,y:k.y,px:k.x,py:k.y,hedef:hedef,hiz:k.tip.mermiHizi||320,
+                         hasar:k.hasar * (MK ? k.hasarCarpani : 1), renk:k.tip.renk||P.mermi, kaynak:k,
                          alan:k.tip.alan||0, yavaslat:k.tip.yavaslat||0, iz:[]});
         }
       }
@@ -1318,7 +2278,12 @@ const TEMA = {
       }
     }
 
-    // Parçacıklar / yazılar
+    modulleriGuncelle(dt);   // MEKANİK MODÜLLERİ: toplanabilir / kahraman / yetenek
+    if (T.guncelle) { try { T.guncelle(dt, zaman, {dusmanlar,kuleler,dalga}); } catch(e){} }
+  }
+
+  // Parçacık ve yazılar oyun bitince de sönsün diye aşama kontrolünden önce güncellenir
+  function efektleriGuncelle(dt){
     for (let i=parcaciklar.length-1;i>=0;i--){
       const p=parcaciklar[i]; p.yas+=dt;
       if (p.yas>=p.omur){ parcaciklar.splice(i,1); continue; }
@@ -1328,35 +2293,55 @@ const TEMA = {
       const y=yaziEfektleri[i]; y.yas+=dt; y.y-=26*dt;
       if (y.yas>=y.omur) yaziEfektleri.splice(i,1);
     }
-    if (T.guncelle) { try { T.guncelle(dt, zaman, {dusmanlar,kuleler,dalga}); } catch(e){} }
+    for (const k of kuleler){                               // v3: kurulum pop + yükseltme halkası
+      if (k.dogus < 1) k.dogus += dt;
+      if (k.parlama > 0) k.parlama = Math.max(0, k.parlama - dt);
+    }
   }
 
   function vurus(m, d){
     const hedefler = m.alan ? dusmanlar.filter(x=>mesafe(x,d)<=m.alan) : [d];
     for (const h of hedefler){
-      h.can -= m.hasar;
+      // v2: zırh (§4.3/§4.6) hasarı yüzde olarak azaltır; v1 tiplerinde zırh yok → 0
+      let uygulanan = m.hasar * (1 - (h.zirh || 0)) * (MK ? (h.hasarAlma || 1) : 1);
+      if (MK && MK.hasar && m.kaynak){                       // v3: hasar matrisi, element, kritik…
+        const r = mk("hasar", m.kaynak, h, uygulanan, O);
+        if (typeof r === "number" && r === r){
+          const yeni = Math.max(0, Math.min(uygulanan * 5, r));
+          if (yeni !== uygulanan) mkDurum.etki.hasar++;
+          uygulanan = yeni;
+        }
+      }
+      if (m.kaynak){ const gercek = Math.min(uygulanan, Math.max(0, h.can));
+        m.kaynak.bolumHasar += gercek; m.kaynak.toplamHasar += gercek; }
+      h.can -= uygulanan;
       h.vurulmaZaman = 0.14;  // JUICE: sıkışma-esneme animasyonu tetiklenir
       if (m.yavaslat){ h.yavaslama=m.yavaslat; h.yavaslamaSayac=1.6; }
       if (h.can<=0){
-        const idx = dusmanlar.indexOf(h);
-        if (idx>-1){
-          dusmanlar.splice(idx,1);
-          const kazanc = Math.round(h.altin*combo);
-          altin += kazanc; skor += Math.round(10*combo*(h.bos?5:1));
-          combo = Math.min(5, combo+1); comboZaman = 3;
-          patlamaEkle(h.x,h.y,h.renk, h.bos?22:11);
-          yaziEkle(h.x,h.y,"+"+kazanc, "#fbbf24");
-          if (h.bos){                          // JUICE: boss ölümünde ağırlık hissi
-            donmaSuresi = Math.max(donmaSuresi, 0.09);
-            ekranSarsinti = Math.min(1, ekranSarsinti + 0.7);
-          }
-          hudGuncelle();
-        }
+        dusmanOldur(h, m.kaynak);
       } else {
-        yaziEkle(h.x, h.y-10, "-"+Math.round(m.hasar), "#fca5a5");
+        yaziEkle(h.x, h.y-10, "-"+Math.round(uygulanan), "#fca5a5");
       }
     }
     patlamaEkle(m.x,m.y,m.renk,4);
+  }
+
+  // v3: ölüm tek yerde (mermi, alan hasarı ya da mekanik kancası öldürebilir)
+  function dusmanOldur(h, kaynak){
+    const idx = dusmanlar.indexOf(h);
+    if (idx < 0) return;
+    dusmanlar.splice(idx,1);
+    const kazanc = Math.round(h.altin * (D.comboAltin ? combo : 1));
+    altin += kazanc; skor += Math.round(10*combo*(h.bos?5:1));
+    combo = Math.min(D.comboMax, combo+1); comboZaman = D.comboSure;
+    patlamaEkle(h.x,h.y,h.renk, h.bos?22:11);
+    yaziEkle(h.x,h.y,"+"+kazanc, "#fbbf24");
+    if (h.bos){                          // JUICE: boss ölümünde ağırlık hissi
+      donmaSuresi = Math.max(donmaSuresi, 0.09);
+      ekranSarsinti = Math.min(1, ekranSarsinti + 0.7);
+    }
+    mk("dusmanOldu", h, O, kaynak);
+    hudGuncelle();
   }
 
   // ---------- Çizim ----------
@@ -1365,7 +2350,7 @@ const TEMA = {
     g.addColorStop(0,P.arka1); g.addColorStop(1,P.arka2);
     c.fillStyle=g; c.fillRect(0,0,W,H);
   }
-  function varsayilanYol(c){
+  function varsayilanYol(c, yol){
     c.lineCap="round"; c.lineJoin="round";
     c.strokeStyle=P.yolKenar; c.lineWidth=46;
     c.beginPath(); c.moveTo(yol[0].x,yol[0].y);
@@ -1406,7 +2391,7 @@ const TEMA = {
 
   function canBari(c,d){
     if (d.can>=d.maxCan) return;
-    const g = d.bos?60:30, y=d.y-d.yaricap-10;
+    const g = d.bos?60:30, y=d.y-d.yaricap*(d.boyut||1)-10;
     c.fillStyle="rgba(0,0,0,.6)"; c.fillRect(d.x-g/2,y,g,d.bos?7:4);
     c.fillStyle= d.bos?"#f43f5e":"#22c55e";
     c.fillRect(d.x-g/2,y,g*Math.max(0,d.can/d.maxCan),d.bos?7:4);
@@ -1436,9 +2421,12 @@ const TEMA = {
     octx.translate(boyut/2, boyut/2);
     octx.save();
     octx.beginPath(); octx.rect(-46,-46,92,92); octx.clip();
-    const sahteK = Object.assign({}, k, {x:0, y:0, aci: aciQ*adim, flas:0});
-    try { (T.kuleCiz || varsayilanKule)(octx, sahteK, 0); }
-    catch(e){ varsayilanKule(octx, sahteK, 0); }
+    const sahteK = Object.assign({}, k, {x:0, y:0, aci: aciQ*adim, flas:0,
+                                         ad: k.tip.ad, tipIndeks: tipIdx});
+    // v1.2: çizimi görünmeyen kule tipi varsayılan çizimle gösterilir
+    const kc = (T.kuleCiz && gorunurlukAl().kule[tipIdx] !== "gorunmez") ? T.kuleCiz : varsayilanKule;
+    try { kc(octx, sahteK, 0); }
+    catch(e){ octx.restore(); octx.save(); varsayilanKule(octx, sahteK, 0); }
     octx.restore();
 
     s = {canvas: off, boyut: boyut};
@@ -1456,7 +2444,7 @@ const TEMA = {
     c.restore();
   }
 
-  /* v1.1 PERFORMANS: statik zemin önbelleği.
+  /* v2 PERFORMANS: statik zemin önbelleği.
      `this` düzeltmesinden sonra eklentilerin gerçek (çok katmanlı, gölgeli) arka planları
      çizilmeye başladı; her karede yeniden çizmek bazı eklentilerde kare hızını 5–20 kat
      düşürüyordu. Arka plan t=0 anındaki haliyle bir kez çizilir. Bedeli: eklentinin arka
@@ -1464,14 +2452,14 @@ const TEMA = {
   let zeminKatmani = null, zeminAnahtar = "";
   function zeminKatmaniAl(){
     const s = Math.max(0.5, Math.min(2.5, olcek));
-    const anahtar = s.toFixed(3);
+    const anahtar = s.toFixed(3) + "_" + haritaNo;
     if (zeminKatmani && zeminAnahtar === anahtar) return zeminKatmani;
     const cv = document.createElement("canvas");
     cv.width = Math.ceil(REF_W*s); cv.height = Math.ceil(REF_H*s);
     const c = cv.getContext("2d");
     c.scale(s, s);
     c.save();
-    try { (T.arkaplanCiz || varsayilanArkaplan)(c, REF_W, REF_H, 0); }
+    try { (harita().zeminCiz || T.arkaplanCiz || varsayilanArkaplan)(c, REF_W, REF_H, 0, haritaBilgisi()); }
     catch(e){ c.restore(); c.save(); varsayilanArkaplan(c, REF_W, REF_H, 0); }
     c.restore();
     // JUICE: evrensel atmosfer katmanı (üstten yumuşak ışık + kenarlarda vinyet) — v1 ile aynı
@@ -1488,16 +2476,91 @@ const TEMA = {
       c.fillStyle = vin; c.fillRect(0,0,REF_W,REF_H);
       c.restore();
     } catch(e){}
-    // Yol da statik katmana
-    c.save();
-    try { (T.yolCiz || varsayilanYol)(c, yol, 0); }
-    catch(e){ c.restore(); c.save(); varsayilanYol(c); }
-    c.restore();
+    // Yollar da statik katmana (haritanın tüm rotaları)
+    for (const r of harita().rotalar){
+      c.save();
+      try { (T.yolCiz || varsayilanYol)(c, r.n, 0, haritaBilgisi()); }
+      catch(e){ c.restore(); c.save(); varsayilanYol(c, r.n); }
+      c.restore();
+    }
+    // v3: harita başına tonlama (2. harita akşam, 3. harita gece)
+    const ton = D.tonlama[haritaNo];
+    if (ton){
+      c.save(); c.globalAlpha = ton.guc; c.fillStyle = ton.renk; c.fillRect(0,0,REF_W,REF_H); c.restore();
+    }
     zeminKatmani = cv; zeminAnahtar = anahtar;
     return cv;
   }
 
-  function ciz(){
+  /* v1.2 GÖRÜNÜRLÜK GÜVENCESİ
+     Eklentinin her düşman ve kule tipini oyun başlamadan ekran dışında bir kez çizip ölçer.
+     Neden: 54 eklentinin 23'ünde düşmanlar görünmüyordu (eklenti `d.ad`'a göre dallanıyordu,
+     motor bu alanı vermiyordu → hiçbir dal çizmiyordu). Alan eklendi; bu ölçüm, eklentinin
+     başka bir hatasıyla düşmanın yine görünmez olmasını da engeller.
+       görünmez: opak piksel < gövde alanının %15'i → varsayılan çizim
+       soluk:    gövde merkezindeki çizili piksellerin ortalama opaklığı < %67 → altına opak gövde
+     Sonuç window.MOTOR_GORUNURLUK'ta; fabrika kalite testi bunu okur. */
+  let gorunurluk = null;
+  function gorunurlukAl(){
+    if (gorunurluk) return gorunurluk;
+    gorunurluk = {dusman: [], kule: []};
+    // Isınma: bazı eklentiler arka plan/yol çiziminde kendi önbelleklerini (yıldız, taş listesi
+    // gibi) kurar ve düşman/kule çizimi bunlara dayanır. Oyundaki sırayı taklit et.
+    try {
+      const ic = document.createElement("canvas"); ic.width = 64; ic.height = 36;
+      const ix = ic.getContext("2d"); ix.scale(0.05, 0.05);
+      ix.save(); try { (harita().zeminCiz || T.arkaplanCiz || varsayilanArkaplan)(ix, REF_W, REF_H, 0, haritaBilgisi()); } catch(e){} ix.restore();
+      ix.save(); try { (T.yolCiz || varsayilanYol)(ix, anaRota().n, 0, haritaBilgisi()); } catch(e){} ix.restore();
+    } catch(e){}
+    const rapor = {dusman: [], kule: []};
+    const B = 160;
+    let c = null, sonHata = null;
+    function olc(ciz, r){
+      // Her ölçüm yeni tuvalde: hata veren bir çizim save/clip yığınını kirletse bile
+      // sonraki ölçümü etkilemez
+      const cv = document.createElement("canvas"); cv.width = cv.height = B;
+      c = cv.getContext("2d", {willReadFrequently: true});
+      c.save();
+      if (r){ c.beginPath(); c.rect(B/2-r*2, B/2-r*2.4, r*4, r*4.4); c.clip(); }  // motorun kırpması
+      let hata = null; try { ciz(); } catch(e){ hata = String(e).slice(0, 90); }
+      c.setTransform(1,0,0,1,0,0);
+      const v = c.getImageData(0,0,B,B).data; let opak = 0, ic = 0, icN = 0;
+      const R = (r || 20) * 0.7;
+      for (let y=0;y<B;y++) for (let x=0;x<B;x++){
+        const a = v[(y*B+x)*4+3]; if (a >= 160) opak++;
+        if (a > 8 && (x-B/2)*(x-B/2) + (y-B/2)*(y-B/2) <= R*R){ ic += a; icN++; }
+      }
+      sonHata = hata;
+      return {opak, ic: icN ? ic/icN : 0, hata};
+    }
+    DUSMAN_TIPLERI.forEach((t, i) => {
+      let durum = "tamam"; sonHata = null;
+      if (T.dusmanCiz){
+        const r = t.yaricap || 14;
+        const d = {x:B/2, y:B/2, aci:0, mesafe:40, yaricap:r, renk:t.renk||P.dusman, bos:false, faz:1.3,
+                   tip:t, ad:t.ad, tipIndeks:i, can:(t.can||60)*0.7, maxCan:t.can||60, hiz:t.hiz||60,
+                   yavaslama:1, yavaslamaSayac:0, vurulmaZaman:0};
+        const o = olc(() => T.dusmanCiz(c, d, 1.2), r);
+        if (o.hata || o.opak < Math.PI*r*r*0.15) durum = "gorunmez";
+        else if (o.ic < 170) durum = "soluk";
+      }
+      gorunurluk.dusman[i] = durum; rapor.dusman.push({ad: t.ad, durum, hata: sonHata});
+    });
+    KULE_TIPLERI.forEach((t, i) => {
+      let durum = "tamam"; sonHata = null;
+      if (T.kuleCiz){
+        const k = {x:0, y:0, aci:-Math.PI/2, tip:t, ad:t.ad, tipIndeks:i, seviye:1, flas:0,
+                   menzil:t.menzil, hasar:t.hasar};
+        const o = olc(() => { c.translate(B/2, B/2); T.kuleCiz(c, k, 0); }, 0);
+        if (o.hata || o.opak < 120) durum = "gorunmez";
+      }
+      gorunurluk.kule[i] = durum; rapor.kule.push({ad: t.ad, durum, hata: sonHata});
+    });
+    window.MOTOR_GORUNURLUK = rapor;
+    return gorunurluk;
+  }
+
+  function ciz(alfa){
     ctx.setTransform(1,0,0,1,0,0);
     ctx.fillStyle="#05080f"; ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.setTransform(olcek,0,0,olcek,kaydirX,kaydirY);
@@ -1508,12 +2571,20 @@ const TEMA = {
       ctx.translate((Math.random()*2-1)*10*guc, (Math.random()*2-1)*10*guc);
     }
 
-    // v1.1: statik zemin önbelleği — eklentinin arka planı, atmosfer ve yol bir kez
+    // v2: statik zemin önbelleği — eklentinin arka planı, atmosfer ve yol bir kez
     // ekran dışı tuvale çizilir, her karede yalnız kopyalanır (bkz. zeminKatmaniAl)
     ctx.drawImage(zeminKatmaniAl(), 0, 0, REF_W, REF_H);
 
+    // v3: döngü fazı tonlaması (ör. gece, kış)
+    if (DONGU){
+      const f = DONGU.fazlar[fazNo];
+      if (f.renk && f.karartma > 0){
+        ctx.save(); ctx.globalAlpha = f.karartma; ctx.fillStyle = f.renk;
+        ctx.fillRect(0,0,REF_W,REF_H); ctx.restore();
+      }
+    }
     ambiyansCiz(ctx, zaman);  // JUICE: her temada otomatik yüzen parıltı zerreleri
-    // v1.1: yol statik zemin katmanında (zeminKatmaniAl)
+    // v2: yol statik zemin katmanında (zeminKatmaniAl)
 
     // Seçili kule tipinin menzil önizlemesi yok; kurulu kulelerin menzili seçiliyken
     if (seciliKule){
@@ -1527,19 +2598,31 @@ const TEMA = {
       ctx.globalCompositeOperation = "lighter";
       const renk = (k.tip.renk || P.kule);
       const glowR = 30 + Math.sin(zaman*2 + k.x*0.01)*3 + (k.flas>0 ? 16 : 0);
-      try {
-        const g = ctx.createRadialGradient(k.x,k.y,0,k.x,k.y,glowR);
-        g.addColorStop(0, renk+"33"); g.addColorStop(1, renk+"00");
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(k.x,k.y,glowR,0,6.29); ctx.fill();
-      } catch(e){}
+      const hale = paritiSprite(renk);          // v2 (§4.1.3): hazır sprite
+      if (hale) ctx.drawImage(hale, k.x-glowR, k.y-glowR, glowR*2, glowR*2);
       ctx.restore();
 
       // PERFORMANS: canlı çizim yerine önbellekten kopyala (bkz. kuleSpriteAl)
       const sprite = kuleSpriteAl(k);
-      ctx.drawImage(sprite.canvas, k.x - sprite.boyut/2, k.y - sprite.boyut/2);
+      if (k.dogus < 0.35){                                  // v3: kurulum "pop" (0 → 1.15 → 1)
+        const u = k.dogus / 0.35, sc = u < 0.7 ? (u/0.7)*1.15 : 1.15 - 0.15*((u-0.7)/0.3);
+        ctx.save(); ctx.translate(k.x, k.y); ctx.scale(sc, sc);
+        ctx.drawImage(sprite.canvas, -sprite.boyut/2, -sprite.boyut/2); ctx.restore();
+      } else ctx.drawImage(sprite.canvas, k.x - sprite.boyut/2, k.y - sprite.boyut/2);
+      if (k.parlama > 0){                                    // v3: yükseltme halkası
+        const u = 1 - k.parlama/0.6;
+        ctx.save(); ctx.globalAlpha = k.parlama/0.6; ctx.strokeStyle = "#fde68a"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(k.x, k.y, 18 + u*46, 0, 6.29); ctx.stroke(); ctx.restore();
+      }
+      if (MK && k.aktif === false && !k.tip.destek){         // v3: devre dışı kule işareti
+        ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = "#0b0f19";
+        ctx.beginPath(); ctx.arc(k.x, k.y, 22, 0, 6.29); ctx.fill(); ctx.restore();
+      }
     }
     for (const d of dusmanlar){
+      // v2: enterpolasyon — çizim süresince konum iki simülasyon adımı arasına taşınır
+      const simX = d.x, simY = d.y;
+      if (d.px !== undefined){ d.x = d.px + (simX-d.px)*alfa; d.y = d.py + (simY-d.py)*alfa; }
       // Kontrast halkası: eklenti düşmanı zeminle aynı renk yapsa bile ayrışsın
       ctx.save();
       ctx.strokeStyle="rgba(0,0,0,.55)"; ctx.lineWidth=3;
@@ -1554,21 +2637,38 @@ const TEMA = {
         const o = d.vurulmaZaman/0.14;
         sx = 1 + 0.22*o; sy = 1 - 0.22*o;
       }
+      const bo = d.boyut || 1;                                // v3: mekanik boyut (ör. büyüyen düşman)
       ctx.save();
-      ctx.translate(d.x,d.y); ctx.scale(sx,sy); ctx.translate(-d.x,-d.y);
+      // v3: hedeflenemeyen düşman (sis, yeraltı) yarı saydam gösterilir: oyuncu orada olduğunu görür
+      if (MK && d.hedeflenebilir === false) ctx.globalAlpha = 0.35;
+      ctx.translate(d.x,d.y); ctx.scale(sx*bo,sy*bo); ctx.translate(-d.x,-d.y);
       ctx.beginPath(); ctx.rect(d.x-d.yaricap*2, d.y-d.yaricap*2.4,
                                 d.yaricap*4, d.yaricap*4.4); ctx.clip();
-      try { (T.dusmanCiz || varsayilanDusman)(ctx,d,zaman); }
-      catch(e){ varsayilanDusman(ctx,d,zaman); }
+      // v1.2 GÖRÜNÜRLÜK GÜVENCESİ: görünmeyen tip → varsayılan çizim; gövdesi saydam tip →
+      // altına kendi renginde opak gövde
+      const gd = gorunurlukAl().dusman[d.tipIndeks];
+      if (gd === "soluk"){
+        ctx.fillStyle = d.renk;
+        ctx.beginPath(); ctx.arc(d.x, d.y, d.yaricap*0.8, 0, 6.29); ctx.fill();
+      }
+      const dc = (T.dusmanCiz && gd !== "gorunmez") ? T.dusmanCiz : varsayilanDusman;
+      try { dc(ctx,d,zaman); }
+      catch(e){ ctx.restore(); ctx.save(); varsayilanDusman(ctx,d,zaman); }
       ctx.restore();
       canBari(ctx,d);
+      d.x = simX; d.y = simY;
+    }
+    modulleriCiz(ctx, zaman);   // MEKANİK MODÜLLERİ: toplanabilirler + kahraman
+    if (MK && MK.ciz){                                       // v3: mekaniğin dünya katmanı (sis, ışık…)
+      ctx.save(); mk("ciz", ctx, O, zaman); ctx.restore(); mkDurum.etki.ciz++;
     }
     for (const m of mermiler){
       ctx.strokeStyle=m.renk; ctx.lineWidth=2; ctx.globalAlpha=.5;
       ctx.beginPath();
       m.iz.forEach((p,i)=> i? ctx.lineTo(p.x,p.y) : ctx.moveTo(p.x,p.y));
       ctx.stroke(); ctx.globalAlpha=1;
-      ctx.fillStyle=m.renk; ctx.beginPath(); ctx.arc(m.x,m.y,4,0,6.29); ctx.fill();
+      const mx = m.px + (m.x-m.px)*alfa, my = m.py + (m.y-m.py)*alfa;
+      ctx.fillStyle=m.renk; ctx.beginPath(); ctx.arc(mx,my,4,0,6.29); ctx.fill();
     }
     for (const p of parcaciklar){
       ctx.globalAlpha = Math.max(0, 1-p.yas/p.omur);
@@ -1584,20 +2684,225 @@ const TEMA = {
     ctx.globalAlpha=1;
 
     if (T.ustCiz){ try { T.ustCiz(ctx, REF_W, REF_H, zaman, {dalga,can,altin}); } catch(e){} }
+    bossBandiCiz(ctx);
+    gecisPerdesiCiz(ctx);
+  }
+  // v2 (§4.1.3): kule halesi her karede createRadialGradient yerine renk başına bir kez
+  // çizilen sprite'tan ölçeklenerek kopyalanır. Görünüm v1 ile aynı (merkez %20 → kenar %0).
+  const PARILTI_R = 64;
+  const paritiOnbellek = new Map();
+  function paritiSprite(renk){
+    if (paritiOnbellek.has(renk)) return paritiOnbellek.get(renk);
+    let s = null;
+    try {
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = PARILTI_R*2;
+      const c = cv.getContext("2d");
+      const g = c.createRadialGradient(PARILTI_R,PARILTI_R,0,PARILTI_R,PARILTI_R,PARILTI_R);
+      g.addColorStop(0, renk+"33"); g.addColorStop(1, renk+"00");   // v1 ile aynı renk kuralı
+      c.fillStyle = g; c.fillRect(0,0,cv.width,cv.height);
+      s = cv;
+    } catch(e){ s = null; }                  // geçersiz renk: v1 de haleyi atlıyordu
+    paritiOnbellek.set(renk, s);
+    return s;
   }
 
-  // ---------- Döngü ----------
-  let sonZaman = performance.now();
+  // v3: boss giriş bandı (1.8 sn; dokunmayı engellemez)
+  function bossBandiCiz(c){
+    if (!bossBant) return;
+    const t = bossBant.t, a = t < 0.25 ? t/0.25 : (t > 1.4 ? Math.max(0, (1.8-t)/0.4) : 1);
+    c.save();
+    c.globalAlpha = 0.28*a; c.fillStyle = "#000"; c.fillRect(0,0,REF_W,REF_H);
+    c.globalAlpha = 0.9*a; c.fillStyle = "#1a0606"; c.fillRect(0, REF_H*0.38, REF_W, 74);
+    c.fillStyle = "#ef4444"; c.fillRect(0, REF_H*0.38, REF_W, 3); c.fillRect(0, REF_H*0.38+71, REF_W, 3);
+    c.globalAlpha = a; c.textAlign = "center"; c.fillStyle = "#fecaca";
+    c.font = "800 15px system-ui,sans-serif"; c.fillText("BOSS", REF_W/2, REF_H*0.38 + 24);
+    c.fillStyle = "#fff"; c.font = "800 30px system-ui,sans-serif";
+    c.fillText(bossBant.ad, REF_W/2 + (1-a)*40, REF_H*0.38 + 58);
+    c.restore();
+  }
+
+  // v2: harita geçiş perdesi (kararma → harita adı → açılma), dokunmayı engellemez
+  function gecisPerdesiCiz(c){
+    if (!gecis) return;
+    const yari = D.haritaGecisSure/2;
+    const o = gecis.t < yari ? gecis.t/yari : Math.max(0, 1 - (gecis.t-yari)/yari);
+    c.save();
+    c.globalAlpha = Math.min(1, o*1.05);
+    c.fillStyle = "#05080f"; c.fillRect(0,0,REF_W,REF_H);
+    const hedef = HARITALAR[gecis.hedef];
+    c.textAlign = "center"; c.fillStyle = "#e5e7eb";
+    c.font = "800 38px system-ui,sans-serif";
+    c.fillText(hedef.ad, REF_W/2, REF_H/2 - 6);
+    c.font = "600 17px system-ui,sans-serif"; c.fillStyle = "#94a3b8";
+    c.fillText((gecis.hedef+1) + ". harita · Bölüm " + (gecis.hedef*D.bolumPerHarita+1) +
+               " · Can +" + D.haritaGecisCan, REF_W/2, REF_H/2 + 26);
+    c.restore();
+  }
+
+  /* ---------- v2: Döngü — sabit zaman adımı + enterpolasyon (§4.4) ----------
+     v1: değişken dt (≤50 ms) → kare hızına göre farklı sonuç, denge botu tekrarlanamaz.
+     v2: simülasyon hep 1/60 sn adımlarla ilerler; çizim iki adım arasını enterpole eder. */
+  const ADIM = 1/60, MAKS_ADIM = 8;
+  let birikim = 0, sonZaman = null;
+  function oncekiKaydet(){
+    for (const d of dusmanlar){ d.px = d.x; d.py = d.y; }
+    for (const m of mermiler){ m.px = m.x; m.py = m.y; }
+  }
   function dongu(su){
+    if (sonZaman === null) sonZaman = su;
     let dt = (su - sonZaman)/1000;
     sonZaman = su;
-    if (dt > 0.05) dt = 0.05;     // sekme arka plandayken sıçrama olmasın
-    if (donmaSuresi > 0){ donmaSuresi -= dt; dt = 0; }  // JUICE: boss ölümünde kısa "vuruş anı" donması
-    guncelle(dt);
-    ciz();
-    window.OYUN_DURUMU = {asama:asama, dalga:dalga||0, can:can||0, skor:skor||0, altin:altin||0};
+    if (!(dt > 0)) dt = 0;
+    if (dt > 0.25) dt = 0.25;      // sekme arka plandan dönünce sıçrama olmasın
+    birikim += dt * hizCarpani;
+    let adim = 0;
+    while (birikim >= ADIM && adim < MAKS_ADIM){
+      oncekiKaydet();
+      if (donmaSuresi > 0){ donmaSuresi -= ADIM; guncelle(0); }  // JUICE: vuruş anı donması
+      else guncelle(ADIM);
+      birikim -= ADIM; adim++;
+    }
+    if (adim >= MAKS_ADIM) birikim = 0;   // yavaş cihazda birikim sarmalı olmasın
+    ciz(Math.min(1, birikim / ADIM));
+    window.OYUN_DURUMU = {asama:asama, dalga:dalga||0, can:can||0, skor:skor||0, altin:altin||0,
+                          bolum: Math.max(1, Math.ceil((dalga||0)/D.dalgaPerBolum)),
+                          harita: haritaNo+1, toplamDalga: TOPLAM_DALGA, zorluk: zorluk,
+                          mekanik: mkDurum.ad, faz: DONGU ? DONGU.fazlar[fazNo].ad : null};
+    window.MOTOR_MEKANIK = mkDurum;
     requestAnimationFrame(dongu);
   }
+
+  /* ---------- v2: Test kancaları (Playwright / denge botu) ----------
+     Oyuncuya görünmez; yalnız otomatik testler kullanır. */
+  window.MOTOR_TEST = {
+    dalgaPlani(g){
+      const p = dalgaPlani(g);
+      return {g: p.g, sablon: p.sablon, butce: Math.round(p.butce*100)/100, ritim: p.ritim,
+              harita: p.harita+1, bolum: p.bolum, aralik: p.aralik,
+              birimler: p.birimler.map(b => b.tip + (b.bos?"B":"") + ":" + b.rota + ":" +
+                                      Math.round((+DUSMAN_TIPLERI[b.tip].can||60)*b.guc*(b.bos?D.boss.can:1)))};
+    },
+    tehdit: (i, bos) => tipTehdit(i, !!bos),
+    durum: () => ({dalga, bolum: Math.max(1, Math.ceil(dalga/D.dalgaPerBolum)), harita: haritaNo+1,
+                   araAktif, araKalan: Math.round(araKalan*1000)/1000, gecis: !!gecis,
+                   dusman: dusmanlar.length, kule: kuleler.length, altin, can, tohum, zorluk,
+                   zaman: Math.round(zaman*1000)/1000, hiz: hizCarpani}),
+    sizinti: () => sizinti.slice(),
+    olaylar: () => olaylar.slice(),
+    spawnKaydi: () => spawnKaydi.slice(),
+    haritalar: () => HARITALAR.map(h => ({ad: h.ad, rota: h.rotalar.length, imza: h.imza.length})),
+    kayit: () => kayitOku(),
+    kayitSil: () => kayitSil(),
+    // Ücretsiz kurulum/yükseltme (test amaçlı; kurulum kuralları aynen uygulanır)
+    // ucretli=false: ücretsiz (akış testi); ucretli=true: altın düşer (bot)
+    kuleKur(x, y, tipIdx, ucretli){
+      const tip = KULE_TIPLERI[tipIdx|0]; if (!tip) return false;
+      const p = {x, y};
+      if (x<10||y<10||x>REF_W-10||y>REF_H-10 || yolaYakinMi(p, 34)) return false;
+      for (const k of kuleler) if (mesafe(p,k) < 40) return false;
+      if (ucretli){ if (altin < tip.fiyat) return false; altin -= tip.fiyat; }
+      const yk = kuleOlustur(x, y, tip); kuleler.push(yk); mk("kuleKuruldu", yk, O);
+      hudGuncelle(); return true;
+    },
+    yukseltHepsi(ucretli){
+      let n = 0;
+      for (const k of kuleler){
+        if (k.seviye >= D.maxSeviye) continue;
+        if (ucretli){ const f = yukseltmeFiyati(k); if (altin < f) continue; altin -= f; k.yatirim += f; }
+        kuleSeviyeArtir(k); n++;
+      }
+      hudGuncelle(); return n;
+    },
+    canAyarla(n){ can = n; hudGuncelle(); },
+    sinirsizCan(a){ sinirsizCanTest = !!a; },
+    hiz(n){ hizCarpani = Math.max(1, Math.min(8, n|0)); },
+    dalgayiCagir: () => dalgayiCagir(),
+    mekanik: () => JSON.parse(JSON.stringify(mkDurum)),
+    haritaKatsayisi: (h) => { kapsamaOnbellek.length = 0; return haritaKatsayisi(h|0); },
+    kuleVerimi: () => { verimOnbellek = null; return kuleVerimi(); },
+    // v3: SİMÜLASYON — çizim yapmadan oyunu ilerletir (denge botu ve kalite kapısı için)
+    ilerlet(sn){
+      const n = Math.round(sn / ADIM);
+      for (let i = 0; i < n && asama === "oyunda"; i++) guncelle(ADIM);
+      return asama;
+    },
+    // v3: DENGE BOTU — açgözlü ama makul oyuncu: her karar anında altınla alınabilecek en
+    // verimli işi yapar (yeni kule: yol kapsaması × DPS / fiyat; yükseltme: Δ DPS × kapsama / fiyat).
+    // Kapsama = kulenin menzilindeki yol örnek noktası sayısı. Tohumla birlikte tekrarlanabilir.
+    botKos(ayar){
+      ayar = ayar || {};
+      const maxDalga = ayar.maxDalga || TOPLAM_DALGA, karar = ayar.karar || 0.5;
+      const sinirSn = ayar.maxSaniye || 6000;
+      let bh = -1, noktalar = [], ornek = [];
+      const kapsama = (x, y, r) => { let n = 0; for (const p of ornek) if ((p.x-x)*(p.x-x)+(p.y-y)*(p.y-y) <= r*r) n++; return n; };
+      const dps = (t, sev) => (+t.hasar||10) * Math.pow(D.yukseltmeHasar, sev-1) * (+t.atisHizi||1)
+                               * (t.alan ? 1.8 : 1) * (t.yavaslat ? 1.25 : 1);
+      function hazirla(){
+        bh = haritaNo; ornek = []; noktalar = [];
+        for (const r of harita().rotalar) for (let m = 0; m <= r.toplam; m += 12){
+          const p = rotaNoktasi(r, m); if (p.x >= 0 && p.x <= REF_W && p.y >= 0 && p.y <= REF_H) ornek.push(p);
+        }
+        for (let y = 70; y <= 640; y += 34) for (let x = 30; x <= 1250; x += 34){
+          if (!yolaYakinMi({x, y}, 36)) noktalar.push({x, y});
+        }
+      }
+      const kayip = [];
+      let canOnce = can, sonDalga = dalga, t = 0;
+      while (asama === "oyunda" && dalga <= maxDalga && t < sinirSn){
+        if (bh !== haritaNo && !gecis) hazirla();
+        for (let islem = 0; islem < 6 && !gecis; islem++){
+          let en = null, enDeger = 0;
+          if (kuleler.length >= 2){
+            const eksik = KULE_TIPLERI.findIndex((tp, ti) => altin >= tp.fiyat && !kuleler.some(k => k.tipIndeks === ti));
+            if (eksik >= 0){
+              const tip = KULE_TIPLERI[eksik]; let eniyi = null, enK = -1;
+              for (const p of noktalar){
+                let bos = true, yakin = 0;
+                for (const k of kuleler){ const q = (k.x-p.x)*(k.x-p.x)+(k.y-p.y)*(k.y-p.y);
+                  if (q < 1600){ bos = false; break; } if (q < 130*130) yakin++; }
+                if (!bos) continue;
+                const deger = tip.destek ? yakin : kapsama(p.x, p.y, +tip.menzil || 130);
+                if (deger > enK){ enK = deger; eniyi = p; }
+              }
+              if (eniyi){ altin -= tip.fiyat; const yk = kuleOlustur(eniyi.x, eniyi.y, tip);
+                kuleler.push(yk); mk("kuleKuruldu", yk, O); continue; }
+            }
+          }
+          for (let ti = 0; ti < KULE_TIPLERI.length; ti++){
+            const tip = KULE_TIPLERI[ti]; if (altin < tip.fiyat) continue;
+            let eniyi = null, enK = 0;
+            for (const p of noktalar){
+              let bos = true; for (const k of kuleler) if ((k.x-p.x)*(k.x-p.x)+(k.y-p.y)*(k.y-p.y) < 1600){ bos = false; break; }
+              if (!bos) continue;
+              const kp = kapsama(p.x, p.y, +tip.menzil || 130); if (kp > enK){ enK = kp; eniyi = p; }
+            }
+            if (!eniyi) continue;
+            const v = enK * dps(tip, 1) / tip.fiyat;
+            if (v > enDeger){ enDeger = v; en = {tur: "kur", ti, p: eniyi}; }
+          }
+          for (const k of kuleler){
+            if (k.seviye >= D.maxSeviye) continue;
+            const f = yukseltmeFiyati(k); if (altin < f) continue;
+            const v = kapsama(k.x, k.y, k.menzil * D.yukseltmeMenzil) * (dps(k.tip, k.seviye+1) - dps(k.tip, k.seviye)) / f;
+            if (v > enDeger){ enDeger = v; en = {tur: "yukselt", k, f}; }
+          }
+          if (!en) break;
+          if (en.tur === "kur"){ const tip = KULE_TIPLERI[en.ti]; altin -= tip.fiyat;
+            const yk = kuleOlustur(en.p.x, en.p.y, tip); kuleler.push(yk); mk("kuleKuruldu", yk, O); }
+          else { altin -= en.f; en.k.yatirim += en.f; kuleSeviyeArtir(en.k); }
+        }
+        for (let i = 0, n = Math.round(karar/ADIM); i < n && asama === "oyunda"; i++) guncelle(ADIM);
+        t += karar;
+        if (dalga !== sonDalga){ kayip.push(Math.max(0, canOnce - can)); canOnce = can; sonDalga = dalga; }
+      }
+      kayip.push(Math.max(0, canOnce - can));
+      const tipSay = KULE_TIPLERI.map((tp, ti) => kuleler.filter(k => k.tipIndeks === ti).length);
+      return {asama, dalga, can, kule: kuleler.length, tipSay, altin, skor, sure: Math.round(t), kayip,
+              mekanik: JSON.parse(JSON.stringify(mkDurum.etki)), mkHata: JSON.parse(JSON.stringify(mkDurum.hata))};
+    },
+    DENGE: D
+  };
 
   // ---------- Başlat ----------
   boyutlandir();
@@ -1606,7 +2911,17 @@ const TEMA = {
   if (T.ad) { document.getElementById("menuBaslik").textContent = T.ad;
               document.title = T.ad; }
   if (T.aciklama) document.getElementById("menuAciklama").textContent = T.aciklama;
-  window.OYUN_DURUMU = {asama:"menu", dalga:0, can:BASLANGIC_CAN, skor:0, altin:BASLANGIC_ALTIN};
+  if (MK && mkDurum.aciklama){
+    const n = document.getElementById("menuNasil");
+    n.textContent = "Nasıl oynanır: " + mkDurum.aciklama; n.style.display = "block";
+  }
+  window.MOTOR_MEKANIK = mkDurum;
+  gorunurlukAl();   // v1.2: ölçüm başta yapılır; kalite testi window.MOTOR_GORUNURLUK'u okur
+  zorlukDugmeleriniGuncelle();
+  devamButonlariniGuncelle();
+  window.OYUN_DURUMU = {asama:"menu", dalga:0, can:BASLANGIC_CAN, skor:0, altin:D.baslangicAltin,
+                        bolum:1, harita:1, toplamDalga:TOPLAM_DALGA, zorluk:zorluk,
+                        mekanik: mkDurum.ad, faz: DONGU ? DONGU.fazlar[0].ad : null};
   requestAnimationFrame(dongu);
 })();
 </script>

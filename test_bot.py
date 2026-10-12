@@ -20,23 +20,85 @@ from google.genai import errors as genai_errors
 
 
 def gemini_cagir(client, model, contents):
-    """Gemini çağrısı; geçici yoğunlukta (503/429) VEYA boş yanıtta bekleyip yeniden dener."""
+    """Gemini çağrısı. `model` tek ad ya da sıralı liste olabilir (v3).
+    Her model için: geçici yoğunlukta (503/500/429) ya da boş yanıtta kısa bekleyip 1 kez daha dener;
+    model bulunamazsa (404) ya da günlük kota bittiyse (429 tekrarı) LİSTEDEKİ SONRAKİ MODELE geçer.
+    Böylece ücretsiz katmanda bir modelin günlük hakkı bitince fabrika durmaz."""
+    modeller = [model] if isinstance(model, str) else [m for m in model if m]
     son_hata = None
-    for bekleme in (0, 30, 90, 180):
-        if bekleme:
-            print(f"⏳ Gemini yanıt veremedi, {bekleme} sn bekleyip yeniden denenecek...")
-            time.sleep(bekleme)
-        try:
-            cevap = client.models.generate_content(model=model, contents=contents)
-            if cevap.text:  # Dolu yanıt geldiyse başarı
-                return cevap
-            son_hata = ValueError("Gemini boş yanıt döndürdü (yoğunluk/kesinti).")
-        except (genai_errors.ServerError, genai_errors.ClientError) as e:
-            kod = getattr(e, "status_code", None) or getattr(e, "code", None)
-            if kod not in (429, 500, 503):
-                raise  # Kalıcı hata (yanlış anahtar vb.) -> bekleme, direkt yüksel
-            son_hata = e
+    for m in modeller:
+        for bekleme in (0, 25):
+            if bekleme:
+                print(f"⏳ {m} yanıt veremedi, {bekleme} sn bekleyip yeniden denenecek...")
+                time.sleep(bekleme)
+            try:
+                cevap = client.models.generate_content(model=m, contents=contents)
+                if cevap.text:  # Dolu yanıt geldiyse başarı
+                    if m != modeller[0]:
+                        print(f"ℹ️ Yedek model kullanıldı: {m}")
+                    gemini_cagir.son_model = m
+                    return cevap
+                son_hata = ValueError(f"{m} boş yanıt döndürdü (yoğunluk/kesinti).")
+            except (genai_errors.ServerError, genai_errors.ClientError) as e:
+                kod = getattr(e, "status_code", None) or getattr(e, "code", None)
+                son_hata = e
+                if kod in (400, 404):
+                    print(f"⚠️ {m} kullanılamıyor ({kod}), sonraki modele geçiliyor.")
+                    break                      # bu model yok/desteklenmiyor → sonraki model
+                if kod not in (429, 500, 503):
+                    raise                      # kalıcı hata (yanlış anahtar vb.)
+        print(f"↪️ {m} başarısız: {str(son_hata)[:120]}")
     raise son_hata
+
+
+gemini_cagir.son_model = None
+
+
+# v3: Motorun simülasyon kancalarıyla mekanik ve denge yoklaması (API çağrısı harcamaz)
+MEKANIK_YOKLAMA_JS = """() => {
+  const M = window.MOTOR_TEST;
+  if (!M || !M.botKos) return {v3: false};
+  const g = window.MOTOR_GORUNURLUK || null;
+  const r = M.botKos({});
+  const m = M.mekanik();
+  return {v3: true, sonuc: r, mekanik: m, gorunurluk: g};
+}"""
+
+
+def mekanik_ve_denge_yokla(browser, html_yolu):
+    """Oyunu çizimsiz açar, denge botuyla 36 dalga oynatır (tohum sabit, normal zorluk).
+    Döner: (sorunlar, ozet)"""
+    sorunlar, ozet = [], {}
+    sayfa = browser.new_page()
+    sayfa.add_init_script("window.requestAnimationFrame = function(){ return 0; };")
+    try:
+        sayfa.goto("file://" + os.path.abspath(html_yolu) + "?tohum=2026&zorluk=normal")
+        sayfa.wait_for_timeout(300)
+        sayfa.click("#baslaBtn", timeout=3000)
+        y = sayfa.evaluate(MEKANIK_YOKLAMA_JS)
+    except Exception as e:
+        sayfa.close()
+        return [f"Mekanik yoklaması çalışmadı: {str(e)[:120]}"], ozet
+    sayfa.close()
+    if not y.get("v3"):
+        return sorunlar, ozet          # eski motor: yoklama yok
+    r, m = y["sonuc"], y["mekanik"]
+    ozet = {"bot": {k: r[k] for k in ("asama", "dalga", "can", "kule")},
+            "mekanik": m.get("ad"), "etki": {k: v for k, v in m["etki"].items() if v}}
+    if not m.get("var"):
+        sorunlar.append("Mekanik yok: eklentide `mekanik` nesnesi bulunamadı. Fikrin MEKANİK "
+                        "satırını mekanik kancalarıyla uygula.")
+    else:
+        for ad, n in (m.get("hata") or {}).items():
+            sorunlar.append(f"Mekanik kancası hata veriyor ({ad}, {n} kez): "
+                            f"{(m.get('sonHata') or {}).get(ad, '')}")
+        etkili = sum(v for k, v in m["etki"].items() if k not in ("ciz", "kacti", "atis"))
+        if etkili == 0:
+            sorunlar.append("Mekanik oyunu etkilemiyor: 36 dalga boyunca hiçbir kanca çarpan, "
+                            "görünmezlik, ek düşman ya da altın etkisi üretmedi.")
+    if r["asama"] != "kazandi" and r["dalga"] <= 6:
+        sorunlar.append(f"Denge botu normal zorlukta {r['dalga']}. dalgada kaybetti: oyun çok zor.")
+    return sorunlar, ozet
 
 
 def _durum_oku(page):
@@ -77,6 +139,24 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
                     "yorum": "Oyun açılırken konsol hatası verdi.",
                     "sorunlar": [f"Konsol hatası: {h}" for h in hatalar[:3]],
                     "api_cagrisi": 0, "kapak_png": None}
+
+        # --- TEST 1b: Görünürlük (motor v1.2 her düşman/kule tipini çizip ölçer) ---
+        # Görünmeyen ya da gövdesi yarı saydam tip KRİTİK sorundur: düşmanı göremeyen
+        # oyuncu oynayamaz. Hata mesajı bir sonraki üretim denemesine aktarılır.
+        try:
+            gor = page.evaluate("window.MOTOR_GORUNURLUK || null")
+        except Exception:
+            gor = None
+        if gor:
+            for tur, etiket in (("dusman", "Düşman"), ("kule", "Kule")):
+                for o in gor.get(tur, []):
+                    if o.get("durum") == "gorunmez":
+                        neden = f" (hata: {o['hata']})" if o.get("hata") else " (çizim boş kaldı)"
+                        sorunlar.append(f"{etiket} '{o.get('ad')}' görünmüyor{neden}: tipe göre "
+                                        f"dallanmada son dal koşulsuz else olsun, gövdeyi opak çiz.")
+                    elif o.get("durum") == "soluk":
+                        sorunlar.append(f"{etiket} '{o.get('ad')}' gövdesi yarı saydam: gövdeyi opak "
+                                        f"çiz, saydamlığı yalnız efektlerde kullan.")
 
         try:
             ekranlar.append(page.screenshot(timeout=15000, animations="disabled"))
@@ -231,6 +311,12 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
         if hatalar:
             sorunlar.extend(f"Oyun sırasında konsol hatası: {h}" for h in hatalar[:3])
 
+        # --- TEST 4d (v3): mekanik ve denge yoklaması (çizimsiz simülasyon, birkaç saniye) ---
+        mk_sorunlar, mk_ozet = mekanik_ve_denge_yokla(browser, html_yolu)
+        sorunlar.extend(mk_sorunlar)
+        if mk_ozet:
+            print(f"🧪 Mekanik/denge: {mk_ozet}")
+
         browser.close()
 
     # --- TEST 5: Gemini görsel inceleme (sanal oyuncu yorumu) ---
@@ -247,6 +333,9 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
             "puan EN FAZLA 5 olabilir. (3) Yazılar Türkçe ve okunaklı mı, arayüz taşıyor mu? "
             "(4) İkinci görselde oyunun üzerini kapatan menü/başlangıç paneli hala duruyor mu? "
             "Duruyorsa bunu sorun olarak yaz ve puan EN FAZLA 4 olsun. "
+            "(5) İkinci görselde düşmanlar yol üzerinde zeminden NET ayrışıyor mu? Seçilmesi "
+            "zor ya da saydam görünüyorsa sorunlara tam olarak 'düşmanlar görünmüyor' yaz ve "
+            "puan EN FAZLA 5 olsun. "
             'SADECE şu JSON ile cevap ver, başka hiçbir şey yazma: '
             '{"puan": 1-10 arasi tam sayi, "yorum": "1-2 cümlelik Türkçe oyuncu yorumu", '
             '"sorunlar": ["varsa sorun listesi"]}'
@@ -268,7 +357,8 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
     # gibi geçici teknik aksaklıklar kritik sayılmaz.
     kritik_anahtarlar = ("konsol hatası", "ilerlemiyor", "menu' aşamasında",
                          "çok zor", "tıklanamadı", "panel açık kalmış",
-                         "aşırı hızlı", "hala duruyor")
+                         "aşırı hızlı", "hala duruyor", "görünmüyor", "yarı saydam",
+                         "mekanik yok", "mekanik kancası hata", "mekanik oyunu etkilemiyor")
     kritik_var = any(any(a in s.lower() for a in kritik_anahtarlar) for s in sorunlar)
     gecti = (not kritik_var) and puan >= 6
 
@@ -277,4 +367,5 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
     kapak_png = ekranlar[-1] if len(ekranlar) >= 2 else (ekranlar[0] if ekranlar else None)
 
     return {"gecti": gecti, "puan": puan, "yorum": yorum,
-            "sorunlar": sorunlar, "api_cagrisi": api_cagrisi, "kapak_png": kapak_png}
+            "sorunlar": sorunlar, "api_cagrisi": api_cagrisi, "kapak_png": kapak_png,
+            "mekanik_ozet": mk_ozet}

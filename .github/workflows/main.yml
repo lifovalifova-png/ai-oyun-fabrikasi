@@ -20,7 +20,7 @@ jobs:
 
       - name: Kutuphaneleri Yukle
         run: |
-          pip install google-genai gspread oauth2client PyGithub playwright
+          pip install google-genai gspread oauth2client PyGithub playwright anthropic
           playwright install chromium --with-deps
 
       - name: Credentials JSON Olustur
@@ -32,4 +32,9 @@ jobs:
         env:
           GITHUB_PAT: ${{ secrets.PAT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # İsteğe bağlı (ücretli): bu secret eklenmezse fabrika yalnız Gemini ile çalışır
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # İsteğe bağlı model seçimi (Settings > Secrets and variables > Actions > Variables)
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
         run: python main.py

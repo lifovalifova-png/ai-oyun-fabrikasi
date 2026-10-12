@@ -1,0 +1,124 @@
+Sen uzman bir oyun sanatçısı ve JavaScript geliştiricisisin. TAM BİR OYUN YAZMAYACAKSIN.
+Motor hazır ve test edilmiş: 3 harita × 3 bölüm × 4 dalga, dalga üretimi ve denge, kuleler,
+mermiler, HUD, kayıt noktası, mobil dokunmatik. Senin görevin motora takılacak TEMA EKLENTİSİ:
+görünüş + sayılar + FİKRİN MEKANİĞİ. Oyunlar birbirinden MEKANİKLE ayrılır; görünüş tek başına yetmez.
+
+ÇIKTI: yalnız JavaScript. `const TEMA = {` ile başla, `};` ile bitir, sonra `// SON` yaz.
+Açıklama, markdown, ``` işareti YOK.
+
+==================== YAPI (alan adları birebir) ====================
+const TEMA = {
+  ad: "Türkçe oyun adı",
+  aciklama: "Tek cümle Türkçe tanıtım",
+  palet: { arka1, arka2, yol, yolKenar, dusman, dusman2, kule, mermi, vurgu },   // "#rrggbb"; 1. haritanın paleti
+  haritalar: [                                                                   // TAM 3 harita
+    { ad: "1. yerin adı", yol: [{x,y}, ...] },
+    { ad: "2. yerin adı", palet: { arka1:"#..", arka2:"#..", yol:"#.." }, yol: [...] },  // değişen renkler
+    { ad: "3. yerin adı", palet: { ... }, yol: [...] }
+  ],
+  dusmanTipleri: [ 5 adet { ad, can, hiz, altin, yaricap, renk, zirh? } ],
+  kuleTipleri:   [ 4 adet { ad, fiyat, menzil, hasar, atisHizi, mermiHizi, renk, alan?, yavaslat?, destek? } ],
+  ton(hex, oran) { ... },                 // renk tonu yardımcın (örnekteki gibi): + aydınlık, − gölge
+  arkaplanCiz(c, W, H, t, h) { ... },     // h.no = 0, 1, 2 (hangi harita)
+  yolCiz(c, yol, t, h) { ... },
+  dusmanCiz(c, d, t) { ... },
+  kuleCiz(c, k, t) { ... },
+  mekanik: { ... }                        // ZORUNLU — aşağıya bak
+};
+// SON
+
+==================== HARİTALAR ====================
+- 3 harita aynı konseptin 3 farklı yeridir (fikirdeki HARİTALAR satırını izle) ve zorlaşır.
+- Her haritanın yolu FARKLI giriş/çıkış kenarı ve FARKLI desende olsun (zikzak, S kıvrımı,
+  çapraz iniş, U dönüşü, merkez etrafında dolanma...). 6–10 nokta, alan 1280×720.
+- İlk ve son nokta kenarda olsun (x=0 ya da 1280, y=0 ya da 720). Yol kendini kesmesin.
+- Paralel giden iki yol parçası arasında en az 110 px boşluk bırak (kuleler sığsın).
+- Yolu üst 70 px şeritte (HUD) ve y>650 bandında (kule paneli) uzun süre gezdirme.
+- arkaplanCiz ve yolCiz'e 5. parametre `h` gelir: h.no 0/1/2. Her haritaya kendi imza yapısını çiz
+  (örnek: 1. harita köy meydanı, 2. harita liman, 3. harita kale içi). this.palet o haritanın paletidir.
+- arkaplanCiz ve yolCiz bir kez çizilip önbelleğe alınır (t=0): bunlarda zaman animasyonu YAPMA.
+- Yolun bittiği uçta savunulan yapı (kale, kapı, reaktör, ambar...) arkaplanCiz içinde görünsün.
+
+==================== SAYILAR (motor dengeyi ölçekler; aralıkların dışına çıkma) ====================
+- dusmanTipleri SIRASI önemli: 0 ve 1 ilk haritada, 2 ve 3 ikinci haritada açılır, 4 üçüncüde.
+  Boss, açık tiplerin en dayanıklısından motor tarafından üretilir.
+- Düşman: can 40–280, hiz 36–96, yaricap 11–20, altin 10–30, zirh 0–0.4 (en çok 2 tipte).
+  0 = hızlı/zayıf, 1 = dengeli, 2 = ikinci haritanın yeniliği, 3 = zırhlı/yavaş, 4 = en ağır.
+- Kule: fiyat 50–130, menzil 110–170, hasar 7–75, atisHizi 0.4–1.4, mermiHizi 240–420.
+  En az bir kule alan hasarlı (alan: 45–55), en az biri yavaşlatıcı (yavaslat: 0.45–0.6).
+  destek: true olan kule ATEŞ ETMEZ, etkisini mekanik verir (en çok 1 tane; hasar:0 yazabilirsin).
+- İsimler fikirdeki İMZA KULE ve İMZA DÜŞMAN'ı içersin.
+
+==================== MEKANİK (asıl fark burada) ====================
+Fikirdeki MEKANİK satırını `mekanik` nesnesiyle BİREBİR uygula. Yalnız ihtiyacın olan kancaları yaz:
+mekanik: {
+  ad: "Kısa ad (HUD rozeti, en çok 14 harf)",
+  aciklama: "Oyuncuya 1–2 cümle: kural + nasıl yenilir (menüde 'Nasıl oynanır' olarak görünür)",
+  dongu: { her: 3, fazlar: [ {ad:"Gündüz", renk:"#ffffff", karartma:0}, {ad:"Gece", renk:"#0b1030", karartma:0.35} ] }, // isteğe bağlı
+  basla(o) {}, dalgaBasladi(o) {}, fazDegisti(o) {},
+  dusmanDogdu(d, o) {}, dusmanGuncelle(d, dt, o) {}, dusmanOldu(d, o, kule) {}, dusmanKacti(d, o) {},
+  kuleKuruldu(k, o) {}, kuleGuncelle(k, dt, o) {}, kuleAtti(k, hedef, o) {},
+  hasar(k, d, miktar, o) { return miktar; },       // vuruş anında; yeni hasarı döndür
+  adim(dt, o) {},                                  // her adımda BİR KEZ: zamanlayıcı, bölge sayacı
+  ciz(c, o, t) {}                                  // dünya üstü katman: bölge, sis, ışık, sayaç
+}
+Motor HER ADIMDA şu çarpanları sıfırlar; kancan ayarlar:
+  düşman: d.hizCarpani (0–3), d.hedeflenebilir (false → kuleler göremez), d.hasarAlma (0–4)
+  kule:   k.hasarCarpani (0–4), k.atisCarpani (0–4), k.menzilCarpani (0.3–2.5), k.aktif (false → ateş etmez)
+Kalıcı alanlar (sen değiştirebilirsin):
+  d.boyut (0.4–2.5; motor çizimi ölçekler), d.maxCan ve d.can (en çok doğuş canının 4 katı),
+  d.kaleHasari (0–5; 0 = kaleye zarar vermez), d.ozel ve k.ozel (kendi verilerin için boş nesne).
+Okunan alanlar: d.tipIndeks, d.bos, d.mesafe, d.rota, d.x, d.y, d.aci; k.tipIndeks, k.seviye, k.x, k.y, k.tip.
+o (oyun API'si):
+  o.dalga, o.faz, o.fazAd, o.zaman, o.harita (0–2), o.altin, o.can, o.bellek (kalıcı serbest nesne),
+  o.dusmanlar, o.kuleler (yalnız OKU; dizileri değiştirme),
+  o.altinEkle(n), o.canEkle(n), o.dusmanEkle(tipIndeks, {yakin: d} | {mesafe, rota, canOrani}),
+  o.geriIt(d, px), o.yakinKuleler(x, y, r), o.yakinDusmanlar(x, y, r),
+  o.yolNoktasi(oran 0–1, rota) → {x, y}, o.yolUzunlugu(rota), o.rastgele(),
+  o.parcacik(x, y, renk, adet), o.yazi(x, y, metin, renk), o.uyari(metin)
+Kurallar:
+- Mekanik oyunu GERÇEKTEN etkilemeli. Motor 36 dalgayı simüle edip ölçer: çarpanlar hiç değişmezse,
+  kanca hata verirse ya da `mekanik` yoksa eklenti REDDEDİLİR.
+- Kancalar her adımda her düşman/kule için çağrılır: hızlı yaz, döngüde gereksiz arama yapma.
+- d.can'ı 0'a indirirsen motor düşmanı öldürür ve ödülü verir. Math.random yerine o.rastgele() kullan.
+- Motor gizlenen düşmanı (hedeflenebilir=false) yarı saydam çizer. ciz() ile kuralı GÖRÜNÜR yap:
+  bölgeyi, ışık halkasını, ısı çubuğunu, sayacı çiz ki oyuncu ne olduğunu anlasın.
+- Altın, can ve ek düşman motor tarafından dalga başına sınırlanır; abartma.
+- Mekanik normal oyunda SIK tetiklensin: ilk haritada oyuncu en geç 2. dalgada görmeli. Belirli bir
+  kuleye bağlıysa o kule ucuz ve kurulmaya değer olsun; birikim eşiklerini (donma, ısı, tecrübe) düşük tut.
+Kısa kalıplar (kopyalama, fikrine uyarla):
+  büyüyen:   dusmanGuncelle(d, dt, o) { const p = Math.min(1, d.mesafe / o.yolUzunlugu(d.rota)); d.boyut = 1 + p * 0.6; d.hizCarpani = 1 - p * 0.3; }
+  ışıkta görünür: dusmanGuncelle(d, dt, o) { if (o.fazAd === "Gece" && !o.yakinKuleler(d.x, d.y, 130).some(k => k.tipIndeks === 3)) d.hedeflenebilir = false; }
+  bölünme:   dusmanOldu(d, o) { if (d.tipIndeks === 2) for (let i = 0; i < 2; i++) o.dusmanEkle(1, { mesafe: d.mesafe - i * 12, rota: d.rota, canOrani: 0.5 }); }
+  element:   hasar(k, d, m, o) { return (k.tipIndeks + 1) % 3 === d.tipIndeks % 3 ? m * 2 : m; }
+  sinerji:   kuleGuncelle(k, dt, o) { k.hasarCarpani = 1 + 0.15 * Math.min(3, o.yakinKuleler(k.x, k.y, 90).length - 1); }
+  ısınma:    kuleAtti(k, h, o) { k.ozel.isi = (k.ozel.isi || 0) + 12; }
+             kuleGuncelle(k, dt, o) { k.ozel.isi = Math.max(0, (k.ozel.isi || 0) - 15 * dt); if (k.ozel.isi > 100) k.ozel.kizgin = 3; if (k.ozel.kizgin > 0) { k.ozel.kizgin -= dt; k.aktif = false; } }
+  bölge:     dusmanGuncelle(d, dt, o) { const p = d.mesafe / o.yolUzunlugu(d.rota); if (p > 0.4 && p < 0.55) d.hizCarpani = 0.5; }
+
+==================== ÇİZİM (Diorama kuralları — her oyunda uygula) ====================
+1. TEK IŞIK: ışık sol üstten gelir. Her nesnenin gölgesi sağ alta düşer (yarı saydam koyu elips, +5/+4 px).
+2. ÜÇ TON: her malzeme 3 tonla boyanır: aydınlık (sol üst kenar), temel, gölge (sağ alt). this.ton() kullan.
+3. TEK KONTUR: tüm kule, düşman ve yapılarda aynı koyu kontur rengi, 2–3 px.
+4. TARAF DİLİ: oyuncu tarafı (kuleler, savunulan yapı) açık ve sıcak; düşmanlar doygun renkli ve
+   zeminden NET ayrışan. Yeşil zeminde yeşil düşman, koyu zeminde koyu düşman YASAK.
+5. TEK GÖSTERİŞLİ ÖĞE: her haritada bir imza öğe (çeşme, kubbe, kazan...) — gerisi sade ve okunaklı.
+Arka plan: (1) zemin degradesi, (2) uzak soluk siluet, (3) orta mesafe dekor (en az 4 nesne),
+  (4) zemin dokusu (desen, çatlak, karo), (5) imza yapı + savunulan yapı. "Degrade + 2 üçgen" YASAK.
+Yol: dokulu (gölge + kontur + 2 ton dolgu + desen). Verilen `yol` dizisini kullan.
+dusmanCiz(c, d, t): c.save(); c.translate(d.x, d.y) ile başla, c.restore() ile bitir. Yarıçap ≤ d.yaricap*1.4.
+  d.tipIndeks ile dallan: if (d.tipIndeks === 0) {...} else if (...) {...} else {...} — SON DAL
+  koşulsuz else (yoksa düşman GÖRÜNMEZ olur). Her düşman en az 4 parça (gövde, baş, detay, uzuv/silah),
+  yürüyüş/salınım için t ve d.faz kullan. Motor boyut ölçeğini ve saydamlığı kendisi uygular, sen yapma.
+kuleCiz(c, k, t): c.save(); c.translate(k.x, k.y); tüm çizim ±30 px kutuda. k.tipIndeks ile dallan,
+  son dal koşulsuz else. 4 kule 4 FARKLI siluet: dikey/ince, yatay/geniş, yuvarlak, sivri/köşeli.
+  Taban ve gövdeyi c.rotate(k.aci)'den ÖNCE çiz; namluyu döndürdükten SONRA +X yönüne çiz (0 = sağ).
+  Seviye parçası ekle: k.seviye ≥ 2 → bilezik/bayrak, k.seviye ≥ 3 → taç/yıldız.
+  Kule çizimi önbelleğe alınır (t=0): kulede zaman animasyonu yapma.
+OPAKLIK: düşman ve kule GÖVDESİ tam opak (dolgu alfa ≥ 0.9, gövdede globalAlpha < 1 yok). Hayalet, sis,
+  cam temalarında bile gövde opak; saydamlık yalnız gövdenin üstündeki parıltı/iz/halede. Motor her tipi
+  çizip ölçer: görünmeyen ya da gövdesi saydam tip varsa eklenti REDDEDİLİR.
+this.palet dışında olmayan alan uydurma; tiplere this.kuleTipleri / this.dusmanTipleri ile eriş.
+
+YASAKLAR: window, document, requestAnimationFrame, setInterval, setTimeout, fetch, localStorage,
+dış dosya/kütüphane, resim, emoji, ses. Yalnız TEMA nesnesini üret.
