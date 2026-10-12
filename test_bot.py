@@ -13,6 +13,8 @@ import json
 import random
 import re
 import time
+import sys
+import subprocess
 
 from playwright.sync_api import sync_playwright
 from google.genai import types
@@ -47,6 +49,12 @@ def gemini_cagir(client, model, contents):
                     break                      # bu model yok/desteklenmiyor → sonraki model
                 if kod not in (429, 500, 503):
                     raise                      # kalıcı hata (yanlış anahtar vb.)
+            except Exception as e:
+                # Ağ zaman aşımı (yanıt hiç gelmedi): kısa bekleyip yeniden dene, sonra sonraki model
+                if "timeout" not in type(e).__name__.lower() and "timed out" not in str(e).lower():
+                    raise
+                son_hata = e
+                print(f"⏱️ {m} zaman aşımına uğradı.")
         print(f"↪️ {m} başarısız: {str(son_hata)[:120]}")
     raise son_hata
 
@@ -101,6 +109,53 @@ def mekanik_ve_denge_yokla(browser, html_yolu):
     return sorunlar, ozet
 
 
+ON_TEST_SURE = 300   # sn: botun 36 dalgası normalde ~2-5 sn sürer; bu süre yalnız donmayı yakalar
+
+
+def _on_test_calistir(html_yolu):
+    """Alt süreçte çalışır: denge botu + gerçek çizimle kısa duman testi. JSON yazdırır."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        sorunlar, ozet = mekanik_ve_denge_yokla(browser, html_yolu)
+        sayfa = browser.new_page(viewport={"width": 900, "height": 700})
+        sayfa.goto("file://" + os.path.abspath(html_yolu))
+        sayfa.wait_for_timeout(1500)
+        try:
+            sayfa.click("#baslaBtn", timeout=3000)
+        except Exception:
+            pass
+        sayfa.wait_for_timeout(4000)
+        sayfa.evaluate("1")           # sayfa hâlâ yanıt veriyor mu? (sonsuz döngüde burada takılır)
+        browser.close()
+    print("ON_TEST_JSON " + json.dumps({"sorunlar": sorunlar, "ozet": ozet}, ensure_ascii=False))
+
+
+def donma_on_testi(html_yolu):
+    """v3.1: Oyunu AYRI bir süreçte süre sınırıyla dener. Eklentide sonsuz döngü varsa ana test
+    sonsuza kadar asılı kalırdı (Playwright'ın evaluate çağrısının zaman sınırı yok); burada
+    süre dolunca süreç öldürülür ve deneme 'oyun donuyor' hatasıyla başarısız sayılır.
+    Döner: {"donma": bool, "sorunlar": [...], "ozet": {...}} ya da {"hata": str}"""
+    import signal
+    surec = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--on-test", html_yolu],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                             start_new_session=True)
+    try:
+        cikti, hata = surec.communicate(timeout=ON_TEST_SURE)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(surec.pid, signal.SIGKILL)   # tarayıcı dahil tüm süreç grubunu kapat
+        except Exception:
+            surec.kill()
+        surec.communicate()
+        return {"donma": True}
+    for satir in cikti.splitlines():
+        if satir.startswith("ON_TEST_JSON "):
+            veri = json.loads(satir[len("ON_TEST_JSON "):])
+            veri["donma"] = False
+            return veri
+    return {"donma": False, "hata": (hata or cikti)[-300:]}
+
+
 def _durum_oku(page):
     try:
         return page.evaluate("window.OYUN_DURUMU || null")
@@ -113,6 +168,20 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
     hatalar = []
     ekranlar = []
     api_cagrisi = 0
+
+    # --- TEST 0 (v3.1): donma ön testi — ayrı süreçte, süre sınırlı ---
+    on = donma_on_testi(html_yolu)
+    if on.get("donma"):
+        print(f"🧊 Ön test {ON_TEST_SURE} sn içinde bitmedi: oyun donuyor.")
+        return {"gecti": False, "puan": 0,
+                "yorum": "Oyun donuyor (ön test süre sınırını aştı).",
+                "sorunlar": [f"Oyun donuyor: {ON_TEST_SURE} sn içinde 36 dalgalık simülasyon bitmedi. "
+                             "Eklentide sonsuz döngü ya da her karede çok ağır bir hesap var; "
+                             "while döngülerine kesin bir üst sınır koy, kancalarda iç içe büyük "
+                             "döngü kurma."],
+                "api_cagrisi": 0, "kapak_png": None, "mekanik_ozet": {}}
+    if on.get("hata"):
+        print(f"⚠️ Ön test çalıştırılamadı, ana testte yoklanacak: {on['hata'][-150:]}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -312,7 +381,10 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
             sorunlar.extend(f"Oyun sırasında konsol hatası: {h}" for h in hatalar[:3])
 
         # --- TEST 4d (v3): mekanik ve denge yoklaması (çizimsiz simülasyon, birkaç saniye) ---
-        mk_sorunlar, mk_ozet = mekanik_ve_denge_yokla(browser, html_yolu)
+        if "sorunlar" in on:          # ön testte zaten yapıldı
+            mk_sorunlar, mk_ozet = on["sorunlar"], on.get("ozet", {})
+        else:
+            mk_sorunlar, mk_ozet = mekanik_ve_denge_yokla(browser, html_yolu)
         sorunlar.extend(mk_sorunlar)
         if mk_ozet:
             print(f"🧪 Mekanik/denge: {mk_ozet}")
@@ -358,7 +430,7 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
     kritik_anahtarlar = ("konsol hatası", "ilerlemiyor", "menu' aşamasında",
                          "çok zor", "tıklanamadı", "panel açık kalmış",
                          "aşırı hızlı", "hala duruyor", "görünmüyor", "yarı saydam",
-                         "mekanik yok", "mekanik kancası hata", "mekanik oyunu etkilemiyor")
+                         "mekanik yok", "mekanik kancası hata", "oyun donuyor", "mekanik oyunu etkilemiyor")
     kritik_var = any(any(a in s.lower() for a in kritik_anahtarlar) for s in sorunlar)
     gecti = (not kritik_var) and puan >= 6
 
@@ -369,3 +441,7 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
     return {"gecti": gecti, "puan": puan, "yorum": yorum,
             "sorunlar": sorunlar, "api_cagrisi": api_cagrisi, "kapak_png": kapak_png,
             "mekanik_ozet": mk_ozet}
+
+
+if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--on-test":
+    _on_test_calistir(sys.argv[2])

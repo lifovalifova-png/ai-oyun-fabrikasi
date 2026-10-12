@@ -469,7 +469,8 @@ def main():
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY ortam değişkeni bulunamadı.")
-        client = genai.Client(api_key=api_key)
+        # 7 dk zaman sınırı: yanıt hiç gelmezse fabrika saatlerce asılı kalmasın
+        client = genai.Client(api_key=api_key, http_options={"timeout": 420_000})
 
         # Google Sheets bağlantısı
         scope = ["https://spreadsheets.google.com/feeds",

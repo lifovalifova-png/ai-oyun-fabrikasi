@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60     # bir şey takılırsa en geç 1 saatte durur
     steps:
       # KRİTİK: Repo (eski oyunlar + manifest) önce makineye iner
       - name: Repoyu Checkout Yap
