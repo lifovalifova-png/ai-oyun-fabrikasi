@@ -34,6 +34,13 @@ from google import genai
 from test_bot import oyunu_test_et, gemini_cagir
 
 
+def bildir(baslik, metin):
+    """GitHub Actions 'annotation' satırı: çalıştırma sayfasının özetinde görünür ve API'den
+    okunabilir (tam günlüğü açmadan neyin olduğunu görmek için)."""
+    temiz = str(metin).replace("%", "%25").replace("\r", "").replace("\n", "%0A")[:900]
+    print(f"::notice title={baslik}::{temiz}", flush=True)
+
+
 class _Yanit:
     def __init__(self, text):
         self.text = text
@@ -265,6 +272,7 @@ Tema, çizimler, renkler, yollar ve isimler KOPYALANMAYACAK; senin oyunun tamame
         sorun = eklenti_gecerli_mi(eklenti)
         if sorun:
             print(f"❌ TEST A: {sorun}")
+            bildir(f"Deneme {deneme} - yapi", f"[{gemini_cagir.son_model}] {sorun}")
             deneme_ozetleri.append(f"D{deneme}:YAPI {sorun[:40]}")
             hata_gecmisi += f"\n- {sorun}. Formatı tam olarak istenen şekilde üret."
             continue
@@ -281,6 +289,9 @@ Tema, çizimler, renkler, yollar ve isimler KOPYALANMAYACAK; senin oyunun tamame
         rapor = oyunu_test_et(test_yolu, client, GOZ_MODELLER, fikir)
         api_cagrisi += rapor["api_cagrisi"]
 
+        bildir(f"Deneme {deneme} - robot p{rapor['puan']} {'GECTI' if rapor['gecti'] else 'RED'}",
+               f"[{gemini_cagir.son_model}] " + " | ".join(rapor["sorunlar"][:5])
+               + f" | mekanik: {rapor.get('mekanik_ozet')}")
         if rapor["gecti"]:
             print(f"✅ Test geçildi! Puan: {rapor['puan']}/10")
             rapor["eklenti"] = eklenti
@@ -447,6 +458,7 @@ def github_repoya_gonder(slug):
 
 # ================== LOG ==================
 def log_yaz(log_sekmesi, oyun_adi, api_sayisi, durum, not_=""):
+    bildir(f"Sonuc {durum}", f"{oyun_adi} | {not_}")
     try:
         log_sekmesi.append_row([
             datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -489,6 +501,7 @@ def main():
         satir_no, fikir, onceki_durum = fikir
         oyun_adi = fikirden_baslik(fikir)
         print(f"💡 Fikir (satır {satir_no}{', ikinci deneme' if onceki_durum else ''}): {fikir}")
+        bildir("Fikir", f"satır {satir_no} ({onceki_durum or 'yeni'}): {fikir[:200]}")
 
         # 2. Tema eklentisi üret + motora tak + robot oyuncuyla test et
         kod, api_cagrisi, rapor = eklenti_uret_ve_test_et(fikir, client)
