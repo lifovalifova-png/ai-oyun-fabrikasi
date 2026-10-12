@@ -85,7 +85,7 @@ REPO_ADI = "ai-oyun-fabrikasi"        # GitHub repo adı
 # eklenirse listenin başına o model geçer (kod değiştirmeden model denemek için).
 YAZAR_MODELLER = [m for m in (os.environ.get("GEMINI_MODEL"), "gemini-3.8-flash",
                               "gemini-3.6-flash", "gemini-2.5-flash") if m]
-GOZ_MODELLER = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.6-flash", "gemini-2.5-flash"]
+GOZ_MODELLER = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-2.5-flash"]
 MODEL = YAZAR_MODELLER                # geriye uyum: eski çağrılar listeyi alır
 
 # İSTEĞE BAĞLI CLAUDE (ücretli): GitHub Secrets'a ANTHROPIC_API_KEY eklenirse eklentiyi
@@ -266,13 +266,15 @@ Tema, çizimler, renkler, yollar ve isimler KOPYALANMAYACAK; senin oyunun tamame
 
         cevap = yazar_cagir(client, prompt)
         api_cagrisi += 1
+        yazar_model = gemini_cagir.son_model
+        gemini_cagir.yazar_model = yazar_model
         eklenti = eklenti_temizle(cevap.text)
 
         # TEST A: Yapısal geçerlilik (API çağrısı harcamaz)
         sorun = eklenti_gecerli_mi(eklenti)
         if sorun:
             print(f"❌ TEST A: {sorun}")
-            bildir(f"Deneme {deneme} - yapi", f"[{gemini_cagir.son_model}] {sorun}")
+            bildir(f"Deneme {deneme} - yapi", f"[{yazar_model}] {sorun}")
             deneme_ozetleri.append(f"D{deneme}:YAPI {sorun[:40]}")
             hata_gecmisi += f"\n- {sorun}. Formatı tam olarak istenen şekilde üret."
             continue
@@ -290,7 +292,7 @@ Tema, çizimler, renkler, yollar ve isimler KOPYALANMAYACAK; senin oyunun tamame
         api_cagrisi += rapor["api_cagrisi"]
 
         bildir(f"Deneme {deneme} - robot p{rapor['puan']} {'GECTI' if rapor['gecti'] else 'RED'}",
-               f"[{gemini_cagir.son_model}] " + " | ".join(rapor["sorunlar"][:5])
+               f"[yazar {yazar_model}, göz {gemini_cagir.son_model}] " + " | ".join(rapor["sorunlar"][:5])
                + f" | mekanik: {rapor.get('mekanik_ozet')}")
         if rapor["gecti"]:
             print(f"✅ Test geçildi! Puan: {rapor['puan']}/10")
@@ -545,7 +547,7 @@ def main():
         # 4. Başarı logu (robot oyuncunun puanı ve yorumuyla)
         mk = rapor.get("mekanik_ozet") or {}
         log_yaz(log_sekmesi, oyun_adi, api_cagrisi, "BASARILI",
-                f"Puan: {rapor['puan']}/10 - {rapor['yorum']} | Model: {gemini_cagir.son_model}"
+                f"Puan: {rapor['puan']}/10 - {rapor['yorum']} | Model: {getattr(gemini_cagir, 'yazar_model', gemini_cagir.son_model)}"
                 f" | Mekanik: {mk.get('mekanik')} | Bot: {mk.get('bot')}")
 
     except Exception as e:

@@ -392,6 +392,11 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
         browser.close()
 
     # --- TEST 5: Gemini görsel inceleme (sanal oyuncu yorumu) ---
+    # v3.1: Buraya kadarki sorunlar ÖLÇÜME dayanır (konsol, ilerleme, motorun görünürlük ölçümü,
+    # mekanik/denge simülasyonu). Görsel modelin yazdıkları yalnız puanı etkiler ve bir sonraki
+    # denemeye geri bildirim olur; tek başına kritik sayılmaz (küçük ekran görüntüsünde
+    # düşmanları kaçırıp 'görünmüyor' diyerek iyi oyunları reddediyordu).
+    olcum_sorun_sayisi = len(sorunlar)
     puan, yorum = 5, "Görsel inceleme yapılamadı."
     try:
         icerik = [types.Part.from_bytes(data=e, mime_type="image/png") for e in ekranlar]
@@ -405,9 +410,9 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
             "puan EN FAZLA 5 olabilir. (3) Yazılar Türkçe ve okunaklı mı, arayüz taşıyor mu? "
             "(4) İkinci görselde oyunun üzerini kapatan menü/başlangıç paneli hala duruyor mu? "
             "Duruyorsa bunu sorun olarak yaz ve puan EN FAZLA 4 olsun. "
-            "(5) İkinci görselde düşmanlar yol üzerinde zeminden NET ayrışıyor mu? Seçilmesi "
-            "zor ya da saydam görünüyorsa sorunlara tam olarak 'düşmanlar görünmüyor' yaz ve "
-            "puan EN FAZLA 5 olsun. "
+            "(5) İkinci görselde düşmanlar yol üzerinde zeminden ayrışıyor mu? Düşmanlar küçük "
+            "olabilir, dikkatle bak. Yalnız yolda hiç seçilemiyorlarsa sorunlara 'düşmanlar zeminden "
+            "ayrışmıyor' yaz ve puan EN FAZLA 5 olsun. "
             'SADECE şu JSON ile cevap ver, başka hiçbir şey yazma: '
             '{"puan": 1-10 arasi tam sayi, "yorum": "1-2 cümlelik Türkçe oyuncu yorumu", '
             '"sorunlar": ["varsa sorun listesi"]}'
@@ -431,8 +436,9 @@ def oyunu_test_et(html_yolu, client, model, fikir=""):
                          "çok zor", "tıklanamadı", "panel açık kalmış",
                          "aşırı hızlı", "hala duruyor", "görünmüyor", "yarı saydam",
                          "mekanik yok", "mekanik kancası hata", "oyun donuyor", "mekanik oyunu etkilemiyor")
-    kritik_var = any(any(a in s.lower() for a in kritik_anahtarlar) for s in sorunlar)
-    gecti = (not kritik_var) and puan >= 6
+    kritik_var = any(any(a in s.lower() for a in kritik_anahtarlar)
+                     for s in sorunlar[:olcum_sorun_sayisi])
+    gecti = (not kritik_var) and puan >= 5
 
     # Kapak resmi: zaten alınmış ekran görüntülerinden — ek API çağrısı YOK, ek maliyet YOK.
     # Oyun ortası ekranı (varsa) menüden daha çekici olduğu için tercih edilir.
