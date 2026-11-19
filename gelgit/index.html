@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Gelgit Kalesi</title>
-<meta name="description" content="Gelgitle değişen bir kıyıda kaleni korsanlara karşı savun. Ücretsiz, tarayıcıda, telefonda da oynanır.">
+<meta name="description" content="Defend your castle against pirates on a coast that changes with the tide. Free tower defense in your browser, on desktop and mobile. Türkçe de oynanır.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Gelgit Kalesi">
-<meta property="og:description" content="Gelgit yükselince kuleler batar, korsanlar denizden gelir. Kaç bölge dayanabilirsin?">
+<meta property="og:title" content="Ebb & Siege · Gelgit Kalesi">
+<meta property="og:description" content="When the tide comes in, your towers flood and pirates arrive by sea. How many regions can you hold? (English / Türkçe)">
 <meta property="og:url" content="https://lifovalifova-png.github.io/ai-oyun-fabrikasi/gelgit/">
 <meta property="og:image" content="https://lifovalifova-png.github.io/ai-oyun-fabrikasi/gelgit/kapak.jpg">
 <meta property="og:image:width" content="1200">
@@ -17,6 +17,13 @@
 <style>
   /* GÖRSEL YÖN: "Ege Dioraması" — öğleden sonra ışığında boyanmış bir masa üstü minyatürü.
      Arayüz derin deniz mürekkebi zemin, kireçtaşı metin, altın vurgu kullanır. */
+  /* Başlık yazı tipi: Lilita One (SIL Open Font License 1.1, Juan Montoreano) — gömülü, dış istek yok */
+  @font-face{font-family:"Lilita One";font-style:normal;font-weight:400;font-display:swap;
+    src:url(data:font/woff2;base64,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) format("woff2");
+    unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  @font-face{font-family:"Lilita One";font-style:normal;font-weight:400;font-display:swap;
+    src:url(data:font/woff2;base64,d09GMgABAAAAAAVoAA8AAAAACegAAAUTAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGhYbDBwYBmAAbBEIColciA0LHgABNgIkAzgEIAWDZAc+DAcb9QdRlE5OmOBngm2rYa0IiBSU4SB6GXpb1ovxAEMb3kc8/X6ve+4LIEoWKsKQjE0KaAS5si8LV935qoC6jkBWl99PeNa/acrMsmIWkJM7J2fiwyD6/rZ3nySQEEJPI2+8mQgCjl/7/xfCPjhmumgbjyJtDTLAgZRI5C2Lsyg9Ej+AogCfIgpT4Glg/xqJD/gP3cxixar09EqCLkAR0S2CjsmOByOgCZ096O8EMaNtszM3NFMavYQr9Cp5x9dfFA/5c6zg2Tty8yAadUVizTiA6qa3QCC/ewmYw2NFVjA0W0NfnG8fGGCFUMwlNjUZzmSW9PlG/R/AyDGpxk28hPlctcMi84z8m/D+t4A8BCJ1LJF6PM8poA/kPvkJWDJ1K8BaUZaAFU7lYnST2ctUYrFxdcncWZ+9iCBZ7QpGtRZjgknaiROuAw9zmuW0fBVJAuYMq2n1OtKMXVFHky8Q0hrFz5fHL9r+nEPMnjt7HmivMC8x91xDA/1M/oAFOmT59tOnXR4D/SyfffGCednGaXbT8vxlrLJwBWKuYq7gZdFz7CSU+gIt6kE7uc+Qo2v37Ql5HkHKQsxRQtvGGz2XFwMdv411vIFQ6YqXmDMUlNIsQgwHBXRRFWtcw+hMzOajmR59mMsOuWmOF4yqrMx9tIxFTBfJL+Ii0RlIK4ImubT7MpIsjraaeanajTm7MtJOmW4rxrqXFRkT0If2oT0spW5rQzzafpjguAN9hiRinFZih+0AJ4zTkDbS8Uh95LjURmGlmKaOU1gqqpGTVk+skg4HuviVSNOtxkAukjRmgehpuFJzeK1lTT5P1BR1/PNEQdrPnuV+BTaWg//+kPhs+NC04dbkEaOaIOzcWmf+0GCvjO57t/beypjctoHZoyi8WpYUkmvITj8o+TTCOX91Xp24bnVevsQkk/AmUsZTIOZotreXUWEZNO7bn9qWsbLZpFW6JvXu9NXJzKKH42p+jchuqW1L6vNy1e9301q7tfmbr/QZMkUOD899Yd14NHBLo/SjF5cCSkjT2NHk135OQk4wT8IJPl3A+KVAmsC6w9Yzeb5ippX3NAv4svYkQsqFgb5lm1UzJZ7DRrsvW6fPCvnquOaJ3AZkUSKvIgyXf96PrZJ0kgSzaEuXOoX1hffmtOr/WYZ+xra+RIUo1WFKdehUQIrG3y5m3i9eznH2AwnYJE9dQSY4kM2VOdnutWqt4pcfeb+k1NlrCD2P3ZO5XLekNz+2uPpKb/XJ2t0NUfOkPccR0vHefWSNS4H/BGiupbdcml/BnXeommkZlIk13/I8D/sOQlw8z33xfpVl+C/GxBeA17vkDn3BYWv7dXrdRJsCQnVz7EH1QwnxcArxoPR47glkG2iQNwSZIChqhlyhaVP9a/045AZNdsyOfJGctxwg9NgmBAURbAFAm+MIaZIADY94zBhygFn0uMesbKlubVJlNpuQyGwxwB96jhQ4qR9Qu4XyKu1Tp1cLH/p5ZE990E5DFwpNaqksidKBtoMWVahBSjs1KNRwaI2gi380ig9P3rz5SjWgRqcMBWu/Q2sDMrNLKOq0U7MWT/ny5gPGn6tBkwHtavQaVcbp0m0kfWtTWctTnNVxceak0ulKzTpDe6uiNRqHjom7XY06zVt5qtVilAt3lKFEEM26JK19bwCDFNQf9sQgYUrmZO1Qm5ZiW0CGLZ6Hyvq4TZke5H+6xGcf+8Snzvruczt8Mu1G9R7wrwIAAA==) format("woff2");
+    unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
   :root{
     --murekkep:#0e2736; --murekkep2:#16384c; --kirec:#f3ecdf; --kum:#e8d09a;
     --altin:#f2c14e; --mercan:#e2574c; --turkuaz:#6fd1c6; --cizgi:rgba(243,236,223,.16);
@@ -99,7 +106,33 @@
   .panel{background:linear-gradient(180deg,rgba(22,56,76,.97),rgba(14,39,54,.97));
          border:1px solid var(--cizgi);border-radius:20px;padding:24px 30px 22px;max-width:440px;
          text-align:center;box-shadow:0 22px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);}
-  .panel h1,.panel h2,.panel h3{margin:0 0 6px;font-weight:800;letter-spacing:.005em;}
+  .panel h1,.panel h2,.panel h3{margin:0 0 6px;font-weight:400;letter-spacing:.01em;font-family:"Lilita One",system-ui,sans-serif;}
+  .panel{position:relative;}
+  .btn,#uyari,#dalgaBilgi .baslik b,.ganimet-kart b,#kuleMenu h3,#yetenekBtn .yazi b,.kule-btn .ad,#reisAd,.at-bilgi b{
+    font-family:"Lilita One",system-ui,sans-serif;font-weight:400;letter-spacing:.015em;}
+  #uyari{letter-spacing:.02em;}
+  .secim.kucuk button{font-size:12px;padding:5px 10px;}
+  #dilSecim{position:absolute;top:12px;right:12px;margin:0;}
+  #dilSecim2{margin-top:14px;}
+  @media (max-width:600px){ #dilSecim{position:static;margin:0 0 8px;} }
+  @media (orientation:landscape) and (max-height:500px){
+    .cip{font-size:13px;padding:5px 10px 5px 7px;gap:5px;}
+    .cip small{display:none;}
+    .gelgit-metin{min-width:0;} .gelgit-metin span{display:none;}
+    .dugme{width:32px;height:32px;} #hizBtn{padding:0 10px;font-size:13px;}
+    #hud{padding-top:max(6px, env(safe-area-inset-top));}
+  }
+  #reisBar{position:absolute;top:56px;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none;
+           width:min(420px, calc(100vw - 32px));display:flex;flex-direction:column;align-items:center;gap:4px;}
+  #reisBar.gizli{display:none;}
+  #reisAd{font-size:18px;color:#ffd2c4;text-shadow:0 2px 0 var(--kontur),0 0 10px rgba(0,0,0,.6);}
+  #reisBar .cubuk{display:block;width:100%;height:12px;border-radius:7px;overflow:hidden;
+           background:rgba(14,39,54,.9);border:2px solid var(--kontur);box-shadow:0 3px 10px rgba(0,0,0,.35);}
+  #reisDolu{display:block;height:100%;width:100%;transform-origin:left center;
+           background:linear-gradient(180deg,#f07a6c,#c0392f);transition:transform .12s linear;}
+  .hedef-secim{display:flex;margin:0 0 8px;width:100%;}
+  .hedef-secim button{flex:1 1 0;}
+  #kmIstat{margin:0 0 10px;font-size:12px;opacity:.7;font-variant-numeric:tabular-nums;}
   .panel h1{font-size:36px;} .panel h2{font-size:30px;} .panel h3{font-size:24px;}
   .dalga-susu{display:block;margin:0 auto 14px;width:120px;height:12px;}
   .panel p{margin:0 0 10px;line-height:1.5;font-size:15px;}
@@ -326,63 +359,66 @@
 
   <div id="hud">
     <div class="hud-grup">
-      <div class="cip" title="Can"><svg class="ikon"><use href="#i-can"/></svg><span id="hudCan">20</span></div>
-      <div class="cip" title="Altın"><svg class="ikon"><use href="#i-altin"/></svg><span id="hudAltin">0</span></div>
-      <div class="cip" title="Dalga"><svg class="ikon"><use href="#i-dalga"/></svg><span id="hudDalga">0</span><small>/<span id="hudToplamDalga">10</span></small></div>
-      <div class="cip" id="hudBolgeCip" title="Bölge"><span id="hudBolge">1</span><small>. bölge</small></div>
-      <div class="cip" id="hudCombo" style="display:none">Seri ×<span id="hudComboSayi">1</span></div>
+      <div class="cip" data-i18n-title="hud.can"><svg class="ikon"><use href="#i-can"/></svg><span id="hudCan">20</span></div>
+      <div class="cip" data-i18n-title="hud.altin"><svg class="ikon"><use href="#i-altin"/></svg><span id="hudAltin">0</span></div>
+      <div class="cip" data-i18n-title="hud.dalga"><svg class="ikon"><use href="#i-dalga"/></svg><span id="hudDalga">0</span><small>/<span id="hudToplamDalga">10</span></small></div>
+      <div class="cip" id="hudBolgeCip" data-i18n-title="hud.bolgeT"><span id="hudBolge">1</span></div>
+      <div class="cip" id="hudCombo" style="display:none"><span data-i18n="hud.seri">Seri ×</span><span id="hudComboSayi">1</span></div>
     </div>
     <div class="hud-grup">
-      <div class="cip" id="hudGelgit" title="Gelgit">
+      <div class="cip" id="hudGelgit" data-i18n-title="hud.gelgit">
         <span class="su-tup"><i id="suTup"></i></span>
         <span class="gelgit-metin"><b id="gelgitAd">Alçak su</b><span id="gelgitAlt">Değişime 3 dalga</span></span>
         <span id="gelgitSaat"><b id="gelgitSayi">3</b></span>
       </div>
-      <div class="cip" title="Skor"><svg class="ikon"><use href="#i-skor"/></svg><span id="hudSkor">0</span></div>
-      <button id="duraklatBtn" class="dugme" title="Duraklat (Boşluk)" aria-label="Duraklat"><svg><use href="#i-duraklat"/></svg></button>
-      <button id="hizBtn" class="dugme" title="Oyun hızı (F)" aria-label="Oyun hızı">1×</button>
-      <button id="sesBtn" class="dugme" title="Ses (M)" aria-label="Ses"><svg><use href="#i-ses"/></svg></button>
+      <div class="cip" data-i18n-title="hud.skor"><svg class="ikon"><use href="#i-skor"/></svg><span id="hudSkor">0</span></div>
+      <button id="duraklatBtn" class="dugme" data-i18n-title="hud.duraklat"><svg><use href="#i-duraklat"/></svg></button>
+      <button id="hizBtn" class="dugme" data-i18n-title="hud.hiz">1×</button>
+      <button id="sesBtn" class="dugme" data-i18n-title="hud.ses"><svg><use href="#i-ses"/></svg></button>
     </div>
   </div>
 
   <div id="dalgaBilgi" class="gizli">
     <div class="baslik"><b id="dbBaslik">Sıradaki dalga</b><span id="dbAlt"></span></div>
     <div id="dalgaIcerik"></div>
-    <button id="cagirBtn" class="btn">Başlat <svg class="ikon"><use href="#i-altin"/></svg><span id="cagirBonus">+0</span></button>
+    <button id="cagirBtn" class="btn"><span data-i18n="d.baslat">Başlat</span> <svg class="ikon"><use href="#i-altin"/></svg><span id="cagirBonus">+0</span></button>
     <i id="araCubuk"></i>
   </div>
 
+  <div id="reisBar" class="gizli"><b id="reisAd"></b><span class="cubuk"><i id="reisDolu"></i></span></div>
   <div id="uyari"></div>
   <div id="vinyet"></div>
   <div id="kulePanel">
     <div id="kuleDugmeleri"></div>
-    <button id="yetenekBtn"><span class="halka"><svg><use href="#i-top"/></svg></span><span class="yazi"><b id="ytAd">Kale Topu</b><span id="ytAlt">hazır</span></span></button>
+    <button id="yetenekBtn"><span class="halka"><svg><use href="#i-top"/></svg></span><span class="yazi"><b id="ytAd" data-i18n="top.ad">Kale Topu</b><span id="ytAlt">hazır</span></span></button>
   </div>
 
   <div id="menuOverlay" class="overlay">
     <div class="panel">
-      <h1 id="menuBaslik">Gelgit Kalesi</h1>
+      <div id="dilSecim" class="secim kucuk" role="group" data-i18n-title="dil"><button data-dil="en">EN</button><button data-dil="tr">TR</button></div>
+      <h1 id="menuBaslik" data-i18n="oyun.ad">Gelgit Kalesi</h1>
       <svg class="dalga-susu" viewBox="0 0 120 12" aria-hidden="true"><path d="M2 6c10-7 18 7 28 0s18 7 28 0 18 7 28 0 18 7 28 0" fill="none" stroke="#6fd1c6" stroke-width="2.4" stroke-linecap="round"/></svg>
-      <p id="menuAciklama">Gelgit yükselince kumsaldaki kuleler susar, korsan kayıkları deniz kapısına yönelir. Her 10 dalgada yeni bölge, yeni silah, daha güçlü kuleler.</p>
-      <p class="ikincil-metin">Kule seç, haritaya dokunup kur. Kumsal ucuzdur ama su basar; denizdeki taş kaideler hiç batmaz. Zor anda Kale Topu'nu ateşle.</p>
-      <p class="ikincil-metin cevir-ipucu">Telefonu yan çevirirsen harita büyür.</p>
+      <p id="menuAciklama" data-i18n="oyun.aciklama">Gelgit yükselince kumsaldaki kuleler susar, korsan kayıkları deniz kapısına yönelir. Her 10 dalgada yeni bölge, yeni silah, daha güçlü kuleler.</p>
+      <p class="ikincil-metin" data-i18n="oyun.ipucu">Kule seç, haritaya dokunup kur. Kumsal ucuzdur ama su basar; denizdeki taş kaideler hiç batmaz. Zor anda Kale Topu'nu ateşle.</p>
+      <p class="ikincil-metin cevir-ipucu" data-i18n="menu.cevir">Telefonu yan çevirirsen harita büyür.</p>
       <p class="ikincil-metin" id="menuEnIyi"></p>
-      <p class="ikincil-metin surum">Sürüm <span id="surum"></span></p>
-      <div id="zorlukSecim" class="secim" role="group" aria-label="Zorluk">
-        <button data-z="kolay">Kolay</button><button data-z="normal">Normal</button><button data-z="zor">Zor</button>
+      <p class="ikincil-metin surum"><span data-i18n="menu.surum">Sürüm</span> <span id="surum"></span></p>
+      <div id="zorlukSecim" class="secim" role="group" data-i18n-title="menu.zorluk">
+        <button data-z="kolay" data-i18n="z.kolay">Kolay</button><button data-z="normal" data-i18n="z.normal">Normal</button><button data-z="zor" data-i18n="z.zor">Zor</button>
       </div>
       <button id="devamSeferBtn" class="btn" style="display:none">Devam et</button>
-      <button id="baslaBtn" class="btn">Yeni sefer</button>
+      <button id="baslaBtn" class="btn" data-i18n="menu.yeni">Yeni sefer</button>
       <div><button id="atolyeBtn" class="btn ikincil">Kale Atölyesi</button></div>
     </div>
   </div>
 
   <div id="duraklatOverlay" class="overlay gizli">
     <div class="panel">
-      <h2>Duraklatıldı</h2>
-      <p class="ikincil-metin">1 · 2 · 3 kule seçer, Q topu ateşler, F hızı değiştirir, Boşluk duraklatır.</p>
-      <button id="devamBtn" class="btn">Devam et</button>
-      <button id="basaDonBtn" class="btn ikincil">Son kayıttan başla</button>
+      <h2 data-i18n="dr.baslik">Duraklatıldı</h2>
+      <p class="ikincil-metin" data-i18n="dr.tuslar"></p>
+      <button id="devamBtn" class="btn" data-i18n="dr.devam">Devam et</button>
+      <button id="basaDonBtn" class="btn ikincil" data-i18n="dr.kayit">Son kayıttan başla</button>
+      <div id="dilSecim2" class="secim kucuk" role="group" data-i18n-title="dil"><button data-dil="en">EN</button><button data-dil="tr">TR</button></div>
     </div>
   </div>
 
@@ -394,29 +430,29 @@
       <dl id="sonOzet"></dl>
       <p id="sonSan" class="san-satir"></p>
       <button id="yenidenBtn" class="btn">Bölgeyi yeniden dene</button>
-      <button id="sonAtolyeBtn" class="btn ikincil">Kale Atölyesi</button>
-      <button id="yeniSeferBtn" class="btn ikincil">Yeni sefer</button>
+      <button id="sonAtolyeBtn" class="btn ikincil" data-i18n="menu.atolye">Kale Atölyesi</button>
+      <button id="yeniSeferBtn" class="btn ikincil" data-i18n="menu.yeni">Yeni sefer</button>
     </div>
   </div>
 
   <div id="atolyeOverlay" class="overlay gizli">
     <div class="panel genis">
-      <h2>Kale Atölyesi</h2>
-      <p class="ikincil-metin">Şan her dalgada, reis batınca ve bölge bitince kazanılır. Yükseltmeler kalıcıdır, her seferde geçerli.</p>
+      <h2 data-i18n="menu.atolye">Kale Atölyesi</h2>
+      <p class="ikincil-metin" data-i18n="at.aciklama">Şan her dalgada, reis batınca ve bölge bitince kazanılır. Yükseltmeler kalıcıdır, her seferde geçerli.</p>
       <div id="atSan" class="san-rozet buyuk"></div>
       <div id="atListe"></div>
-      <button id="atKapat" class="btn">Tamam</button>
+      <button id="atKapat" class="btn" data-i18n="at.tamam">Tamam</button>
     </div>
   </div>
 
   <div id="ipucu" class="gizli" role="status">
     <div><b id="ipBaslik"></b><span id="ipMetin"></span></div>
-    <button id="ipucuGec">Geç</button>
+    <button id="ipucuGec" data-i18n="ogr.gec">Geç</button>
   </div>
 
   <div id="ganimetOverlay" class="overlay gizli">
     <div class="panel genis">
-      <h2 id="gnBaslik">Ganimet zamanı</h2>
+      <h2 id="gnBaslik">Spoils</h2>
       <p id="gnAlt" class="ikincil-metin"></p>
       <div id="gnKartlar"></div>
     </div>
@@ -426,6 +462,8 @@
     <button id="kmKapat" aria-label="Kapat">×</button>
     <h3 id="kmBaslik">Kule</h3>
     <dl id="kmBilgi"></dl>
+    <div id="kmHedef" class="secim kucuk hedef-secim"></div>
+    <p id="kmIstat"></p>
     <div class="satir">
       <button id="kmYukselt" class="btn">Yükselt</button>
       <button id="kmSat" class="btn ikincil">Sat</button>
@@ -434,6 +472,225 @@
 </div>
 
 <script>
+/* ============================================================
+   DİL — tüm oyuncu metinleri burada (Türkçe / English).
+   Yeni metin eklerken iki dile birden ekle; eksik anahtar İngilizceye düşer.
+   ============================================================ */
+const DIL_KAYIT = "gelgitKalesi.dil";
+let DIL = (function(){
+  try { const d = localStorage.getItem(DIL_KAYIT); if (d === "tr" || d === "en") return d; } catch(e){}
+  return String(navigator.language || "en").toLowerCase().indexOf("tr") === 0 ? "tr" : "en";
+})();
+const coğul = (n, tek, cok) => n === 1 ? tek : cok;
+const METIN = {
+  tr: {
+    "oyun.ad": "Gelgit Kalesi",
+    "oyun.aciklama": "Gelgit yükselince kumsaldaki kuleler susar, korsan kayıkları deniz kapısına yönelir. Her 10 dalgada yeni bölge, yeni silah, daha güçlü kuleler.",
+    "oyun.ipucu": "Kule seç, haritaya dokunup kur. Kumsal ucuzdur ama su basar; denizdeki taş kaideler hiç batmaz. Zor anda Kale Topu'nu ateşle.",
+    "menu.cevir": "Telefonu yan çevirirsen harita büyür.",
+    "menu.enIyi": (s, u) => "En iyi skor: " + s + (u ? " · en uzak bölge: " + u : ""),
+    "menu.surum": "Sürüm",
+    "menu.zorluk": "Zorluk",
+    "z.kolay": "Kolay", "z.normal": "Normal", "z.zor": "Zor",
+    "menu.devam": (b, ara) => "Devam et · " + b + ". bölge" + (ara ? ", 6. dalga" : ""),
+    "menu.yeni": "Yeni sefer",
+    "menu.atolye": "Kale Atölyesi",
+    "hud.can": "Can", "hud.altin": "Altın", "hud.dalga": "Dalga", "hud.bolgeT": "Bölge", "hud.gelgit": "Gelgit", "hud.skor": "Skor",
+    "hud.bolge": (b) => b + "<small>. bölge</small>",
+    "hud.seri": "Seri ×",
+    "hud.duraklat": "Duraklat (Boşluk)", "hud.hiz": "Oyun hızı (F)", "hud.ses": "Ses (M)",
+    "g.0": "Alçak su", "g.1": "Su yükseliyor", "g.2": "Yüksek su", "g.3": "Su çekiliyor",
+    "g.kalan": (n) => n === 1 ? "Sonraki dalgada değişir" : "Değişime " + n + " dalga",
+    "g.yukseliyor": "Gelgit yükseliyor!", "g.cekiliyor": "Gelgit çekiliyor!",
+    "d.hizli": "Hızlı akın", "d.agir": "Zırhlı yürüyüş", "d.buyuk": "Büyük baskın", "d.reis": "Reis geliyor",
+    "d.baslik": (n, ad) => "Dalga " + n + (ad ? " · " + ad : ""),
+    "d.camur": "Çamur kestirmesinden", "d.uzun": "Uzun yoldan", "d.deniz": " + denizden",
+    "d.baslat": "Başlat",
+    "d.geliyor": (n, ad) => "Dalga " + n + (ad ? " · " + ad + "!" : " geliyor!"),
+    "d.kusursuzYazi": (b) => "Kusursuz! +" + b,
+    "d.kusursuz": (b) => "Kusursuz dalga! +" + b + " altın",
+    "d.bitti": (n, s) => "Dalga " + n + " bitti · " + s + " korsan sızdı",
+    "top.ad": "Kale Topu", "top.hedef": "hedef seç", "top.hazir": "hazır · Q", "top.sn": (n) => n + " sn",
+    "top.sec": "Topun düşeceği yeri seç!",
+    "y.dolu": "Kaide dolu!", "y.altin": "Yetersiz altın!", "y.deniz": "Denizde yalnız taş kaidelere kurulur!",
+    "y.yol": "Yola kule kurulamaz!", "y.kaide": "Kaideye çok yakın!", "y.yakin": "Çok yakın!",
+    "y.indirim": (n) => "-%" + n,
+    "k.seviye": "Seviye", "k.kaide": "kaide",
+    "k.batik": "Sular altında, susmuş. Gelgit çekilince kendiliğinden geri gelir.",
+    "k.hasar": "Hasar", "k.menzil": "Menzil", "k.ozellik": "Özellik", "k.hedef": "Hedef",
+    "k.yukselt": "Yükselt", "k.sinir": "Seviye sınırı", "k.sat": "Sat",
+    "k.istat": (h, o) => "Toplam " + h + " hasar · " + o + " korsan",
+    "hm.ilk": "İlk", "hm.guclu": "Güçlü", "hm.yakin": "Yakın",
+    "oz.tumu": (b) => "Menzildeki herkesi yakar · kayığa ×" + b,
+    "oz.agir": (b) => "Zırhlıya ×" + b + " · uzun menzil",
+    "oz.alan": (b) => "Alan hasarı · kayığa ×" + b,
+    "oz.yavas": (n) => "Yavaşlatır %" + n,
+    "oz.tek": "Tek hedef · hızlı atış",
+    "kule.Okçu Kulesi": "Okçu Kulesi", "kule.Mancınık": "Mancınık", "kule.Zift Kazanı": "Zift Kazanı",
+    "kule.Rum Ateşi": "Rum Ateşi", "kule.Balista": "Balista",
+    "dus.Yağmacı": "Yağmacı", "dus.Kalkanlı": "Kalkanlı", "dus.Kayık": "Kayık", "dus.Korsan Reisi": "Korsan Reisi", "dus.Kadırga": "Kadırga",
+    "reis.dustu": (ad) => ad + " batırıldı!",
+    "h.gunduz": "Gündüz Koyu", "h.gece": "Gece Baskını", "h.firtina": "Fırtına Kabarması", "h.gunbatimi": "Gün Batımı Koyu",
+    "h.tur": (t) => " · " + t + ". tur",
+    "b.duyur": (b, ad, yeni) => b + ". bölge · " + ad + (yeni ? " — yeni silah: " + yeni : ""),
+    "gn.baslik": "Ganimet zamanı", "gn.bolge": (b) => b + ". bölge savunuldu!",
+    "gn.altBolge": (san, ad) => "Kale onarıldı (+3 can), +" + san + " şan. Bir ganimet seç; sıradaki bölge: " + ad + ".",
+    "gn.altAra": "Yolun yarısı geride kaldı. Bir ganimet seç.",
+    "kayit": "Kayıt alındı",
+    "tur.Kule": "Kule", "tur.Gelgit": "Gelgit", "tur.Kale": "Kale", "tur.Altın": "Altın",
+    "n.okcu": "Usta okçular", "n.okcu.m": "Okçu Kulesi hasarı +%20",
+    "n.mancinik": "Ağır gülle", "n.mancinik.m": "Mancınık patlama alanı +%25, hasarı +%10",
+    "n.zift": "Kızgın zift", "n.zift.m": "Zift yavaşlatması %60 daha uzun sürer",
+    "n.kaide": "Yüksek kaide", "n.kaide.m": "Taş kaidelerdeki kulelerin menzili +%20",
+    "n.batik": "Dalgıç nöbetçiler", "n.batik.m": "Sular altındaki kuleler susmaz, yarı hızda ateş eder",
+    "n.kumsal": "Kumsal ustası", "n.kumsal.m": "Kumsal indirimi 20 puan artar",
+    "n.top": "Çifte barut", "n.top.m": "Kale Topu %25 daha çabuk dolar",
+    "n.topGuc": "Dev gülle", "n.topGuc.m": "Kale Topu hasarı +%40, alanı +%15",
+    "n.onarim": "Taş ustaları", "n.onarim.m": "Kale hemen +5 can kazanır",
+    "n.hazine": "Dolu kasa", "n.hazine.m": "Hemen +80 altın; her bölgeye +40 altınla başla",
+    "n.seri": "Ganimet avcısı", "n.seri.m": "Seri altın primi iki katına çıkar",
+    "n.erken": "Sabırsız kaptan", "n.erken.m": "Dalgayı erken çağırma ödülü iki katı",
+    "n.yukselt": "Usta duvarcı", "n.yukselt.m": "Kule yükseltmeleri %15 ucuzlar",
+    "a.sur": "Sağlam surlar", "a.sur.e": (n, c) => "Kale " + c + " canla başlar",
+    "a.kasa": "Hazine odası", "a.kasa.e": (n) => "Her bölgeye +" + (25 * n) + " altınla başla",
+    "a.ok": "Keskin demir", "a.ok.e": (n) => "Tüm kulelerin hasarı +%" + (5 * n),
+    "a.top": "Topçu ocağı", "a.top.e": (n) => "Kale Topu %" + (8 * n) + " çabuk dolar, %" + (10 * n) + " sert vurur",
+    "a.gelgit": "Gelgit tabloları", "a.gelgit.e": (n) => "Kumsal indirimi +" + (5 * n) + " puan",
+    "a.sandik": "Geniş sandık", "a.sandik.e": (n) => "Ganimette " + (3 + n) + " kart",
+    "at.aciklama": "Şan her dalgada, reis batınca ve bölge bitince kazanılır. Yükseltmeler kalıcıdır, her seferde geçerli.",
+    "at.san": (n) => n + " şan", "at.tamam": "Tamam",
+    "at.alinabilir": (n) => " · <b>atölyede " + n + " yükseltme alınabilir</b>",
+    "dr.baslik": "Duraklatıldı",
+    "dr.tuslar": "1 · 2 · 3 kule seçer, U seçili kuleyi yükseltir, Q topu ateşler, F hızı değiştirir, Boşluk duraklatır. Sağ tık iptal eder.",
+    "dr.devam": "Devam et", "dr.kayit": "Son kayıttan başla",
+    "son.baslik": "Kale düştü",
+    "son.metin": (b, d, ip) => b + ". bölge · dalga " + d + "/10 — " + ip,
+    "son.skor": "Skor", "son.rekor": " · rekor!", "son.enIyi": "En iyi skor", "son.bolge": "Ulaşılan bölge",
+    "son.enUzak": "En uzak bölge", "son.korsan": "Batırılan korsan", "son.ganimet": "Ganimet",
+    "son.yenidenAra": "6. dalgadan yeniden dene", "son.yeniden": (b) => b + ". bölgeyi yeniden dene",
+    "son.san": (n, t) => "Bu denemede +" + n + " şan · toplam " + t,
+    "ip.batik": (n) => n + " kulen sular altındaydı. Yüksek gelgite hazırlan: çimene ve taş kaidelere kur.",
+    "ip.deniz": "korsanlar en çok denizden sızdı.",
+    "ip.bos": (n) => " " + n + " taş kaide boş kaldı; Mancınık kayıklara 1,5 kat vurur.",
+    "ip.kaideYukselt": " Kaidelerdeki kuleleri yükselt.",
+    "ip.kara": "korsanlar en çok karadan sızdı. Yol kıvrımlarına Zift Kazanı ile Mancınığı yan yana koy.",
+    "ogr.gec": "Geç",
+    "ogr.1b": "Kule kur", "ogr.1m": "Yolun kenarına dokun: Okçu Kulesi kurulur. Yol kıvrımları en iyi yerdir.",
+    "ogr.2b": "Bir tane daha", "ogr.2m": "İkinci kuleyi kur. Alttaki panelden başka kule de seçebilirsin.",
+    "ogr.3b": "Dalgayı başlat", "ogr.3m": "Hazırsan Başlat'a bas. Erken başlatmak altın kazandırır.",
+    "ogr.4b": "Kale Topu", "ogr.4m": "Topun düğmesine bas, sonra korsanların ortasına dokun.",
+    "ogr.5b": "Yükselt", "ogr.5m": "Bir kuleye dokun: yükseltmek hasarı 1,6 katına çıkarır.",
+    "ogr.6b": "Gelgit yükseliyor", "ogr.6m": "Kumsaldaki kuleler batacak, kayıklar denizden gelecek. Denizdeki taş kaidelere kur: hiç batmazlar.",
+    "dil": "Dil"
+  },
+  en: {
+    "oyun.ad": "Ebb & Siege",
+    "oyun.aciklama": "When the tide comes in, beach towers fall silent and pirate boats sail for the sea gate. Every 10 waves: a new region, a new weapon and stronger towers.",
+    "oyun.ipucu": "Pick a tower and tap the map to build. The beach is cheap but floods; stone pillars out at sea never sink. Fire the Castle Cannon when things get tight.",
+    "menu.cevir": "Turn your phone sideways for a bigger map.",
+    "menu.enIyi": (s, u) => "Best score: " + s + (u ? " · furthest region: " + u : ""),
+    "menu.surum": "Version",
+    "menu.zorluk": "Difficulty",
+    "z.kolay": "Easy", "z.normal": "Normal", "z.zor": "Hard",
+    "menu.devam": (b, ara) => "Continue · Region " + b + (ara ? ", wave 6" : ""),
+    "menu.yeni": "New run",
+    "menu.atolye": "Castle Workshop",
+    "hud.can": "Lives", "hud.altin": "Gold", "hud.dalga": "Wave", "hud.bolgeT": "Region", "hud.gelgit": "Tide", "hud.skor": "Score",
+    "hud.bolge": (b) => "<small>Region </small>" + b,
+    "hud.seri": "Combo ×",
+    "hud.duraklat": "Pause (Space)", "hud.hiz": "Game speed (F)", "hud.ses": "Sound (M)",
+    "g.0": "Low tide", "g.1": "Tide rising", "g.2": "High tide", "g.3": "Tide falling",
+    "g.kalan": (n) => n === 1 ? "Turns next wave" : "Turns in " + n + " waves",
+    "g.yukseliyor": "The tide is coming in!", "g.cekiliyor": "The tide is going out!",
+    "d.hizli": "Swift Raid", "d.agir": "Armored March", "d.buyuk": "Great Assault", "d.reis": "The Captain Approaches",
+    "d.baslik": (n, ad) => "Wave " + n + (ad ? " · " + ad : ""),
+    "d.camur": "Via the mud shortcut", "d.uzun": "Via the long road", "d.deniz": " + by sea",
+    "d.baslat": "Start",
+    "d.geliyor": (n, ad) => "Wave " + n + (ad ? " · " + ad + "!" : " incoming!"),
+    "d.kusursuzYazi": (b) => "Flawless! +" + b,
+    "d.kusursuz": (b) => "Flawless wave! +" + b + " gold",
+    "d.bitti": (n, s) => "Wave " + n + " cleared · " + s + " " + coğul(s, "pirate", "pirates") + " got through",
+    "top.ad": "Castle Cannon", "top.hedef": "pick a target", "top.hazir": "ready · Q", "top.sn": (n) => n + " s",
+    "top.sec": "Pick where the cannonball lands!",
+    "y.dolu": "Pillar taken!", "y.altin": "Not enough gold!", "y.deniz": "At sea you can only build on stone pillars!",
+    "y.yol": "You can't build on the road!", "y.kaide": "Too close to a pillar!", "y.yakin": "Too close!",
+    "y.indirim": (n) => "-" + n + "%",
+    "k.seviye": "Level", "k.kaide": "pillar",
+    "k.batik": "Underwater and silent. It comes back on its own when the tide goes out.",
+    "k.hasar": "Damage", "k.menzil": "Range", "k.ozellik": "Trait", "k.hedef": "Target",
+    "k.yukselt": "Upgrade", "k.sinir": "Level cap", "k.sat": "Sell",
+    "k.istat": (h, o) => h + " damage dealt · " + o + " " + coğul(o, "kill", "kills"),
+    "hm.ilk": "First", "hm.guclu": "Strong", "hm.yakin": "Close",
+    "oz.tumu": (b) => "Burns everything in range · ×" + b + " vs boats",
+    "oz.agir": (b) => "×" + b + " vs armor · long range",
+    "oz.alan": (b) => "Splash damage · ×" + b + " vs boats",
+    "oz.yavas": (n) => "Slows enemies by " + n + "%",
+    "oz.tek": "Single target · fast fire",
+    "kule.Okçu Kulesi": "Archer Tower", "kule.Mancınık": "Catapult", "kule.Zift Kazanı": "Tar Cauldron",
+    "kule.Rum Ateşi": "Greek Fire", "kule.Balista": "Ballista",
+    "dus.Yağmacı": "Raider", "dus.Kalkanlı": "Shieldbearer", "dus.Kayık": "Rowboat", "dus.Korsan Reisi": "Pirate Captain", "dus.Kadırga": "War Galley",
+    "reis.dustu": (ad) => ad + " defeated!",
+    "h.gunduz": "Sunlit Cove", "h.gece": "Night Raid", "h.firtina": "Storm Surge", "h.gunbatimi": "Sunset Cove",
+    "h.tur": (t) => " · Round " + t,
+    "b.duyur": (b, ad, yeni) => "Region " + b + " · " + ad + (yeni ? " — new weapon: " + yeni : ""),
+    "gn.baslik": "Spoils of War", "gn.bolge": (b) => "Region " + b + " defended!",
+    "gn.altBolge": (san, ad) => "Castle repaired (+3 lives), +" + san + " glory. Pick a reward. Next region: " + ad + ".",
+    "gn.altAra": "Halfway there. Pick a reward.",
+    "kayit": "Progress saved",
+    "tur.Kule": "Tower", "tur.Gelgit": "Tide", "tur.Kale": "Castle", "tur.Altın": "Gold",
+    "n.okcu": "Master Archers", "n.okcu.m": "Archer Tower damage +20%",
+    "n.mancinik": "Heavy Shot", "n.mancinik.m": "Catapult blast radius +25%, damage +10%",
+    "n.zift": "Scalding Tar", "n.zift.m": "Tar slow lasts 60% longer",
+    "n.kaide": "High Pillars", "n.kaide.m": "Towers on stone pillars get +20% range",
+    "n.batik": "Diver Sentries", "n.batik.m": "Flooded towers keep firing at half speed",
+    "n.kumsal": "Beachmaster", "n.kumsal.m": "Beach discount +20 points",
+    "n.top": "Double Powder", "n.top.m": "Castle Cannon recharges 25% faster",
+    "n.topGuc": "Giant Shot", "n.topGuc.m": "Castle Cannon damage +40%, radius +15%",
+    "n.onarim": "Stonemasons", "n.onarim.m": "The castle instantly regains 5 lives",
+    "n.hazine": "Full Coffers", "n.hazine.m": "+80 gold now; start every region with +40 gold",
+    "n.seri": "Plunder Hunter", "n.seri.m": "Combo gold bonus doubled",
+    "n.erken": "Impatient Captain", "n.erken.m": "Early wave call reward doubled",
+    "n.yukselt": "Master Builder", "n.yukselt.m": "Tower upgrades cost 15% less",
+    "a.sur": "Sturdy Walls", "a.sur.e": (n, c) => "The castle starts with " + c + " lives",
+    "a.kasa": "Treasury", "a.kasa.e": (n) => "+" + (25 * n) + " gold at the start of every region",
+    "a.ok": "Keen Steel", "a.ok.e": (n) => "All towers deal +" + (5 * n) + "% damage",
+    "a.top": "Gun Foundry", "a.top.e": (n) => "Castle Cannon recharges " + (8 * n) + "% faster and hits " + (10 * n) + "% harder",
+    "a.gelgit": "Tide Tables", "a.gelgit.e": (n) => "Beach discount +" + (5 * n) + " points",
+    "a.sandik": "Big Chest", "a.sandik.e": (n) => (3 + n) + " reward cards to choose from",
+    "at.aciklama": "Earn glory every wave, for defeating captains and for clearing regions. Upgrades are permanent and apply to every run.",
+    "at.san": (n) => n + " glory", "at.tamam": "Done",
+    "at.alinabilir": (n) => " · <b>" + n + " workshop " + coğul(n, "upgrade", "upgrades") + " available</b>",
+    "dr.baslik": "Paused",
+    "dr.tuslar": "1 · 2 · 3 pick towers, U upgrades the selected tower, Q fires the cannon, F changes speed, Space pauses. Right-click cancels.",
+    "dr.devam": "Resume", "dr.kayit": "Restart from last save",
+    "son.baslik": "The castle has fallen",
+    "son.metin": (b, d, ip) => "Region " + b + " · wave " + d + "/10 — " + ip,
+    "son.skor": "Score", "son.rekor": " · new best!", "son.enIyi": "Best score", "son.bolge": "Region reached",
+    "son.enUzak": "Furthest region", "son.korsan": "Pirates defeated", "son.ganimet": "Rewards",
+    "son.yenidenAra": "Retry from wave 6", "son.yeniden": (b) => "Retry region " + b,
+    "son.san": (n, t) => "+" + n + " glory this run · " + t + " total",
+    "ip.batik": (n) => n + " of your towers were underwater. Prepare for high tide: build on grass and on stone pillars.",
+    "ip.deniz": "most pirates got in by sea.",
+    "ip.bos": (n) => " " + n + " stone " + coğul(n, "pillar was", "pillars were") + " left empty; the Catapult deals 1.5× damage to boats.",
+    "ip.kaideYukselt": " Upgrade your pillar towers.",
+    "ip.kara": "most pirates got in by land. Put a Tar Cauldron next to a Catapult at the bends in the road.",
+    "ogr.gec": "Skip",
+    "ogr.1b": "Build a tower", "ogr.1m": "Tap next to the road to build an Archer Tower. Bends in the road are the best spots.",
+    "ogr.2b": "One more", "ogr.2m": "Build a second tower. You can pick other towers from the bar below.",
+    "ogr.3b": "Start the wave", "ogr.3m": "Ready? Press Start. Starting early earns bonus gold.",
+    "ogr.4b": "Castle Cannon", "ogr.4m": "Press the cannon button, then tap the middle of the pirates.",
+    "ogr.5b": "Upgrade", "ogr.5m": "Tap a tower: each upgrade multiplies its damage by 1.6.",
+    "ogr.6b": "The tide is coming in", "ogr.6m": "Beach towers will flood and boats will come by sea. Build on the stone pillars out at sea: they never sink.",
+    "dil": "Language"
+  }
+};
+function tx(k){
+  const tablo = METIN[DIL] || METIN.en;
+  let v = (tablo[k] !== undefined) ? tablo[k] : METIN.en[k];
+  if (v === undefined) return k;
+  return (typeof v === "function") ? v.apply(null, Array.prototype.slice.call(arguments, 1)) : v;
+}
+
 /* ============================================================
    BÖLÜM 0 — SANAT YÖNÜ: "EGE DİORAMASI"
    Kurallar (tüm çizimler bunlara uyar):
@@ -946,7 +1203,7 @@ const TEMA = (function(){
    Her sesin kendi asgari tekrar aralığı vardır: kalabalık dalgada üst üste binmez.
    ============================================================ */
 // Her yayında bir artırılır; menüde görünür (arkadaşlar hangi sürümü oynadığını görsün)
-const SURUM = "1.3 · 17.11.2026";
+const SURUM = "1.4 · 19.11.2026";
 const SES = (function(){
   let ac = null, ana = null, gurultu = null, kapali = false;
   const son = {};
@@ -1113,6 +1370,9 @@ const SES = (function(){
      Bölgeler 3 haritayı döner (gündüz → gece → fırtına), her turda zorlaşır.
      Yeni bölge = yeni silah (2. ve 3. bölge) + bir üst kule seviyesi + ganimet seçimi.
      ============================================================ */
+  function kuleAdi(tip){ return tx("kule." + tip.ad); }
+  function dusmanAdi(tip){ return tx("dus." + tip.ad); }
+
   /* ---------- Kalıcı ilerleme: şan, Kale Atölyesi, zorluk, öğretici bayrağı ----------
      Şan her temizlenen dalgada, reis batınca ve bölge bitince kazanılır; seferler arasında kalır. */
   const KAL = {san: 0, toplamSan: 0, sv: {}, zorluk: "normal", ogretici: false};
@@ -1300,7 +1560,7 @@ const SES = (function(){
   function temaAdi(){ return (harita.tema === "gunduz" && turNo(bolge) > 1) ? "gunbatimi" : harita.tema; }
   function bolgeAdi(b){
     const h = HARITALAR[(b - 1) % HARITALAR.length], t = turNo(b);
-    return (t > 1 && h.tema === "gunduz" ? "Gün Batımı Koyu" : h.ad) + (t > 1 ? " · " + t + ". tur" : "");
+    return tx("h." + (t > 1 && h.tema === "gunduz" ? "gunbatimi" : h.tema)) + (t > 1 ? tx("h.tur", t) : "");
   }
 
   function yolNoktasi(mesafe){ return rotaNoktasi(KARA_UZUN, mesafe); }
@@ -1342,7 +1602,7 @@ const SES = (function(){
     gelgitIdx = hedefIdx;
     suHedef = GELGIT_SEVIYE[hedefIdx];
     gecisKalan = GECIS_SURESI;
-    uyariGoster(yukseliyor ? "Gelgit yükseliyor!" : "Gelgit çekiliyor!");
+    uyariGoster(yukseliyor ? tx("g.yukseliyor") : tx("g.cekiliyor"), 1600, "gelgit");
     SES.cal("gelgit");
     hudGuncelle();
   }
@@ -1409,6 +1669,7 @@ const SES = (function(){
   const DALGA_ADI = {karma: "", hizli: "Hızlı akın", agir: "Zırhlı yürüyüş", buyuk: "Büyük baskın", reis: "Reis geliyor"};
   const KARAKTER = {4: "hizli", 5: "buyuk", 7: "agir", 9: "hizli", 10: "reis"};
   function dalgaKarakteri(n){ return KARAKTER[n] || "karma"; }
+  function dalgaAdi(k){ return (k && k !== "karma") ? tx("d." + k) : ""; }
   function grupla(tip, adet, enAz, enCok, aralik){
     const g = [];
     while (adet > 0){
@@ -1505,8 +1766,8 @@ const SES = (function(){
     const yb = document.getElementById("yetenekBtn");
     const hazir = yetenek.kalan <= 0;
     const toplam = (yetenek.tip === "top") ? topBekleme() : YETENEK_SURE;
-    yaz(E.ytAd, (MOD.yetenek && MOD.yetenek.ad) || "Yetenek");
-    yaz(E.ytAlt, yetenek.hedefleme ? "hedef seç" : (hazir ? "hazır · Q" : Math.ceil(yetenek.kalan) + " sn"));
+    yaz(E.ytAd, tx("top.ad"));
+    yaz(E.ytAlt, yetenek.hedefleme ? tx("top.hedef") : (hazir ? tx("top.hazir") : tx("top.sn", Math.ceil(yetenek.kalan))));
     stil(yb.firstElementChild, "--dolu", Math.round((1 - Math.max(0, yetenek.kalan) / toplam) * 360) + "deg");
     if (yb.disabled !== !hazir) yb.disabled = !hazir;
     yb.classList.toggle("hazir", hazir && !yetenek.hedefleme);
@@ -1591,7 +1852,7 @@ const SES = (function(){
     if (yetenek.tip === "yildirim" || yetenek.tip === "top"){
       yetenek.hedefleme = !yetenek.hedefleme;
       document.getElementById("yetenekBtn").classList.toggle("hedefleme", yetenek.hedefleme);
-      if (yetenek.hedefleme){ kuleMenusuKapat(); uyariGoster("Topun düşeceği yeri seç!"); }
+      if (yetenek.hedefleme){ kuleMenusuKapat(); uyariGoster(tx("top.sec")); }
       SES.cal("tik");
       yetenekMetniGuncelle();
     } else {
@@ -1654,13 +1915,15 @@ const SES = (function(){
   }
 
   // Kayıttan kule kurar (seviye ve yatırım dahil). Yükseltme kuralı oyundakiyle aynıdır.
-  function kuleYap(tipIdx, x, y, kaide, seviye, yatirim){
+  function kuleHedefModu(k){ return k.hedefMod || (k.tip.hedef === "guclu" ? "guclu" : "ilk"); }
+  function kuleYap(tipIdx, x, y, kaide, seviye, yatirim, mod){
     const tip = KULE_TIPLERI[tipIdx] || KULE_TIPLERI[0];
     let hasar = tip.hasar, menzil = tip.menzil;
     const sv2 = Math.max(1, Math.min(seviyeSiniri(), seviye | 0));
     for (let s = 2; s <= sv2; s++){ hasar *= 1.6; menzil *= (s <= 3 ? 1.15 : 1.05); }
     const k = {x: x, y: y, tip: tip, seviye: sv2, sayac: 0, aci: -Math.PI/2, menzil: menzil, hasar: hasar,
-               yatirim: yatirim || tip.fiyat, flas: 0, batik: false, dogus: 0, parlama: 0, mendirek: kaide || null};
+               yatirim: yatirim || tip.fiyat, flas: 0, batik: false, dogus: 0, parlama: 0, mendirek: kaide || null,
+               hedefMod: HEDEF_MODLARI.indexOf(mod) >= 0 ? mod : undefined};
     if (kaide) kaide.kule = k;
     k.batik = kaide ? false : sularAltindaMi(x, y);
     return k;
@@ -1671,7 +1934,7 @@ const SES = (function(){
     if (araMi){
       kontrol.dalga = dalga; kontrol.altin = altin;
       kontrol.kuleler = kuleler.map(k => ({t: KULE_TIPLERI.indexOf(k.tip), x: Math.round(k.x), y: Math.round(k.y), s: k.seviye,
-                                           v: k.yatirim, m: k.mendirek ? MENDIREKLER.indexOf(k.mendirek) : -1}));
+                                           v: k.yatirim, m: k.mendirek ? MENDIREKLER.indexOf(k.mendirek) : -1, h: k.hedefMod}));
     }
     kayitYaz();
   }
@@ -1693,7 +1956,7 @@ const SES = (function(){
       gelgitIdx = asamaIndeksi(6); suSeviyesi = suHedef = islakSeviye = GELGIT_SEVIYE[gelgitIdx]; gecisKalan = 0;
       for (const o of k.kuleler){
         const kaide = (o.m >= 0 && MENDIREKLER[o.m] && !MENDIREKLER[o.m].kule) ? MENDIREKLER[o.m] : null;
-        kuleler.push(kuleYap(o.t, kaide ? kaide.x : o.x, kaide ? kaide.y - KAIDE_KULE_Y : o.y, kaide, o.s, o.v));
+        kuleler.push(kuleYap(o.t, kaide ? kaide.x : o.x, kaide ? kaide.y - KAIDE_KULE_Y : o.y, kaide, o.s, o.v, o.h));
       }
       devamYukle = true; araVerildi = false;
       kontrol = k;
@@ -1736,7 +1999,7 @@ const SES = (function(){
   function basla(){ oyunaGir(null); }
   function bolgeDuyur(){
     const yeni = KULE_TIPLERI.find(k => (k.acilis || 1) === bolge && bolge > 1);
-    uyariGoster(bolge + ". bölge · " + bolgeAdi(bolge) + (yeni ? " — yeni silah: " + yeni.ad : ""), yeni ? 3200 : 2200);
+    uyariGoster(tx("b.duyur", bolge, bolgeAdi(bolge), yeni ? kuleAdi(yeni) : ""), yeni ? 3200 : 2200);
   }
 
   // ---------- Ganimet: 5. dalgadan ve her bölgeden sonra üç karttan biri ----------
@@ -1750,18 +2013,16 @@ const SES = (function(){
       ganimetSecenek.push(havuz.splice(Math.floor(Math.random() * havuz.length), 1)[0]);
     }
     const bolgeMi = neden === "bolge";
-    document.getElementById("gnBaslik").textContent = bolgeMi ? bolge + ". bölge savunuldu!" : "Ganimet zamanı";
-    document.getElementById("gnAlt").textContent = bolgeMi
-      ? "Kale onarıldı (+3 can), +" + bolgeSan + " şan. Bir ganimet seç; sıradaki bölge: " + bolgeAdi(bolge + 1) + "."
-      : "Yolun yarısı geride kaldı. Bir ganimet seç.";
+    document.getElementById("gnBaslik").textContent = bolgeMi ? tx("gn.bolge", bolge) : tx("gn.baslik");
+    document.getElementById("gnAlt").textContent = bolgeMi ? tx("gn.altBolge", bolgeSan, bolgeAdi(bolge + 1)) : tx("gn.altAra");
     const kutu = document.getElementById("gnKartlar");
     kutu.innerHTML = "";
     ganimetSecenek.forEach((g, i) => {
       const b = document.createElement("button");
       b.className = "ganimet-kart";
       const adet = nimet(g.id);
-      b.innerHTML = '<span class="tur">' + g.tur + '</span><b>' + g.ad + (adet ? ' <i>×' + (adet + 1) + '</i>' : '') +
-                    '</b><span class="metin">' + g.metin + '</span>';
+      b.innerHTML = '<span class="tur">' + tx("tur." + g.tur) + '</span><b>' + tx("n." + g.id) + (adet ? ' <i>×' + (adet + 1) + '</i>' : '') +
+                    '</b><span class="metin">' + tx("n." + g.id + ".m") + '</span>';
       b.addEventListener("click", () => ganimetSec(i));
       kutu.appendChild(b);
     });
@@ -1778,7 +2039,7 @@ const SES = (function(){
     document.getElementById("ganimetOverlay").classList.add("gizli");
     asama = "oyunda";
     if (ganimetNeden === "bolge"){ bolgeKur(bolge + 1, true); bolgeDuyur(); }
-    else { kontrolYaz(true); yetenekMetniGuncelle(); onizlemeTazele(); hudGuncelle(); uyariGoster("Kayıt alındı", 1200); }
+    else { kontrolYaz(true); yetenekMetniGuncelle(); onizlemeTazele(); hudGuncelle(); uyariGoster(tx("kayit"), 1200); }
     return true;
   }
   function bolgeBitti(){
@@ -1796,17 +2057,15 @@ const SES = (function(){
     const rekor = skor > enIyiSkor;
     if (rekor){ enIyiSkor = skor; try { localStorage.setItem("gelgitKalesi.enIyi", String(skor)); } catch(e){} }
     document.getElementById("yildizlar").innerHTML = "";
-    document.getElementById("sonBaslik").textContent = "Kale düştü";
-    document.getElementById("sonMetin").textContent =
-      bolge + ". bölge · dalga " + dalga + "/" + TOPLAM_DALGA + " — " + yenilgiIpucu();
-    const satirlar = [["Skor", skor + (rekor ? " · rekor!" : "")], ["En iyi skor", enIyiSkor],
-                      ["Ulaşılan bölge", bolge + " · " + bolgeAdi(bolge)], ["En uzak bölge", enUzak],
-                      ["Batırılan korsan", oldurulen], ["Ganimet", nimetler.length]];
+    document.getElementById("sonBaslik").textContent = tx("son.baslik");
+    document.getElementById("sonMetin").textContent = tx("son.metin", bolge, dalga, yenilgiIpucu());
+    const satirlar = [[tx("son.skor"), skor + (rekor ? tx("son.rekor") : "")], [tx("son.enIyi"), enIyiSkor],
+                      [tx("son.bolge"), bolge + " · " + bolgeAdi(bolge)], [tx("son.enUzak"), enUzak],
+                      [tx("son.korsan"), oldurulen], [tx("son.ganimet"), nimetler.length]];
     document.getElementById("sonOzet").innerHTML =
       satirlar.map(s => "<dt>" + s[0] + "</dt><dd>" + s[1] + "</dd>").join("");
-    document.getElementById("yenidenBtn").textContent = (kontrol && kontrol.dalga === 5) ? "6. dalgadan yeniden dene" : bolge + ". bölgeyi yeniden dene";
-    document.getElementById("sonSan").innerHTML = '<svg class="ikon"><use href="#i-yildiz"/></svg> Bu denemede +' + denemeSan +
-      ' şan · toplam ' + KAL.san + atolyeIpucu();
+    document.getElementById("yenidenBtn").textContent = (kontrol && kontrol.dalga === 5) ? tx("son.yenidenAra") : tx("son.yeniden", bolge);
+    sonSanYaz();
     ogrGoster(null);
     document.getElementById("sonOverlay").classList.remove("gizli");
     document.getElementById("dalgaBilgi").classList.add("gizli");
@@ -1815,24 +2074,26 @@ const SES = (function(){
     SES.cal("yenilgi");
     menuEnIyiYaz();
   }
+  function sonSanYaz(){
+    document.getElementById("sonSan").innerHTML = '<svg class="ikon"><use href="#i-yildiz"/></svg> ' +
+      tx("son.san", denemeSan, KAL.san) + atolyeIpucu();
+  }
   // Yenilgi nedeni tek cümleyle: bir sonraki denemede neyi değiştireceğini söyler
   function yenilgiIpucu(){
     const batik = kuleler.filter(k => k.batik).length;
-    if (batik >= 3 && batik * 3 >= kuleler.length)
-      return batik + " kulen sular altındaydı. Yüksek gelgite hazırlan: çimene ve taş kaidelere kur.";
+    if (batik >= 3 && batik * 3 >= kuleler.length) return tx("ip.batik", batik);
     if (sizintiDeniz > sizintiKara){
       const bos = MENDIREKLER.filter(m => !m.kule).length;
-      return "korsanlar en çok denizden sızdı." + (bos ? " " + bos + " taş kaide boş kaldı; Mancınık kayıklara 1,5 kat vurur." : " Kaidelerdeki kuleleri yükselt.");
+      return tx("ip.deniz") + (bos ? tx("ip.bos", bos) : tx("ip.kaideYukselt"));
     }
-    return "korsanlar en çok karadan sızdı. Yol kıvrımlarına Zift Kazanı ile Mancınığı yan yana koy.";
+    return tx("ip.kara");
   }
   function menuEnIyiYaz(){
-    document.getElementById("menuEnIyi").textContent =
-      enIyiSkor ? "En iyi skor: " + enIyiSkor + (enUzak ? " · en uzak bölge: " + enUzak : "") : "";
+    document.getElementById("menuEnIyi").textContent = enIyiSkor ? tx("menu.enIyi", enIyiSkor, enUzak) : "";
     const k = kayitOku(), d = document.getElementById("devamSeferBtn");
     d.style.display = (k && (k.bolge > 1 || k.dalga === 5)) ? "" : "none";
-    if (k) d.textContent = "Devam et · " + k.bolge + ". bölge" + (k.dalga === 5 ? ", 6. dalga" : "");
-    document.getElementById("atolyeBtn").innerHTML = 'Kale Atölyesi <span class="san-rozet"><svg class="ikon"><use href="#i-yildiz"/></svg>' + KAL.san + '</span>';
+    if (k) d.textContent = tx("menu.devam", k.bolge, k.dalga === 5);
+    document.getElementById("atolyeBtn").innerHTML = tx("menu.atolye") + ' <span class="san-rozet"><svg class="ikon"><use href="#i-yildiz"/></svg>' + KAL.san + '</span>';
     document.querySelectorAll("#zorlukSecim button").forEach(b => b.classList.toggle("secili", b.dataset.z === KAL.zorluk));
   }
 
@@ -1858,21 +2119,22 @@ const SES = (function(){
   let atolyeDonus = "menuOverlay";
   function atolyeIpucu(){
     const al = ATOLYE.filter(a => sv(a.id) < a.azami && KAL.san >= atolyeFiyat(a, sv(a.id))).length;
-    return al ? " · <b>atölyede " + al + " yükseltme alınabilir</b>" : "";
+    return al ? tx("at.alinabilir", al) : "";
   }
   function atolyeCiz(){
-    document.getElementById("atSan").innerHTML = '<svg class="ikon"><use href="#i-yildiz"/></svg>' + KAL.san + " şan";
+    document.getElementById("atSan").innerHTML = '<svg class="ikon"><use href="#i-yildiz"/></svg>' + tx("at.san", KAL.san);
     const l = document.getElementById("atListe");
     l.innerHTML = "";
     for (const a of ATOLYE){
       const n = sv(a.id), ust = n >= a.azami, f = atolyeFiyat(a, n);
       const satir = document.createElement("div"); satir.className = "at-satir";
       let pip = ""; for (let i = 0; i < a.azami; i++) pip += '<i class="' + (i < n ? "dolu" : "") + '"></i>';
-      satir.innerHTML = '<div class="at-bilgi"><b>' + a.ad + '</b><span class="pip">' + pip + '</span><span class="metin">' +
-        (ust ? a.etki(n) : (n ? a.etki(n) + ' <i>→</i> ' : '') + a.etki(n + 1)) + '</span></div>';
+      const etki = (k) => tx("a." + a.id + ".e", k, BASLANGIC_CAN + 3 * k);
+      satir.innerHTML = '<div class="at-bilgi"><b>' + tx("a." + a.id) + '</b><span class="pip">' + pip + '</span><span class="metin">' +
+        (ust ? etki(n) : (n ? etki(n) + ' <i>→</i> ' : '') + etki(n + 1)) + '</span></div>';
       const b = document.createElement("button");
       b.className = "btn at-al";
-      b.innerHTML = ust ? "Tamam" : '<svg class="ikon"><use href="#i-yildiz"/></svg>' + f;
+      b.innerHTML = ust ? "✓" : '<svg class="ikon"><use href="#i-yildiz"/></svg>' + f;
       b.disabled = ust || KAL.san < f;
       b.addEventListener("click", () => atolyeAl(a.id));
       satir.appendChild(b); l.appendChild(satir);
@@ -1897,8 +2159,7 @@ const SES = (function(){
   document.getElementById("sonAtolyeBtn").addEventListener("click", ()=> atolyeAc("sonOverlay"));
   document.getElementById("atKapat").addEventListener("click", ()=>{
     document.getElementById("atolyeOverlay").classList.add("gizli");
-    if (atolyeDonus === "sonOverlay")
-      document.getElementById("sonSan").innerHTML = '<svg class="ikon"><use href="#i-yildiz"/></svg> Bu denemede +' + denemeSan + ' şan · toplam ' + KAL.san + atolyeIpucu();
+    if (atolyeDonus === "sonOverlay") sonSanYaz();
     document.getElementById(atolyeDonus).classList.remove("gizli");
   });
   document.querySelectorAll("#zorlukSecim button").forEach(b => b.addEventListener("click", ()=>{
@@ -1908,19 +2169,19 @@ const SES = (function(){
   // ---------- Öğretici: ilk seferde, oyunu durdurmadan, adım adım ----------
   let ogr = null, ogrDom = null;
   const OGR = [
-    {baslik: "Kule kur", metin: "Yolun kenarına dokun: Okçu Kulesi kurulur. Yol kıvrımları en iyi yerdir.",
+    {baslik: "ogr.1b", metin: "ogr.1m",
      hedef: ()=>({harita: [[300, 250]]}), bitti: ()=>kuleler.length >= 1},
-    {baslik: "Bir tane daha", metin: "İkinci kuleyi kur. Alttaki panelden başka kule de seçebilirsin.",
+    {baslik: "ogr.2b", metin: "ogr.2m",
      hedef: ()=>({harita: [[470, 300]]}), bitti: ()=>kuleler.length >= 2},
-    {baslik: "Dalgayı başlat", metin: "Hazırsan Başlat'a bas. Erken başlatmak altın kazandırır.",
+    {baslik: "ogr.3b", metin: "ogr.3m",
      hedef: ()=>({dom: "#cagirBtn"}), bitti: ()=>dalga >= 1},
-    {baslik: "Kale Topu", metin: "Topun düğmesine bas, sonra korsanların ortasına dokun.",
+    {baslik: "ogr.4b", metin: "ogr.4m",
      basla: ()=>yetenek && yetenek.kalan <= 0 && dusmanlar.length >= 3, atla: ()=>dalga >= 3,
      hedef: ()=>({dom: "#yetenekBtn"}), bitti: ()=>yetenek && (yetenek.kalan > 0 || yetenek.hedefleme && toplar.length > 0), azami: 16},
-    {baslik: "Yükselt", metin: "Bir kuleye dokun: yükseltmek hasarı 1,6 katına çıkarır.",
+    {baslik: "ogr.5b", metin: "ogr.5m",
      basla: ()=>araVerildi && dalga >= 1, hedef: ()=>({harita: kuleler.length ? [[kuleler[0].x, kuleler[0].y]] : []}),
      bitti: ()=>!!seciliKule || dalga >= 3},
-    {baslik: "Gelgit yükseliyor", metin: "Kumsaldaki kuleler batacak, kayıklar denizden gelecek. Denizdeki taş kaidelere kur: hiç batmazlar.",
+    {baslik: "ogr.6b", metin: "ogr.6m",
      basla: ()=>dalga >= 3 && araVerildi,
      hedef: ()=>({harita: MENDIREKLER.filter(m => !m.kule).slice(0, 3).map(m => [m.x, m.y - KAIDE_KULE_Y])}),
      bitti: ()=>dalga >= 4}
@@ -1933,8 +2194,8 @@ const SES = (function(){
     const dom = (h && h.dom) ? document.querySelector(h.dom) : null;
     if (ogrDom !== dom){ if (ogrDom) ogrDom.classList.remove("ipucu-hedef"); if (dom) dom.classList.add("ipucu-hedef"); ogrDom = dom; }
     if (!a){ el.classList.add("gizli"); return; }
-    yaz(document.getElementById("ipBaslik"), a.baslik);
-    yaz(document.getElementById("ipMetin"), a.metin);
+    yaz(document.getElementById("ipBaslik"), tx(a.baslik));
+    yaz(document.getElementById("ipMetin"), tx(a.metin));
     el.classList.remove("gizli");
   }
   function ogrGuncelle(dt){
@@ -1968,7 +2229,7 @@ const SES = (function(){
   document.getElementById("ipucuGec").addEventListener("click", (e)=>{ e.stopPropagation(); ogrBitir(); });
   document.getElementById("devamSeferBtn").addEventListener("click", ()=> oyunaGir(kayitOku()));
   document.getElementById("yeniSeferBtn").addEventListener("click", ()=> oyunaGir(null));
-  document.getElementById("hizBtn").addEventListener("click", ()=>{ hizAyarla(oyunHizi === 1 ? 2 : 1); SES.cal("tik"); });
+  document.getElementById("hizBtn").addEventListener("click", ()=>{ hizAyarla(oyunHizi >= 3 ? 1 : oyunHizi + 1); SES.cal("tik"); });
   document.getElementById("sesBtn").addEventListener("click", ()=>{
     SES.hazirla();
     document.getElementById("sesBtn").classList.toggle("kapali", SES.degistir());
@@ -1987,18 +2248,20 @@ const SES = (function(){
     else if (k === "f") document.getElementById("hizBtn").click();
     else if (k === "q") yetenekSec();
     else if (k === "enter"){ e.preventDefault(); dalgayiCagir(); }
-    else if (k === "escape"){
-      kuleMenusuKapat();
-      if (yetenek && yetenek.hedefleme) yetenekSec();
+    else if (k === "u"){ if (seciliKule) KM.kmYukselt.click(); }
+    else {
+      // rakam tuşları fiziksel konuma göre (AZERTY'de de çalışır)
+      const m = /^(Digit|Numpad)([1-9])$/.exec(e.code || "");
+      const n = m ? +m[2] : ((k >= "1" && k <= "9") ? +k : 0);
+      if (n && n <= acikKuleSayisi()){ seciliKuleTipi = n - 1; kuleMenusuKapat(); hudGuncelle(); }
     }
-    else if (k >= "1" && k <= "9" && +k <= acikKuleSayisi()){ seciliKuleTipi = +k - 1; kuleMenusuKapat(); hudGuncelle(); }
   });
 
   let uyariZamanlayici = 0;
-  function uyariGoster(metin, sure){
+  function uyariGoster(metin, sure, tur){
     const u = document.getElementById("uyari");
     u.textContent = metin;
-    u.classList.toggle("gelgit", metin.indexOf("Gelgit") === 0);
+    u.classList.toggle("gelgit", tur === "gelgit");
     u.classList.add("gorunur");
     clearTimeout(uyariZamanlayici);
     uyariZamanlayici = setTimeout(()=>u.classList.remove("gorunur"), sure || 1400);
@@ -2009,7 +2272,7 @@ const SES = (function(){
   const E = {};
   ["hudCan","hudAltin","hudDalga","hudToplamDalga","hudSkor","gelgitAd","gelgitAlt","gelgitSayi",
    "gelgitSaat","suTup","vinyet","hudCombo","hudComboSayi","ytAd","ytAlt","dalgaBilgi","dbBaslik","dbAlt",
-   "dalgaIcerik","cagirBtn","cagirBonus","araCubuk","hudBolge"].forEach(id => E[id] = document.getElementById(id));
+   "dalgaIcerik","cagirBtn","cagirBonus","araCubuk","hudBolge","reisBar","reisAd","reisDolu"].forEach(id => E[id] = document.getElementById(id));
   function yaz(el, v){ v = String(v); if (el._v !== v){ el._v = v; el.textContent = v; } }
   function stil(el, ad, v){ const a = "_s" + ad; if (el[a] !== v){ el[a] = v; el.style.setProperty(ad, v); } }
 
@@ -2027,7 +2290,7 @@ const SES = (function(){
   const dusmanCipleri = [];
   function onizlemeKur(){
     DUSMAN_TIPLERI.forEach((tip)=>{
-      const kutu = document.createElement("span"); kutu.className = "dusman-cip"; kutu.title = tip.ad;
+      const kutu = document.createElement("span"); kutu.className = "dusman-cip"; kutu.dataset.tip = tip.ad; kutu.title = dusmanAdi(tip);
       const cv = document.createElement("canvas"); cv.width = 60; cv.height = 60;
       const c = cv.getContext("2d"), b = T.dusmanKutu(tip), o = Math.min(60 / b.w, 60 / b.h) * 0.95;
       c.translate(30 - (b.w / 2 - b.ax) * o, 30 - (b.h / 2 - b.ay) * o); c.scale(o, o);
@@ -2044,10 +2307,10 @@ const SES = (function(){
     const goster = asama === "oyunda" && araVerildi && !!d && dalga < TOPLAM_DALGA;
     E.dalgaBilgi.classList.toggle("gizli", !goster);
     if (!goster) return;
-    const ad = DALGA_ADI[d.karakter];
-    yaz(E.dbBaslik, "Dalga " + d.n + (ad ? " · " + ad : ""));
+    const ad = dalgaAdi(d.karakter);
+    yaz(E.dbBaslik, tx("d.baslik", d.n, ad));
     const denizVar = d.deniz.length > 0;
-    yaz(E.dbAlt, (d.kestirme ? "Çamur kestirmesinden" : "Uzun yoldan") + (denizVar ? " + denizden" : ""));
+    yaz(E.dbAlt, (d.kestirme ? tx("d.camur") : tx("d.uzun")) + (denizVar ? tx("d.deniz") : ""));
     E.dbAlt.classList.toggle("vurgu", denizVar);
     d.sayim.forEach((n, i)=>{
       stil(dusmanCipleri[i].kutu, "display", n ? "flex" : "none");
@@ -2068,8 +2331,7 @@ const SES = (function(){
     spawnSayac = spawnKuyrugu.length ? spawnKuyrugu[0].bekle : 0;
     denizSayac = denizKuyrugu.length ? denizKuyrugu[0].bekle : 0;
     dalgaAktif = true; araVerildi = false; dalgaSizinti = 0;
-    const ad = DALGA_ADI[d.karakter];
-    uyariGoster("Dalga " + dalga + (ad ? " · " + ad + "!" : " geliyor!"));
+    uyariGoster(tx("d.geliyor", dalga, dalgaAdi(d.karakter)));
     SES.cal("boru");
     onizlemeTazele();
     hudGuncelle();
@@ -2098,11 +2360,11 @@ const SES = (function(){
     if (dalgaSizinti === 0){
       const b = Math.round((8 + etkinDalga(dalga) * 2) * odulCarpani(bolge));
       altin += b; kusursuzSayisi++;
-      yaziEkle(KALE.x, KALE.y - 118, "Kusursuz! +" + b, SR.altin);
-      uyariGoster("Kusursuz dalga! +" + b + " altın");
+      yaziEkle(KALE.x, KALE.y - 118, tx("d.kusursuzYazi", b), SR.altin);
+      uyariGoster(tx("d.kusursuz", b));
       SES.cal("kusursuz");
     } else {
-      uyariGoster("Dalga " + dalga + " bitti · " + dalgaSizinti + " korsan sızdı");
+      uyariGoster(tx("d.bitti", dalga, dalgaSizinti));
     }
     hudGuncelle();
   }
@@ -2123,11 +2385,12 @@ const SES = (function(){
     yaz(E.hudToplamDalga, TOPLAM_DALGA);
     yaz(E.hudSkor, skor);
     const kalan = gelgiteKalanDalga(dalga);
-    yaz(E.gelgitAd, GELGIT_GORUNEN[gelgitIdx]);
-    yaz(E.gelgitAlt, "Değişime " + kalan + " dalga");
+    yaz(E.gelgitAd, tx("g." + gelgitIdx));
+    yaz(E.gelgitAlt, tx("g.kalan", kalan));
     yaz(E.gelgitSayi, kalan);
     stil(E.gelgitSaat, "--dolu", (kalan/harita.gelgit.periyot*360) + "deg");
-    yaz(E.hudBolge, bolge);
+    const bh = tx("hud.bolge", bolge);
+    if (E.hudBolge._h !== bh){ E.hudBolge._h = bh; E.hudBolge.innerHTML = bh; }
     const oran = can / canSiniri();
     stil(E.vinyet, "opacity", oran < 0.35 ? ((1 - oran/0.35) * 0.85).toFixed(2) : "0");
     if (combo > 1){ stil(E.hudCombo, "display", "flex"); yaz(E.hudComboSayi, combo); }
@@ -2161,11 +2424,11 @@ const SES = (function(){
     panel.innerHTML = "";
     KULE_TIPLERI.forEach((k,i)=>{
       const b = document.createElement("button");
-      b.className = "kule-btn"; b.title = k.ad;
+      b.className = "kule-btn"; b.title = kuleAdi(k);
       const ikon = document.createElement("canvas");
       ikon.width = 92; ikon.height = 92;
       const yazi = document.createElement("span");
-      const ad = document.createElement("span"); ad.className = "ad"; ad.textContent = k.ad;
+      const ad = document.createElement("span"); ad.className = "ad"; ad.textContent = kuleAdi(k);
       const fk = document.createElement("span"); fk.className = "fiyat";
       fk.innerHTML = '<svg class="ikon"><use href="#i-altin"/></svg>';
       const f = document.createElement("span"); fk.appendChild(f);
@@ -2173,7 +2436,7 @@ const SES = (function(){
       b.appendChild(ikon); b.appendChild(yazi);
       b.addEventListener("click", (e)=>{ e.stopPropagation(); seciliKuleTipi=i; kuleMenusuKapat(); SES.cal("tik"); hudGuncelle(); });
       panel.appendChild(b);
-      kuleButonlari.push({btn: b, fiyat: f, fiyatKutu: fk, ikon: ikon});
+      kuleButonlari.push({btn: b, fiyat: f, fiyatKutu: fk, ikon: ikon, ad: ad});
     });
     kuleIkonlariCiz();
     kulePaneliTazele();
@@ -2194,15 +2457,15 @@ const SES = (function(){
     const tip = KULE_TIPLERI[seciliKuleTipi];
     const m = mendirekBul(p);
     if (m){                                   // boş kaide: tam fiyat, başka kural yok
-      if (m.kule) return "Kaide dolu!";
-      return (altin < tip.fiyat) ? "Yetersiz altın!" : null;
+      if (m.kule) return tx("y.dolu");
+      return (altin < tip.fiyat) ? tx("y.altin") : null;
     }
     const fiyat = kuleFiyati(tip, alcakKusaktaMi(p.x, p.y));
-    if (denizKusagindaMi(p.x, p.y)) return "Denizde yalnız taş kaidelere kurulur!";
-    if (altin < fiyat) return "Yetersiz altın!";
-    if (yolaYakinMi(p, 34)) return "Yola kule kurulamaz!";
-    if (mendirekBul(p, 48)) return "Kaideye çok yakın!";
-    for (const k of kuleler){ if (mesafe(p,k) < 40) return "Çok yakın!"; }
+    if (denizKusagindaMi(p.x, p.y)) return tx("y.deniz");
+    if (altin < fiyat) return tx("y.altin");
+    if (yolaYakinMi(p, 34)) return tx("y.yol");
+    if (mendirekBul(p, 48)) return tx("y.kaide");
+    for (const k of kuleler){ if (mesafe(p,k) < 40) return tx("y.yakin"); }
     if (p.x<10||p.y<10||p.x>REF_W-10||p.y>REF_H-10) return "";
     return null;
   }
@@ -2275,10 +2538,15 @@ const SES = (function(){
     altin -= fiyat;
     kurulumEfekti(kx, ky);
     SES.cal("kur");
-    if (alcakta) yaziEkle(p.x, p.y-30, "-%" + Math.round(kumsalIndirimi() * 100), "#aef3ea");
+    if (alcakta) yaziEkle(p.x, p.y-30, tx("y.indirim", Math.round(kumsalIndirimi() * 100)), "#aef3ea");
     hudGuncelle();
   }
   canvas.addEventListener("click", haritayaDokun);
+  canvas.addEventListener("contextmenu", (e)=>{
+    e.preventDefault();
+    if (yetenek && yetenek.hedefleme){ yetenekSec(); return; }
+    kuleMenusuKapat();
+  });
   canvas.addEventListener("touchstart", haritayaDokun, {passive:false});
 
   // Kule kartı: oyunu durdurmaz, kulenin yanında açılır. Yükseltince açık kalır.
@@ -2289,32 +2557,45 @@ const SES = (function(){
     seciliKule = null; kartImza = "";
     KM.kuleMenu.classList.add("gizli");
   }
+  const sayiBicim = (x) => String(x).replace(".", DIL === "tr" ? "," : ".");
   function kuleOzelligi(tip){
-    if (tip.tumu) return "Menzildeki herkesi yakar · kayığa ×" + tip.tekneBonus;
-    if (tip.agirBonus) return "En güçlüyü seçer · zırhlıya ×" + tip.agirBonus;
-    if (tip.alan) return "Alan hasarı · kayığa ×" + (tip.tekneBonus || 1);
-    if (tip.yavaslat) return "Yavaşlatır %" + Math.round((1 - tip.yavaslat) * 100);
-    return "Tek hedef · hızlı atış";
+    if (tip.tumu) return tx("oz.tumu", sayiBicim(tip.tekneBonus));
+    if (tip.agirBonus) return tx("oz.agir", sayiBicim(tip.agirBonus));
+    if (tip.alan) return tx("oz.alan", sayiBicim(tip.tekneBonus || 1));
+    if (tip.yavaslat) return tx("oz.yavas", Math.round((1 - tip.yavaslat) * 100));
+    return tx("oz.tek");
   }
+  function kisaSayi(n){ return n >= 10000 ? sayiBicim((n / 1000).toFixed(0)) + "k" : (n >= 1000 ? sayiBicim((n / 1000).toFixed(1)) + "k" : String(Math.round(n))); }
+  const HEDEF_MODLARI = ["ilk", "guclu", "yakin"];
+  KM.kmHedef = document.getElementById("kmHedef"); KM.kmIstat = document.getElementById("kmIstat");
+  HEDEF_MODLARI.forEach(m => {
+    const b = document.createElement("button"); b.dataset.mod = m;
+    b.addEventListener("click", (e)=>{ e.stopPropagation(); if (seciliKule){ seciliKule.hedefMod = m; kartImza = ""; kuleMenusuTazele(); SES.cal("tik"); } });
+    KM.kmHedef.appendChild(b);
+  });
   function kuleMenusuTazele(){
     const k = seciliKule;
     if (!k) return;
     const yf = yukseltmeFiyati(k), ust = k.seviye >= seviyeSiniri();
-    const imza = [k.seviye, k.batik, altin >= yf, ust, nimetler.length].join("|");
+    yaz(KM.kmIstat, tx("k.istat", kisaSayi(k.toplamHasar || 0), k.olen || 0));
+    const imza = [k.seviye, k.batik, altin >= yf, ust, nimetler.length, k.hedefMod, DIL].join("|");
     if (imza === kartImza) return;
     kartImza = imza;
-    KM.kmBaslik.innerHTML = k.tip.ad + "<small>Seviye " + k.seviye + (k.mendirek ? " · kaide" : "") + "</small>";
+    KM.kmBaslik.innerHTML = kuleAdi(k.tip) + "<small>" + tx("k.seviye") + " " + k.seviye + (k.mendirek ? " · " + tx("k.kaide") : "") + "</small>";
+    stil(KM.kmHedef, "display", k.tip.tumu ? "none" : "");
+    KM.kmHedef.querySelectorAll("button").forEach(b => { b.textContent = tx("hm." + b.dataset.mod); b.classList.toggle("secili", b.dataset.mod === kuleHedefModu(k)); });
+    KM.kmHedef.title = tx("k.hedef");
     const ok = (a, b) => ust ? Math.round(a) : Math.round(a) + " <i>→ " + Math.round(b) + "</i>";
     const hc = kuleHasari(k) / k.hasar, mc = kuleMenzili(k) / k.menzil, ms = k.seviye < 3 ? 1.15 : 1.05;
     KM.kmBilgi.innerHTML =
-      (k.batik ? "<p>Sular altında, susmuş. Gelgit çekilince kendiliğinden geri gelir.</p>" : "") +
-      "<dt>Hasar</dt><dd>" + ok(k.hasar * hc, k.hasar * hc * 1.6) + "</dd>" +
-      "<dt>Menzil</dt><dd>" + ok(k.menzil * mc, k.menzil * mc * ms) + "</dd>" +
-      "<dt>Özellik</dt><dd>" + kuleOzelligi(k.tip) + "</dd>";
+      (k.batik ? "<p>" + tx("k.batik") + "</p>" : "") +
+      "<dt>" + tx("k.hasar") + "</dt><dd>" + ok(k.hasar * hc, k.hasar * hc * 1.6) + "</dd>" +
+      "<dt>" + tx("k.menzil") + "</dt><dd>" + ok(k.menzil * mc, k.menzil * mc * ms) + "</dd>" +
+      "<dt>" + tx("k.ozellik") + "</dt><dd>" + kuleOzelligi(k.tip) + "</dd>";
     const para = '<svg class="ikon"><use href="#i-altin"/></svg>';
-    KM.kmYukselt.innerHTML = ust ? "Seviye sınırı" : "Yükselt " + para + yf;
+    KM.kmYukselt.innerHTML = ust ? tx("k.sinir") : tx("k.yukselt") + " " + para + yf;
     KM.kmYukselt.disabled = ust || k.batik || altin < yf;
-    KM.kmSat.innerHTML = "Sat " + para + Math.floor(k.yatirim * 0.6);
+    KM.kmSat.innerHTML = tx("k.sat") + " " + para + Math.floor(k.yatirim * 0.6);
     KM.kmSat.disabled = !!k.batik;      // §4: sular altındaki kule satılamaz, yükseltilemez
   }
   function kuleMenusuAc(){
@@ -2509,7 +2790,7 @@ const SES = (function(){
       if (d.yavaslamaSayac>0){ d.yavaslamaSayac-=dt; if (d.yavaslamaSayac<=0) d.yavaslama=1; }
       if (d.yanma > 0){                      // Rum Ateşi: tutuşan düşman yarım saniyede bir yanar
         d.yanma -= dt; d.yanmaSayac = (d.yanmaSayac || 0) + dt;
-        if (d.yanmaSayac >= 0.5){ d.yanmaSayac = 0; hasarVer(d, d.yanmaDps * 0.5, 0, true); if (d.olu) continue; }
+        if (d.yanmaSayac >= 0.5){ d.yanmaSayac = 0; hasarVer(d, d.yanmaDps * 0.5, 0, true, d.yanmaKule); if (d.olu) continue; }
       }
       d.mesafe += d.hiz * d.yavaslama * dt;
       const n = rotaNoktasi(d.rota, d.mesafe);
@@ -2541,11 +2822,13 @@ const SES = (function(){
       if (k.batik){ if (!nimet("batik")) continue; k.sayac += dt * 0.5; }   // ganimet: yarı hızda ateş
       const mz = kuleMenzili(k);
       let hedef=null, enIyi=-9;
+      const mod = kuleHedefModu(k);
       for (const d of dusmanlar){
-        if (mesafe(k,d) > mz) continue;
-        let puan = d.mesafe / d.rota.toplam;
-        if (k.tip.hedef === "guclu") puan += d.can;                 // balista: en dayanıklı düşman
-        if (k.tip.yavaslat && d.yavaslamaSayac > 0.4) puan -= 2;
+        const md = mesafe(k,d);
+        if (md > mz) continue;
+        // ilk: kaleye en yakın · güçlü: en çok canı olan · yakın: kuleye en yakın
+        let puan = mod === "guclu" ? d.can : (mod === "yakin" ? -md : d.mesafe / d.rota.toplam);
+        if (k.tip.yavaslat && d.yavaslamaSayac > 0.4) puan -= (mod === "guclu" ? 1e6 : (mod === "yakin" ? 1e4 : 2));
         if (puan > enIyi){ enIyi = puan; hedef = d; }
       }
       if (hedef && k.tip.tumu){
@@ -2557,8 +2840,8 @@ const SES = (function(){
           for (let j = dusmanlar.length-1; j >= 0; j--){
             const d = dusmanlar[j];
             if (mesafe(k,d) > mz) continue;
-            d.yanma = k.tip.yanma; d.yanmaDps = Math.max(d.yanmaDps || 0, hs);
-            hasarVer(d, hs * (d.tip.deniz ? (k.tip.tekneBonus || 1) : 1), 0, true);
+            d.yanma = k.tip.yanma; d.yanmaDps = Math.max(d.yanmaDps || 0, hs); d.yanmaKule = k;
+            hasarVer(d, hs * (d.tip.deniz ? (k.tip.tekneBonus || 1) : 1), 0, true, k);
           }
           const uz = Math.hypot(hedef.x - ax, hedef.y - ay) || 1;
           for (let i = 0; i < 3; i++){
@@ -2576,7 +2859,7 @@ const SES = (function(){
           // mermi namludan (kulenin üst kısmından) çıkar; isabet mantığı M1 ile aynı
           const cikY = k.y - (k.tip.mermi === "ok" ? 24 : 18);
           const uz0 = Math.hypot(hedef.x - k.x, hedef.y - cikY) || 1;
-          mermiler.push({x:k.x, y:cikY, ox:k.x, oy:cikY, hedef:hedef, hiz:k.tip.mermiHizi||320,
+          mermiler.push({kule:k, x:k.x, y:cikY, ox:k.x, oy:cikY, hedef:hedef, hiz:k.tip.mermiHizi||320,
                          hasar:kuleHasari(k), renk:k.tip.renk||P.mermi, tur:k.tip.mermi,
                          alan:(k.tip.alan||0) * (1 + 0.25 * nimet("mancinik")), yavaslat:k.tip.yavaslat||0,
                          tekneBonus:k.tip.tekneBonus||1, agirBonus:k.tip.agirBonus||1, uz0:uz0, vx:0, vy:0});
@@ -2624,8 +2907,9 @@ const SES = (function(){
     }
   }
 
-  function hasarVer(h, hasar, yavaslat, sessiz){
+  function hasarVer(h, hasar, yavaslat, sessiz, kaynak){
     if (h.olu) return;
+    if (kaynak) kaynak.toplamHasar = (kaynak.toplamHasar || 0) + Math.max(0, Math.min(hasar, h.can));
     h.can -= hasar;
     if (!sessiz) h.vurulmaZaman = 0.14;
     if (yavaslat){
@@ -2641,13 +2925,14 @@ const SES = (function(){
         altin += kazanc; skor += Math.round(10*combo);
         combo = Math.min(5, combo+1); comboZaman = 3;
         oldurulen++;
-        if (h.tip.reis){ skor += 300; sanKazan(4); ekranSarsinti = Math.min(1, ekranSarsinti + 0.6); uyariGoster(h.tip.ad + " batırıldı!"); }
+        if (kaynak) kaynak.olen = (kaynak.olen || 0) + 1;
+        if (h.tip.reis){ skor += 300; sanKazan(4); ekranSarsinti = Math.min(1, ekranSarsinti + 0.6); uyariGoster(tx("reis.dustu", dusmanAdi(h.tip)), 2000); }
         olumEfekti(h);
         SES.cal(h.tip.deniz ? "batis" : "olum");
         yaziEkle(h.x,h.y-8,"+"+kazanc, SR.altin);
         hudGuncelle();
       }
-    } else if (!sessiz){
+    } else if (!sessiz && hasar >= h.maxCan * 0.12){       // küçük vuruşların sayısı gösterilmez (ekran kalabalığı)
       yaziEkle(h.x, h.y-18, "-"+Math.round(hasar), "#ffd2c4");
     }
   }
@@ -2656,7 +2941,7 @@ const SES = (function(){
     for (const h of hedefler){
       // §6: Mancınık teknelere bonus hasar verir
       hasarVer(h, m.hasar * ((m.tekneBonus && h.tip.deniz) ? m.tekneBonus : 1) *
-                  ((m.agirBonus && h.tip.agir) ? m.agirBonus : 1), m.yavaslat);
+                  ((m.agirBonus && h.tip.agir) ? m.agirBonus : 1), m.yavaslat, false, m.kule);
     }
     vurusEfekti(m, d);
     SES.cal(m.tur === "gulle" || m.tur === "mizrak" ? "gulleVur" : (m.tur === "zift" ? "ziftVur" : "okVur"));
@@ -3415,6 +3700,10 @@ const SES = (function(){
     }
     c.save();
     c.translate(k.x, k.y + 13); c.scale(o, o); c.translate(0, -13);
+    if (k.flas > 0 && !k.tip.tumu){                      // atışta kısa geri tepme
+      const g = (k.flas / 0.12) * 2.4;
+      c.translate(-Math.cos(k.aci) * g, -Math.sin(k.aci) * g * 0.6);
+    }
     if (k.batik) c.globalAlpha = 0.5;   // §10: sular altı kule %50 opaklık
     spriteKoy(c, s, 0, 0);
     if (!k.batik && T.kuleCanliCiz){ try { T.kuleCanliCiz(c, k, t); } catch(e){} }
@@ -3616,7 +3905,7 @@ const SES = (function(){
 
   function yazilariCiz(c){
     c.textAlign = "center"; c.textBaseline = "middle"; c.lineJoin = "round";
-    c.font = "800 15px system-ui,-apple-system,Segoe UI,Roboto,sans-serif";
+    c.font = "17px 'Lilita One',system-ui,-apple-system,Segoe UI,Roboto,sans-serif";
     for (const y of yaziEfektleri){
       const o = y.yas / y.omur;
       const s = y.yas < 0.12 ? 0.6 + (y.yas / 0.12) * 0.55 : 1.15 - Math.min(0.15, (y.yas - 0.12) * 0.8);
@@ -3816,6 +4105,64 @@ const SES = (function(){
     }
   }
 
+  // ---------- Dil ----------
+  function dilUygula(){
+    document.documentElement.lang = DIL;
+    document.title = tx("oyun.ad");
+    document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = tx(el.dataset.i18n); });
+    document.querySelectorAll("[data-i18n-title]").forEach(el => { const v = tx(el.dataset.i18nTitle); el.title = v; el.setAttribute("aria-label", v); });
+    document.querySelectorAll("[data-dil]").forEach(b => b.classList.toggle("secili", b.dataset.dil === DIL));
+    kuleButonlari.forEach((b, i) => { const ad = kuleAdi(KULE_TIPLERI[i]); b.ad.textContent = ad; b.btn.title = ad; });
+    dusmanCipleri.forEach(c => { const tip = DUSMAN_TIPLERI.find(x => x.ad === c.kutu.dataset.tip); if (tip) c.kutu.title = dusmanAdi(tip); });
+    menuEnIyiYaz(); hudGuncelle(); yetenekMetniGuncelle(); onizlemeTazele();
+    kartImza = ""; kuleMenusuTazele();
+  }
+  function dilSec(d){
+    if (d !== "tr" && d !== "en") return;
+    DIL = d; try { localStorage.setItem(DIL_KAYIT, d); } catch(e){}
+    dilUygula(); SES.hazirla(); SES.cal("tik");
+  }
+  document.querySelectorAll("[data-dil]").forEach(b => b.addEventListener("click", (e)=>{ e.stopPropagation(); dilSec(b.dataset.dil); }));
+
+  // ---------- Reis can çubuğu (ekranın üstünde) ----------
+  function reisBarGuncelle(){
+    let r = null;
+    if (asama === "oyunda") for (const d of dusmanlar) if (d.tip.reis && d.mesafe > 0 && (!r || d.can / d.maxCan < r.can / r.maxCan)) r = d;
+    const goster = !!r;
+    if (E.reisBar._g !== goster){ E.reisBar._g = goster; E.reisBar.classList.toggle("gizli", !goster); }
+    if (r){ yaz(E.reisAd, dusmanAdi(r.tip)); stil(E.reisDolu, "transform", "scaleX(" + Math.max(0, r.can / r.maxCan).toFixed(3) + ")"); }
+  }
+
+  // ---------- CrazyGames SDK: yalnız CrazyGames'te yüklenir (GitHub sürümü dış betik yüklemez) ----------
+  const CG = {sdk: null, oynuyor: false};
+  (function(){
+    let cg = false;
+    try { cg = /(^|\.)crazygames\./i.test(location.hostname) || /[?&]cg=1/.test(location.search); } catch(e){}
+    if (!cg) return;
+    const sc = document.createElement("script");
+    sc.src = "https://sdk.crazygames.com/crazygames-sdk-v3.js";
+    sc.onload = function(){
+      const S = window.CrazyGames && window.CrazyGames.SDK;
+      if (!S || !S.init) return;
+      Promise.resolve(S.init()).then(function(){
+        CG.sdk = S;
+        let kayitli = null;
+        try { kayitli = localStorage.getItem(DIL_KAYIT); } catch(e){}
+        let loc = null;
+        try { loc = S.user && S.user.systemInfo && S.user.systemInfo.locale; } catch(e){}
+        if (!kayitli && loc){ DIL = String(loc).toLowerCase().indexOf("tr") === 0 ? "tr" : "en"; dilUygula(); }
+      }).catch(function(){});
+    };
+    document.head.appendChild(sc);
+  })();
+  function cgDurum(){
+    if (!CG.sdk) return;
+    const oyn = asama === "oyunda" && !duraklatildi && !document.hidden;
+    if (oyn === CG.oynuyor) return;
+    CG.oynuyor = oyn;
+    try { if (oyn) CG.sdk.game.gameplayStart(); else CG.sdk.game.gameplayStop(); } catch(e){}
+  }
+
   // ---------- Döngü: sabit adım + enterpolasyon ----------
   let sonZaman = performance.now(), birikim = 0;
   const DURUM = {asama:"menu", dalga:0, can:BASLANGIC_CAN, skor:0, altin:BASLANGIC_ALTIN,
@@ -3837,6 +4184,8 @@ const SES = (function(){
     while (birikim >= ADIM - 1e-9 && n < 12){ oncekiKaydet(); guncelle(ADIM); birikim -= ADIM; n++; }
     if (n === 12) birikim = 0;
     onizlemeSayac();
+    reisBarGuncelle();
+    cgDurum();
     if (birikim < 0) birikim = 0;
     ciz(Math.min(1, birikim / ADIM));
     stil(E.suTup, "height", Math.round(8 + suSeviyesi * 88) + "%");
@@ -3853,7 +4202,7 @@ const SES = (function(){
   asama="menu";
   menuEnIyiYaz();
   document.getElementById("surum").textContent = SURUM;
-  if (T.ad) { document.getElementById("menuBaslik").textContent = T.ad; document.title = T.ad; }
+  dilUygula();
   requestAnimationFrame(dongu);
 
   // Robot test ve teşhis kancaları (M1 ile aynı + sahneDoldur)
