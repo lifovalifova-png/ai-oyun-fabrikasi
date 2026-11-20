@@ -1204,7 +1204,7 @@ const TEMA = (function(){
    Her sesin kendi asgari tekrar aralığı vardır: kalabalık dalgada üst üste binmez.
    ============================================================ */
 // Her yayında bir artırılır; menüde görünür (arkadaşlar hangi sürümü oynadığını görsün)
-const SURUM = "1.5 · 20.11.2026";
+const SURUM = "1.6 · 20.11.2026";
 const SES = (function(){
   let ac = null, ana = null, gurultu = null, kapali = false;
   const son = {};
@@ -2825,6 +2825,8 @@ const SES = (function(){
     for (const k of kuleler){
       k.sayac -= dt;
       if (k.flas>0) k.flas-=dt;
+      if (k.vurus>0) k.vurus = Math.max(0, k.vurus - dt);
+      if (k.jet>0) k.jet = Math.max(0, k.jet - dt);
       if (k.dogus>0) k.dogus = Math.max(0, k.dogus - dt);
       if (k.parlama>0) k.parlama = Math.max(0, k.parlama - dt);
       if (k.batik){ if (!nimet("batik")) continue; k.sayac += dt * 0.5; }   // ganimet: yarı hızda ateş
@@ -2844,7 +2846,7 @@ const SES = (function(){
         k.aci = Math.atan2(hedef.y-(k.y-17), hedef.x-k.x);
         if (k.sayac<=0){
           k.sayac = 1/k.tip.atisHizi; k.flas = 0.12;
-          const hs = kuleHasari(k), ax = k.x + Math.cos(k.aci)*28, ay = k.y - 17 + Math.sin(k.aci)*28;
+          const nm = kuleNamlu(k), hs = kuleHasari(k), ax = nm.x, ay = nm.y;
           for (let j = dusmanlar.length-1; j >= 0; j--){
             const d = dusmanlar[j];
             if (mesafe(k,d) > mz) continue;
@@ -2852,10 +2854,12 @@ const SES = (function(){
             hasarVer(d, hs * (d.tip.deniz ? (k.tip.tekneBonus || 1) : 1), 0, true, k);
           }
           const uz = Math.hypot(hedef.x - ax, hedef.y - ay) || 1;
-          for (let i = 0; i < 3; i++){
+          atisEfekti(k, nm, hedef);
+          k.jet = 0.3; k.jetX = hedef.x; k.jetY = hedef.y - 6;
+          for (let i = 0; i < (nm.gorsel ? 7 : 3); i++){
             const hz = rastgele(0.8, 1.15) * Math.min(260, uz / 0.3);
             parcacikEkle("alev", ax, ay, (hedef.x - ax) / uz * hz + rastgele(-26, 26), (hedef.y - ay) / uz * hz + rastgele(-26, 26),
-                         rastgele(0.26, 0.4), rastgele(4, 7), null);
+                         rastgele(0.26, 0.4) + i * 0.02, rastgele(4, 7) + (nm.gorsel ? 2 : 0), null);
           }
           SES.cal("alev");
         }
@@ -2865,15 +2869,13 @@ const SES = (function(){
           k.sayac = 1/(k.tip.atisHizi||1);
           k.flas = 0.12;
           // mermi namludan (kulenin üst kısmından) çıkar; isabet mantığı M1 ile aynı
-          const cikY = k.y - (k.tip.mermi === "ok" ? 24 : 18);
-          const uz0 = Math.hypot(hedef.x - k.x, hedef.y - cikY) || 1;
-          mermiler.push({kule:k, x:k.x, y:cikY, ox:k.x, oy:cikY, hedef:hedef, hiz:k.tip.mermiHizi||320,
+          const nm = kuleNamlu(k), cikX = nm.x, cikY = nm.y;
+          const uz0 = Math.hypot(hedef.x - cikX, hedef.y - cikY) || 1;
+          atisEfekti(k, nm, hedef);
+          mermiler.push({kule:k, x:cikX, y:cikY, ox:cikX, oy:cikY, hedef:hedef, hiz:k.tip.mermiHizi||320,
                          hasar:kuleHasari(k), renk:k.tip.renk||P.mermi, tur:k.tip.mermi,
                          alan:(k.tip.alan||0) * (1 + 0.25 * nimet("mancinik")), yavaslat:k.tip.yavaslat||0,
                          tekneBonus:k.tip.tekneBonus||1, agirBonus:k.tip.agirBonus||1, uz0:uz0, vx:0, vy:0});
-          if (k.tip.mermi === "gulle"){
-            for (let i=0;i<3;i++) parcacikEkle("toz", k.x + rastgele(-14,14), k.y + 10, rastgele(-20,20), -6, 0.5, 6, null);
-          }
           SES.cal(k.tip.mermi === "gulle" ? "gulleAt" : (k.tip.mermi === "zift" ? "ziftAt" : (k.tip.mermi === "mizrak" ? "mizrakAt" : "ok")));
         }
       }
@@ -3667,11 +3669,12 @@ const SES = (function(){
   const ACI_ADIM = 32;
   // Çizim görselleri (Nano Banana): tip başına ad, hedef boy ve dönme (yöne göre aynalama)
   const KULE_GORSEL = [
-    {ad:"okcu",     en:50, boy:76, ayna:false},
-    {ad:"mancinik", en:76, boy:72, ayna:true},
-    {ad:"zift",     en:68, boy:70, ayna:false},
-    {ad:"rum",      en:72, boy:72, ayna:true},
-    {ad:"balista",  en:76, boy:74, ayna:true}
+    // namlu: görsel kutusunda (0..1) merminin/alevin çıktığı nokta, sağa bakarken; seviye başına
+    {ad:"okcu",     en:38, boy:58, ayna:false, namlu:[[0.5,0.13],[0.5,0.13],[0.5,0.14]]},
+    {ad:"mancinik", en:57, boy:54, ayna:true,  namlu:[[0.3,0.08],[0.3,0.08],[0.3,0.08]]},
+    {ad:"zift",     en:51, boy:52, ayna:false, namlu:[[0.5,0.18],[0.5,0.2],[0.5,0.2]]},
+    {ad:"rum",      en:54, boy:54, ayna:true,  namlu:[[0.95,0.23],[0.95,0.23],[0.88,0.37]]},
+    {ad:"balista",  en:57, boy:56, ayna:true,  namlu:[[0.8,0.27],[0.8,0.3],[0.8,0.3]]}
   ];
   const GORSEL = {};
   (function gorselleriYukle(){
@@ -3700,8 +3703,46 @@ const SES = (function(){
       if (ters) c.scale(-1, 1);
       c.drawImage(im, -w / 2, alt - h, w, h);
     });
-    s.gorsel = true;
+    s.gorsel = true; s.gw = w; s.gh = h; s.alt = alt;
     return s;
+  }
+  // Kulenin dünya koordinatında namlu noktası (görsel varsa görselden, yoksa eski değer)
+  function kuleNamlu(k){
+    const tipIdx = KULE_TIPLERI.indexOf(k.tip), s = kuleSpriteAl(k);
+    if (s.gorsel){
+      const n = KULE_GORSEL[tipIdx].namlu[Math.min(3, k.seviye || 1) - 1];
+      const ters = KULE_GORSEL[tipIdx].ayna && Math.cos(k.aci) < -0.05;
+      return {x: k.x + (n[0] - 0.5) * s.gw * (ters ? -1 : 1), y: k.y + s.alt - s.gh + n[1] * s.gh, gorsel: true};
+    }
+    if (k.tip.tumu) return {x: k.x + Math.cos(k.aci) * 28, y: k.y - 17 + Math.sin(k.aci) * 28};
+    return {x: k.x, y: k.y - (k.tip.mermi === "ok" ? 24 : 18)};
+  }
+  // Atış anı: tipe göre namlu parlaması, toz, kıvılcım, duman
+  function atisEfekti(k, n, hedef){
+    const dx = hedef.x - n.x, dy = hedef.y - n.y, u = Math.hypot(dx, dy) || 1, yx = dx / u, yy = dy / u;
+    k.vurus = 0.24;
+    const m = k.tip.tumu ? "alev" : k.tip.mermi;
+    if (m === "alev"){
+      parcacikEkle("parlama", n.x, n.y, 0, 0, 0.18, 16, "#ffd27a");
+      for (let i = 0; i < 4; i++) parcacikEkle("kivilcim", n.x, n.y, yx * rastgele(120, 220) + rastgele(-50, 50), yy * rastgele(120, 220) + rastgele(-60, 20), rastgele(0.25, 0.45), 1.6, "#ffb15a");
+      parcacikEkle("duman", n.x, n.y - 4, rastgele(-8, 8), -22, 0.8, 6, null);
+    } else if (m === "gulle"){
+      parcacikEkle("parlama", n.x, n.y, 0, 0, 0.18, 18, "#fff1c9");
+      for (let i = 0; i < 6; i++){ const a = i / 6 * TAM; parcacikEkle("toz", k.x + Math.cos(a) * 16, k.y + 12 + Math.sin(a) * 6, Math.cos(a) * 40, Math.sin(a) * 14 - 8, 0.6, rastgele(5, 8), null); }
+      parcacikEkle("halka", k.x, k.y + 14, 0, 0, 0.4, 40, "rgba(232,215,174,.9)");
+      for (let i = 0; i < 3; i++) parcacikEkle("parca", n.x, n.y, rastgele(-40, 40), rastgele(-120, -60), 0.5, 2.4, "#8a5a32");
+    } else if (m === "zift"){
+      parcacikEkle("duman", n.x, n.y, rastgele(-6, 6), -30, 0.9, 7, null);
+      parcacikEkle("duman", n.x + 6, n.y + 2, rastgele(-6, 6), -24, 0.8, 5, null);
+      for (let i = 0; i < 5; i++) parcacikEkle("kivilcim", n.x + rastgele(-8, 8), n.y, rastgele(-50, 50), rastgele(-150, -80), rastgele(0.3, 0.5), 2.2, "#2a2420");
+    } else if (m === "mizrak"){
+      parcacikEkle("parlama", n.x, n.y, 0, 0, 0.16, 16, "#fff6dd");
+      for (let i = 0; i < 4; i++) parcacikEkle("kivilcim", n.x, n.y, -yx * rastgele(80, 150) + rastgele(-40, 40), -yy * rastgele(80, 150) + rastgele(-40, 40), 0.22, 1.4, "#f4fbf6");
+      for (let i = 0; i < 3; i++) parcacikEkle("toz", k.x + rastgele(-14, 14), k.y + 12, -yx * 30 + rastgele(-15, 15), -6, 0.5, 5, null);
+    } else {                                   // ok
+      parcacikEkle("parlama", n.x, n.y, 0, 0, 0.12, 10, "#fff6dd");
+      parcacikEkle("kivilcim", n.x, n.y, yx * 160, yy * 160, 0.12, 1.2, "#f4fbf6");
+    }
   }
   function kuleSpriteAl(k){
     const tipIdx = KULE_TIPLERI.indexOf(k.tip);
@@ -3752,7 +3793,12 @@ const SES = (function(){
       o = p < 0.65 ? (p / 0.65) * 1.15 : 1.15 - ((p - 0.65) / 0.35) * 0.15;
     }
     c.save();
-    c.translate(k.x, k.y + 13); c.scale(o, o); c.translate(0, -13);
+    c.translate(k.x, k.y + 13); c.scale(o, o);
+    if (k.vurus > 0){                                       // atışta ezil-esne (tabandan)
+      const f = k.vurus / 0.24, e = Math.sin(f * PI) * (k.tip.mermi === "gulle" ? 0.13 : 0.08);
+      c.scale(1 + e * 0.7, 1 - e);
+    }
+    c.translate(0, -13);
     if (k.flas > 0 && !k.tip.tumu){                      // atışta kısa geri tepme
       const g = (k.flas / 0.12) * 2.4;
       c.translate(-Math.cos(k.aci) * g, -Math.sin(k.aci) * g * 0.6);
@@ -3760,6 +3806,13 @@ const SES = (function(){
     if (k.batik) c.globalAlpha = 0.5;   // §10: sular altı kule %50 opaklık
     spriteKoy(c, s, 0, 0);
     if (!k.batik && !s.gorsel && T.kuleCanliCiz){ try { T.kuleCanliCiz(c, k, t); } catch(e){} }
+    if (!k.batik && s.gorsel && k.tip.tumu){                // görselli Rum Ateşi: ağızda titrek pilot alev
+      const n = kuleNamlu(k), tit = 0.7 + Math.sin(t * 17 + k.x) * 0.3;
+      c.save(); c.globalCompositeOperation = "lighter";
+      c.fillStyle = "rgba(255,150,50,.7)"; c.beginPath(); c.arc(n.x - k.x, n.y - k.y, 3 * tit + 1.5, 0, TAM); c.fill();
+      c.fillStyle = "rgba(255,235,160,.9)"; c.beginPath(); c.arc(n.x - k.x, n.y - k.y, 1.5 * tit + 0.6, 0, TAM); c.fill();
+      c.restore();
+    }
     for (let i = 0, n = k.seviye - 3; i < n; i++){            // 3. seviyenin üstü: altın baklava
       const px = (i - (n - 1) / 2) * 9, py = s.gorsel ? -s.ay - 2 : -62;
       c.beginPath(); c.moveTo(px, py - 4.5); c.lineTo(px + 3.6, py); c.lineTo(px, py + 4.5); c.lineTo(px - 3.6, py); c.closePath();
@@ -3772,7 +3825,33 @@ const SES = (function(){
       c.beginPath(); c.ellipse(0, -8, 24, 34, 0, 0, TAM); c.fill();
     }
     c.restore();
+    if (k.jet > 0 && !k.batik) alevJetiCiz(c, k, t);
     if (k.batik) batikDalgacikCiz(c, k, t);
+  }
+
+  // Rum Ateşi püskürtmesi: namludan hedefe sivrilen, titreyen alev dili
+  function alevJetiCiz(c, k, t){
+    const n = kuleNamlu(k), f = k.jet / 0.3;
+    const dx = k.jetX - n.x, dy = k.jetY - n.y, u = Math.hypot(dx, dy) || 1;
+    const boy = u * Math.min(1, (1 - f) * 4 + 0.35), nx = -dy / u, ny = dx / u, ex = dx / u, ey = dy / u;
+    c.save(); c.globalCompositeOperation = "lighter";
+    for (let kat = 0; kat < 2; kat++){
+      const gen = (kat ? 4 : 9) * (0.6 + f * 0.6);
+      c.globalAlpha = (kat ? 0.9 : 0.55) * Math.min(1, f * 2.2);
+      c.fillStyle = kat ? "#ffe9a8" : "#ff8a3c";
+      c.beginPath(); c.moveTo(n.x, n.y);
+      const adim = 8;
+      for (let i = 1; i <= adim; i++){
+        const q = i / adim, w = gen * Math.sin(q * PI * 0.9 + 0.15) + Math.sin(t * 40 + i * 2 + k.x) * 1.5;
+        c.lineTo(n.x + ex * boy * q + nx * w, n.y + ey * boy * q + ny * w);
+      }
+      for (let i = adim; i >= 1; i--){
+        const q = i / adim, w = gen * Math.sin(q * PI * 0.9 + 0.15) + Math.sin(t * 37 + i * 3 + k.y) * 1.5;
+        c.lineTo(n.x + ex * boy * q - nx * w, n.y + ey * boy * q - ny * w);
+      }
+      c.closePath(); c.fill();
+    }
+    c.restore();
   }
 
   // §10: sular altı kule — %50 opaklık + dairesel dalgacık halkaları
