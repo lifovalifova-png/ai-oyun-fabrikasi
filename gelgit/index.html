@@ -155,6 +155,7 @@
   #hizBtn{width:auto;border-radius:999px;padding:0 12px;font-weight:800;font-size:14px;
           font-variant-numeric:tabular-nums;}
   #sesBtn.kapali .ses-dalga{display:none;}
+  #sesBtn.muziksiz{opacity:.62;}
   #sesBtn:not(.kapali) .ses-carpi{display:none;}
 
   /* ---------- Sıradaki dalga + erken çağırma ---------- */
@@ -499,7 +500,8 @@ const METIN = {
     "hud.can": "Can", "hud.altin": "Altın", "hud.dalga": "Dalga", "hud.bolgeT": "Bölge", "hud.gelgit": "Gelgit", "hud.skor": "Skor",
     "hud.bolge": (b) => b + "<small>. bölge</small>",
     "hud.seri": "Seri ×",
-    "hud.duraklat": "Duraklat (Boşluk)", "hud.hiz": "Oyun hızı (F)", "hud.ses": "Ses (M)",
+    "hud.duraklat": "Duraklat (Boşluk)", "hud.hiz": "Oyun hızı (F)", "hud.ses": "Ses (M): müzik / efekt / kapalı",
+    "ses.acik": "Müzik ve sesler açık", "ses.muziksiz": "Müzik kapalı, efektler açık", "ses.kapali": "Ses kapalı",
     "g.0": "Alçak su", "g.1": "Su yükseliyor", "g.2": "Yüksek su", "g.3": "Su çekiliyor",
     "g.kalan": (n) => n === 1 ? "Sonraki dalgada değişir" : "Değişime " + n + " dalga",
     "g.yukseliyor": "Gelgit yükseliyor!", "g.cekiliyor": "Gelgit çekiliyor!",
@@ -599,7 +601,8 @@ const METIN = {
     "hud.can": "Lives", "hud.altin": "Gold", "hud.dalga": "Wave", "hud.bolgeT": "Region", "hud.gelgit": "Tide", "hud.skor": "Score",
     "hud.bolge": (b) => "<small>Region </small>" + b,
     "hud.seri": "Combo ×",
-    "hud.duraklat": "Pause (Space)", "hud.hiz": "Game speed (F)", "hud.ses": "Sound (M)",
+    "hud.duraklat": "Pause (Space)", "hud.hiz": "Game speed (F)", "hud.ses": "Sound (M): music / effects / off",
+    "ses.acik": "Music and sound on", "ses.muziksiz": "Music off, effects on", "ses.kapali": "Sound off",
     "g.0": "Low tide", "g.1": "Tide rising", "g.2": "High tide", "g.3": "Tide falling",
     "g.kalan": (n) => n === 1 ? "Turns next wave" : "Turns in " + n + " waves",
     "g.yukseliyor": "The tide is coming in!", "g.cekiliyor": "The tide is going out!",
@@ -1242,11 +1245,11 @@ function depoYaz(k, v){
   localStorage.setItem(k, v);
   try { if (window.__cgVeri) window.__cgVeri.setItem(k, v); } catch(e){}
 }
-const SURUM = "1.9.4 · 21.11.2026";
+const SURUM = "1.10 · 21.11.2026";
 const SES = (function(){
-  let ac = null, ana = null, gurultu = null, kapali = false;
+  let ac = null, ana = null, gurultu = null, kapali = false, muzikKapali = false, muzikG = null;
   const son = {};
-  try { kapali = localStorage.getItem("gelgitKalesi.ses") === "0"; } catch(e){}
+  try { kapali = localStorage.getItem("gelgitKalesi.ses") === "0"; muzikKapali = localStorage.getItem("gelgitKalesi.muzik") === "0"; } catch(e){}
 
   function hazirla(){
     if (ac){ if (ac.state === "suspended") ac.resume(); return; }
@@ -1268,7 +1271,132 @@ const SES = (function(){
       const lfoG = ac.createGain(); lfoG.gain.value = 0.018;
       lfo.connect(lfoG); lfoG.connect(g.gain);
       k.connect(f); f.connect(g); g.connect(ana); k.start(); lfo.start();
+      muzikG = ac.createGain(); muzikG.gain.value = 0; muzikG.connect(ana);
+      muzikMod = null;                                   // bir sonraki karede müzik yumuşakça açılır
+      setInterval(muzikZamanla, 90);
     } catch(e){ ac = null; }
+  }
+
+  /* ---------- Müzik: dosyasız, kodla üretilir ----------
+     Her tema bir makam/dizi, tempo ve çalgı karışımı. Ezgi 8 ölçülük sabit bir tohumdan üretilir (tekrarlanır,
+     akılda kalır). Çalgılar: telli (ud/saz benzeri koparma), uzun ses (pad), bas, darbuka (düm/tek). */
+  const MAKAM = {
+    hicaz: [0, 1, 4, 5, 7, 8, 10],          // Ege/Akdeniz rengi
+    kurdi: [0, 1, 3, 5, 7, 8, 10],          // hüzünlü (gece)
+    rast:  [0, 2, 4, 5, 7, 9, 10]           // aydınlık (gün batımı)
+  };
+  const TEMA_MUZIK = {
+    menu:      {makam: "rast",  kok: 50, tempo: 84,  davul: 0, telli: 0.9, pad: 1,   bas: 0.6, yogun: 0.45},
+    gunduz:    {makam: "hicaz", kok: 50, tempo: 96,  davul: 1, telli: 1,   pad: 0.6, bas: 1,   yogun: 0.6},
+    gunbatimi: {makam: "rast",  kok: 48, tempo: 88,  davul: 1, telli: 1,   pad: 0.8, bas: 1,   yogun: 0.55},
+    gece:      {makam: "kurdi", kok: 50, tempo: 74,  davul: 0.5, telli: 0.8, pad: 1, bas: 0.8, yogun: 0.42},
+    firtina:   {makam: "hicaz", kok: 45, tempo: 112, davul: 1.3, telli: 1, pad: 0.5, bas: 1.2, yogun: 0.7},
+    son:       {makam: "kurdi", kok: 45, tempo: 66,  davul: 0, telli: 0.6, pad: 1,   bas: 0.5, yogun: 0.3}
+  };
+  const DUM_TEK = ["D", 0, "t", 0, "t", 0, "D", 0, "D", 0, "t", 0, "t", 0, 0, "k"];   // 16'lık: düm-tek-tek düm-düm-tek-tek
+  let muzikMod = null, muzikGerilim = 0, adimNo = 0, sonrakiAdim = 0, ezgiler = {};
+  function frek(m){ return 440 * Math.pow(2, (m - 69) / 12); }
+  function ezgiUret(ad){
+    if (ezgiler[ad]) return ezgiler[ad];
+    let tohum = 0; for (const ch of ad) tohum = (tohum * 31 + ch.charCodeAt(0)) >>> 0;
+    const r = () => ((tohum = (tohum * 1664525 + 1013904223) >>> 0) / 4294967296);
+    const yogun = TEMA_MUZIK[ad].yogun, olcu = [];
+    let derece = 4;
+    for (let o = 0; o < 4; o++){                       // 4 ölçü üret, 5–8. ölçüde hafif değiştirerek tekrarla
+      const notalar = [];
+      for (let a = 0; a < 16; a++){
+        const vurgulu = a % 4 === 0;
+        if (r() < (vurgulu ? yogun + 0.3 : yogun * 0.5)){
+          derece += Math.round((r() - 0.5) * 4);
+          derece = Math.max(0, Math.min(11, derece));
+          notalar.push([a, derece, vurgulu ? 1 : 0.7, r() < 0.25 ? 3 : (r() < 0.5 ? 2 : 1)]);
+        }
+      }
+      if (o === 3) notalar.push([12, 0, 1, 4]);         // cümle kökte biter
+      olcu.push(notalar);
+    }
+    const tam = olcu.concat(olcu.map((n, i) => i === 3 ? n : n.map(([a, d, v, u]) => [a, Math.min(11, d + (a % 8 === 4 ? 1 : 0)), v, u])));
+    return (ezgiler[ad] = tam);
+  }
+  function derecedenMidi(t, d){ const mk = MAKAM[t.makam]; return t.kok + 12 + mk[d % 7] + 12 * Math.floor(d / 7); }
+  function telli(t0, f, v, sure){
+    const o1 = ac.createOscillator(), o2 = ac.createOscillator(), fl = ac.createBiquadFilter(), g = ac.createGain();
+    o1.type = "triangle"; o2.type = "sawtooth"; o1.frequency.value = f; o2.frequency.value = f * 1.004;
+    fl.type = "lowpass"; fl.Q.value = 2; fl.frequency.setValueAtTime(f * 7, t0); fl.frequency.exponentialRampToValueAtTime(f * 1.5, t0 + 0.25);
+    const g2 = ac.createGain(); g2.gain.value = 0.35;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.16 * v, t0 + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + Math.max(0.35, sure));
+    o1.connect(fl); o2.connect(g2); g2.connect(fl); fl.connect(g); g.connect(muzikG);
+    o1.start(t0); o2.start(t0); o1.stop(t0 + sure + 0.4); o2.stop(t0 + sure + 0.4);
+  }
+  function uzun(t0, f, v, sure){
+    const o = ac.createOscillator(), o2 = ac.createOscillator(), g = ac.createGain();
+    o.type = "sine"; o2.type = "triangle"; o.frequency.value = f; o2.frequency.value = f * 2.003;
+    const g2 = ac.createGain(); g2.gain.value = 0.25;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.05 * v, t0 + sure * 0.35);
+    g.gain.linearRampToValueAtTime(0.0001, t0 + sure);
+    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(muzikG); o.start(t0); o2.start(t0); o.stop(t0 + sure + 0.05); o2.stop(t0 + sure + 0.05);
+  }
+  function bas(t0, f, v, sure){
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = "sine"; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.14 * v, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + sure);
+    o.connect(g); g.connect(muzikG); o.start(t0); o.stop(t0 + sure + 0.05);
+  }
+  function darbuka(t0, tur, v){
+    if (tur === "D"){
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(140, t0); o.frequency.exponentialRampToValueAtTime(62, t0 + 0.16);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.32 * v, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+      o.connect(g); g.connect(muzikG); o.start(t0); o.stop(t0 + 0.25);
+    } else {
+      const k = ac.createBufferSource(); k.buffer = gurultu;
+      const f = ac.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = tur === "k" ? 5200 : 3200; f.Q.value = 1.4;
+      const g = ac.createGain(); const s = tur === "k" ? 0.035 : 0.06;
+      g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime((tur === "k" ? 0.10 : 0.16) * v, t0 + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t0 + s);
+      k.connect(f); f.connect(g); g.connect(muzikG); k.start(t0, Math.random() * 0.5); k.stop(t0 + s + 0.02);
+    }
+  }
+  function muzikZamanla(){
+    if (!ac || !muzikG || !muzikMod || ac.state !== "running") return;
+    const t = TEMA_MUZIK[muzikMod] || TEMA_MUZIK.gunduz;
+    const tempo = t.tempo + muzikGerilim * 10, adim = 60 / tempo / 4;
+    const simdi = ac.currentTime;
+    if (sonrakiAdim < simdi - 0.05) sonrakiAdim = simdi + 0.05;
+    const ezgi = ezgiUret(muzikMod);
+    while (sonrakiAdim < simdi + 0.35){
+      const t0 = sonrakiAdim, a = adimNo % 16, olcuNo = Math.floor(adimNo / 16) % 8;
+      // ezgi
+      if (t.telli > 0) for (const [na, d, v, u] of ezgi[olcuNo]) if (na === a) telli(t0, frek(derecedenMidi(t, d)), v * t.telli, u * adim * 2);
+      // bas: her ölçünün 1. ve 9. adımında kök / beşli
+      if (t.bas > 0 && (a === 0 || a === 8)) bas(t0, frek(t.kok - 12 + (a === 8 && olcuNo % 2 ? 7 : 0)), t.bas, adim * 7);
+      // uzun ses: iki ölçüde bir kök + beşli (+ gerilimde üçlü yerine ikili)
+      if (t.pad > 0 && a === 0 && olcuNo % 2 === 0){
+        const mk = MAKAM[t.makam];
+        for (const d of [0, 4, muzikGerilim ? 1 : 2]) uzun(t0, frek(t.kok + mk[d]), t.pad, adim * 32);
+      }
+      // darbuka; reis dalgasında sıklaşır
+      const dv = t.davul + muzikGerilim * 0.6;
+      if (dv > 0){
+        const v = DUM_TEK[a];
+        if (v) darbuka(t0, v, Math.min(1.3, dv));
+        else if (muzikGerilim && a % 2 === 1) darbuka(t0, "k", 0.6);
+      }
+      sonrakiAdim += adim; adimNo++;
+    }
+  }
+  // oyun her karede çağırır; yalnız değişince iş yapar
+  function muzikDurum(mod, gerilim){
+    gerilim = gerilim ? 1 : 0;
+    if (mod === muzikMod && gerilim === muzikGerilim) return;
+    if (mod !== muzikMod) adimNo = 0;
+    muzikMod = mod; muzikGerilim = gerilim;
+    if (muzikG && ac){
+      const hedef = muzikKapali ? 0 : 0.55, t = ac.currentTime;
+      muzikG.gain.cancelScheduledValues(t); muzikG.gain.setValueAtTime(muzikG.gain.value, t);
+      muzikG.gain.linearRampToValueAtTime(hedef, t + 1.5);
+    }
   }
   function zarf(g, t, atak, tepe, sure){
     g.gain.setValueAtTime(0.0001, t);
@@ -1337,9 +1465,12 @@ const SES = (function(){
     try { t[1](); } catch(e){}
   }
   function degistir(){
-    kapali = !kapali;
+    if (!kapali && !muzikKapali) muzikKapali = true;          // 1. tık: yalnız müzik kapanır
+    else if (!kapali){ kapali = true; }                        // 2. tık: tüm ses kapanır
+    else { kapali = false; muzikKapali = false; }              // 3. tık: hepsi açılır
     if (ana) ana.gain.value = kapali ? 0 : 0.5;
-    try { depoYaz("gelgitKalesi.ses", kapali ? "0" : "1"); } catch(e){}
+    if (muzikG) muzikG.gain.value = muzikKapali ? 0 : 0.55;
+    try { depoYaz("gelgitKalesi.ses", kapali ? "0" : "1"); depoYaz("gelgitKalesi.muzik", muzikKapali ? "0" : "1"); } catch(e){}
     return kapali;
   }
   let bekliyor = false;
@@ -1350,7 +1481,7 @@ const SES = (function(){
   }
   // iOS sesi kesince yalnız kullanıcı dokunuşunda sürdürülebilir
   function uyan(){ if (ac && !bekliyor && ac.state !== "running"){ try { ac.resume(); } catch(e){} } }
-  return {hazirla, cal, degistir, beklet, uyan, kapaliMi: ()=>kapali, adlar: ()=>Object.keys(TARIF),
+  return {hazirla, cal, degistir, beklet, uyan, muzikDurum, muzikKapaliMi: ()=>muzikKapali, kapaliMi: ()=>kapali, adlar: ()=>Object.keys(TARIF),
           durum: ()=>(ac ? ac.state : "yok")};
 })();
 
@@ -2302,12 +2433,18 @@ const SES = (function(){
   document.getElementById("devamSeferBtn").addEventListener("click", ()=> oyunaGir(kayitOku()));
   document.getElementById("yeniSeferBtn").addEventListener("click", ()=> oyunaGir(null));
   document.getElementById("hizBtn").addEventListener("click", ()=>{ hizAyarla(oyunHizi >= 3 ? 1 : oyunHizi + 1); SES.cal("tik"); });
+  function sesDugmesiTazele(){
+    const b = document.getElementById("sesBtn");
+    b.classList.toggle("kapali", SES.kapaliMi());
+    b.classList.toggle("muziksiz", !SES.kapaliMi() && SES.muzikKapaliMi());
+  }
   document.getElementById("sesBtn").addEventListener("click", ()=>{
     SES.hazirla();
-    document.getElementById("sesBtn").classList.toggle("kapali", SES.degistir());
+    SES.degistir(); sesDugmesiTazele();
     SES.cal("tik");
+    try { uyariGoster(tx(SES.kapaliMi() ? "ses.kapali" : (SES.muzikKapaliMi() ? "ses.muziksiz" : "ses.acik")), 1.4); } catch(e){}
   });
-  document.getElementById("sesBtn").classList.toggle("kapali", SES.kapaliMi());
+  sesDugmesiTazele();
   // Sekme arka plana geçince (ya da portal reklam gösterirken) oyun kendiliğinden durur
   document.addEventListener("visibilitychange", ()=>{ if (document.hidden && asama === "oyunda") duraklatAyarla(true); });
   window.addEventListener("keydown", (e)=>{
@@ -4663,6 +4800,7 @@ const SES = (function(){
   document.querySelectorAll("[data-dil]").forEach(b => b.addEventListener("click", (e)=>{ e.stopPropagation(); dilSec(b.dataset.dil); }));
 
   // ---------- Reis can çubuğu (ekranın üstünde) ----------
+  function reisAktifMi(){ return !!(E.reisBar && E.reisBar._g); }
   function reisBarGuncelle(){
     let r = null;
     if (asama === "oyunda") for (const d of dusmanlar) if (d.tip.reis && d.mesafe > 0 && (!r || d.can / d.maxCan < r.can / r.maxCan)) r = d;
@@ -4740,6 +4878,7 @@ const SES = (function(){
     onizlemeSayac();
     reisBarGuncelle();
     cgDurum();
+    try { SES.muzikDurum(asama === "menu" ? "menu" : (asama === "kaybetti" ? "son" : temaAdi()), reisAktifMi()); } catch(e){}
     if (birikim < 0) birikim = 0;
     ciz(Math.min(1, birikim / ADIM));
     stil(E.suTup, "height", Math.round(8 + suSeviyesi * 88) + "%");
