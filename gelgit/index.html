@@ -1245,7 +1245,7 @@ function depoYaz(k, v){
   localStorage.setItem(k, v);
   try { if (window.__cgVeri) window.__cgVeri.setItem(k, v); } catch(e){}
 }
-const SURUM = "1.10 · 21.11.2026";
+const SURUM = "1.11 · 21.11.2026";
 const SES = (function(){
   let ac = null, ana = null, gurultu = null, kapali = false, muzikKapali = false, muzikG = null;
   const son = {};
@@ -1273,6 +1273,7 @@ const SES = (function(){
       k.connect(f); f.connect(g); g.connect(ana); k.start(); lfo.start();
       muzikG = ac.createGain(); muzikG.gain.value = 0; muzikG.connect(ana);
       muzikMod = null;                                   // bir sonraki karede müzik yumuşakça açılır
+      dosyalariYukle();
       setInterval(muzikZamanla, 90);
     } catch(e){ ac = null; }
   }
@@ -1358,7 +1359,57 @@ const SES = (function(){
       k.connect(f); f.connect(g); g.connect(muzikG); k.start(t0, Math.random() * 0.5); k.stop(t0 + s + 0.02);
     }
   }
+  /* ---------- Dosya müzikleri (muzik/*.m4a): oyun açıldıktan sonra arka planda yüklenir ----------
+     Döngüler baş/son payıyla kesildi; loopStart/loopEnd o paylar arasında, kodlayıcı gecikmesinden bağımsız
+     kesintisiz döner. Yüklenemeyen (ör. file://) parça yerine kodla üretilen müzik çalar. */
+  const PARCA_BILGI = {"menu":{"bas":0.5,"son":27.5048},"hazirlik":{"bas":0.5,"son":28.0621},"savas_gunduz":{"bas":0.5,"son":36.34},"savas_gece":{"bas":0.5,"son":27.5861},"tehlike":{"bas":0.5,"son":35.9104},"reis":{"bas":0.5,"son":28.0389},"zafer":{"sure":6.0},"yenilgi":{"sure":7.0},"gelgit":{"sure":4.5}};
+  const PARCA_SIRA = ["menu", "hazirlik", "savas_gunduz", "tehlike", "reis", "savas_gece", "zafer", "yenilgi", "gelgit", "savas_firtina"];
+  const dosya = {};
+  let calan = null, yukleniyor = false;
+  function dosyalariYukle(){
+    if (yukleniyor || !ac || !window.fetch || location.protocol === "file:") return;
+    yukleniyor = true;
+    let i = 0;
+    const sonraki = () => {
+      if (i >= PARCA_SIRA.length) return;
+      const ad = PARCA_SIRA[i++];
+      if (!PARCA_BILGI[ad]){ sonraki(); return; }
+      fetch("muzik/" + ad + ".m4a").then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+        .then(b => new Promise((ok, red) => ac.decodeAudioData(b, ok, red)))
+        .then(buf => { dosya[ad] = buf; if (bekleyenParca === ad){ bekleyenParca = null; muzikMod = null; } })
+        .catch(() => {}).then(sonraki);
+    };
+    sonraki();
+  }
+  let bekleyenParca = null;
+  function parcaCal(ad){
+    if (calan && calan.ad === ad) return true;
+    const buf = ad && dosya[ad];
+    const t = ac.currentTime;
+    if (calan){                                    // eskisi 1,2 sn'de söner
+      const c = calan; c.g.gain.cancelScheduledValues(t); c.g.gain.setValueAtTime(c.g.gain.value, t);
+      c.g.gain.linearRampToValueAtTime(0.0001, t + 1.2); try { c.k.stop(t + 1.3); } catch(e){}
+      calan = null;
+    }
+    if (!buf){ bekleyenParca = ad; return false; }
+    const b = PARCA_BILGI[ad], k = ac.createBufferSource(), g = ac.createGain();
+    k.buffer = buf; k.loop = true; k.loopStart = b.bas; k.loopEnd = b.son;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(1, t + 1.2);
+    k.connect(g); g.connect(muzikG); k.start(t, b.bas);
+    calan = {ad: ad, k: k, g: g};
+    return true;
+  }
+  function vurgu(ad){                              // kısa parça; döngüyü bu sürece kısar
+    const buf = dosya[ad]; if (!buf || !ac || !muzikG || muzikKapali || kapali) return false;
+    const t = ac.currentTime, sure = buf.duration;
+    const k = ac.createBufferSource(), g = ac.createGain(); g.gain.value = 1.1;
+    k.buffer = buf; k.connect(g); g.connect(muzikG); k.start(t);
+    if (calan){ const cg = calan.g.gain; cg.cancelScheduledValues(t); cg.setValueAtTime(cg.value, t);
+      cg.linearRampToValueAtTime(0.22, t + 0.25); cg.setValueAtTime(0.22, t + sure - 0.6); cg.linearRampToValueAtTime(1, t + sure + 0.6); }
+    return true;
+  }
   function muzikZamanla(){
+    if (calan) return;                             // dosya müziği çalıyorsa kodla üretilen susar
     if (!ac || !muzikG || !muzikMod || ac.state !== "running") return;
     const t = TEMA_MUZIK[muzikMod] || TEMA_MUZIK.gunduz;
     const tempo = t.tempo + muzikGerilim * 10, adim = 60 / tempo / 4;
@@ -1387,8 +1438,13 @@ const SES = (function(){
     }
   }
   // oyun her karede çağırır; yalnız değişince iş yapar
-  function muzikDurum(mod, gerilim){
+  let istenenParca = null;
+  function muzikDurum(mod, gerilim, parca){
     gerilim = gerilim ? 1 : 0;
+    if (parca !== istenenParca){
+      istenenParca = parca;
+      if (ac && muzikG) parcaCal(parca);
+    } else if (ac && muzikG && bekleyenParca === null && parca && !calan && dosya[parca]) parcaCal(parca);
     if (mod === muzikMod && gerilim === muzikGerilim) return;
     if (mod !== muzikMod) adimNo = 0;
     muzikMod = mod; muzikGerilim = gerilim;
@@ -1458,6 +1514,7 @@ const SES = (function(){
   };
   function cal(ad){
     if (!ac || kapali || ac.state !== "running") return;
+    if (ad === "gelgit") vurgu("gelgit");
     const t = TARIF[ad]; if (!t) return;
     const simdi = performance.now();
     if (simdi - (son[ad] || -1e9) < t[0]) return;
@@ -1481,7 +1538,7 @@ const SES = (function(){
   }
   // iOS sesi kesince yalnız kullanıcı dokunuşunda sürdürülebilir
   function uyan(){ if (ac && !bekliyor && ac.state !== "running"){ try { ac.resume(); } catch(e){} } }
-  return {hazirla, cal, degistir, beklet, uyan, muzikDurum, muzikKapaliMi: ()=>muzikKapali, kapaliMi: ()=>kapali, adlar: ()=>Object.keys(TARIF),
+  return {hazirla, cal, degistir, beklet, uyan, muzikDurum, vurgu, calanParca: ()=>(calan ? calan.ad : null), yukluParcalar: ()=>Object.keys(dosya), muzikKapaliMi: ()=>muzikKapali, kapaliMi: ()=>kapali, adlar: ()=>Object.keys(TARIF),
           durum: ()=>(ac ? ac.state : "yok")};
 })();
 
@@ -4800,6 +4857,27 @@ const SES = (function(){
   document.querySelectorAll("[data-dil]").forEach(b => b.addEventListener("click", (e)=>{ e.stopPropagation(); dilSec(b.dataset.dil); }));
 
   // ---------- Reis can çubuğu (ekranın üstünde) ----------
+  // Hangi müzik: menü / hazırlık (dalga arası) / temaya göre savaş / kaleye yaklaşan varsa tehlike / reis
+  let tehlikeVar = false, tehlikeBitis = 0, oncekiAsama = null;
+  function muzikParcaSec(){
+    if (asama !== oncekiAsama){
+      if (asama === "kaybetti") SES.vurgu("yenilgi");
+      else if (asama === "ganimet" && (dalga || 0) >= 10) SES.vurgu("zafer");
+      oncekiAsama = asama;
+    }
+    if (asama === "menu" || asama === "kaybetti") return "menu";
+    if (asama !== "oyunda") return "hazirlik";
+    const simdi = performance.now();
+    let enIleri = 0;
+    for (const d of dusmanlar){ const o = d.mesafe / (d.rota.toplam || 1); if (o > enIleri) enIleri = o; }
+    if (enIleri > 0.8){ tehlikeVar = true; tehlikeBitis = simdi + 2500; }
+    else if (tehlikeVar && enIleri < 0.65 && simdi > tehlikeBitis) tehlikeVar = false;
+    if (reisAktifMi()) return "reis";
+    if (tehlikeVar) return "tehlike";
+    if (araVerildi || !dusmanlar.length) return "hazirlik";
+    const tm = temaAdi();
+    return tm === "gece" ? "savas_gece" : (tm === "firtina" && SES.yukluParcalar().indexOf("savas_firtina") >= 0 ? "savas_firtina" : "savas_gunduz");
+  }
   function reisAktifMi(){ return !!(E.reisBar && E.reisBar._g); }
   function reisBarGuncelle(){
     let r = null;
@@ -4878,7 +4956,7 @@ const SES = (function(){
     onizlemeSayac();
     reisBarGuncelle();
     cgDurum();
-    try { SES.muzikDurum(asama === "menu" ? "menu" : (asama === "kaybetti" ? "son" : temaAdi()), reisAktifMi()); } catch(e){}
+    try { const mp = muzikParcaSec(); SES.muzikDurum(asama === "menu" ? "menu" : (asama === "kaybetti" ? "son" : temaAdi()), reisAktifMi(), mp); } catch(e){}
     if (birikim < 0) birikim = 0;
     ciz(Math.min(1, birikim / ADIM));
     stil(E.suTup, "height", Math.round(8 + suSeviyesi * 88) + "%");
