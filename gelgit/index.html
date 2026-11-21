@@ -31,7 +31,7 @@
   }
   html,body{margin:0;padding:0;overflow:hidden;background:#0a1d29;color:var(--kirec);
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;}
   #sahne{position:relative;width:100vw;height:100vh;height:100dvh;}
   #oyunCanvas{display:block;width:100%;height:100%;touch-action:none;}
   .ikon{width:18px;height:18px;flex:none;display:block;}
@@ -398,7 +398,7 @@
       <div id="dilSecim" class="secim kucuk" role="group" data-i18n-title="dil"><button data-dil="en">EN</button><button data-dil="tr">TR</button></div>
       <h1 id="menuBaslik" data-i18n="oyun.ad">Gelgit Kalesi</h1>
       <svg class="dalga-susu" viewBox="0 0 120 12" aria-hidden="true"><path d="M2 6c10-7 18 7 28 0s18 7 28 0 18 7 28 0 18 7 28 0" fill="none" stroke="#6fd1c6" stroke-width="2.4" stroke-linecap="round"/></svg>
-      <p id="menuAciklama" data-i18n="oyun.aciklama">Gelgit yükselince kumsaldaki kuleler susar, korsan kayıkları deniz kapısına yönelir. Her 10 dalgada yeni bölge, yeni silah, daha güçlü kuleler.</p>
+      <p id="menuAciklama" data-i18n="oyun.aciklama">Gelgit yükselince kumsaldaki kuleler susar, korsan kayıkları deniz kapısına yönelir. Her 10 dalgada yeni bölge; her yeni haritada yeni yollar, yeni silah ve daha güçlü kuleler.</p>
       <p class="ikincil-metin" data-i18n="oyun.ipucu">Kule seç, haritaya dokunup kur. Kumsal ucuzdur ama su basar; denizdeki taş kaideler hiç batmaz. Zor anda Kale Topu'nu ateşle.</p>
       <p class="ikincil-metin cevir-ipucu" data-i18n="menu.cevir">Telefonu yan çevirirsen harita büyür.</p>
       <p class="ikincil-metin" id="menuEnIyi"></p>
@@ -486,7 +486,7 @@ const coğul = (n, tek, cok) => n === 1 ? tek : cok;
 const METIN = {
   tr: {
     "oyun.ad": "Gelgit Kalesi",
-    "oyun.aciklama": "Gelgit yükselince kumsaldaki kuleler susar, korsan kayıkları deniz kapısına yönelir. Her 10 dalgada yeni bölge, yeni silah, daha güçlü kuleler.",
+    "oyun.aciklama": "Gelgit yükselince kumsaldaki kuleler susar, korsan kayıkları deniz kapısına yönelir. Her 10 dalgada yeni bölge; her yeni haritada yeni yollar, yeni silah ve daha güçlü kuleler.",
     "oyun.ipucu": "Kule seç, haritaya dokunup kur. Kumsal ucuzdur ama su basar; denizdeki taş kaideler hiç batmaz. Zor anda Kale Topu'nu ateşle.",
     "menu.cevir": "Telefonu yan çevirirsen harita büyür.",
     "menu.enIyi": (s, u) => "En iyi skor: " + s + (u ? " · en uzak bölge: " + u : ""),
@@ -586,7 +586,7 @@ const METIN = {
   },
   en: {
     "oyun.ad": "Ebb & Siege",
-    "oyun.aciklama": "When the tide comes in, beach towers fall silent and pirate boats sail for the sea gate. Every 10 waves: a new region, a new weapon and stronger towers.",
+    "oyun.aciklama": "When the tide comes in, beach towers fall silent and pirate boats sail for the sea gate. Every 10 waves a new region; every new map brings new roads, a new weapon and stronger towers.",
     "oyun.ipucu": "Pick a tower and tap the map to build. The beach is cheap but floods; stone pillars out at sea never sink. Fire the Castle Cannon when things get tight.",
     "menu.cevir": "Turn your phone sideways for a bigger map.",
     "menu.enIyi": (s, u) => "Best score: " + s + (u ? " · furthest region: " + u : ""),
@@ -1237,7 +1237,12 @@ const TEMA = (function(){
    Her sesin kendi asgari tekrar aralığı vardır: kalabalık dalgada üst üste binmez.
    ============================================================ */
 // Her yayında bir artırılır; menüde görünür (arkadaşlar hangi sürümü oynadığını görsün)
-const SURUM = "1.9.3 · 21.11.2026";
+// Kayıt: tarayıcıya yazar; CrazyGames'te ayrıca SDK Data modülüne (hesaba bağlı, cihazlar arası) yazar.
+function depoYaz(k, v){
+  localStorage.setItem(k, v);
+  try { if (window.__cgVeri) window.__cgVeri.setItem(k, v); } catch(e){}
+}
+const SURUM = "1.9.4 · 21.11.2026";
 const SES = (function(){
   let ac = null, ana = null, gurultu = null, kapali = false;
   const son = {};
@@ -1334,14 +1339,18 @@ const SES = (function(){
   function degistir(){
     kapali = !kapali;
     if (ana) ana.gain.value = kapali ? 0 : 0.5;
-    try { localStorage.setItem("gelgitKalesi.ses", kapali ? "0" : "1"); } catch(e){}
+    try { depoYaz("gelgitKalesi.ses", kapali ? "0" : "1"); } catch(e){}
     return kapali;
   }
+  let bekliyor = false;
   function beklet(dur){
+    bekliyor = !!dur;
     if (!ac) return;
     try { if (dur) ac.suspend(); else ac.resume(); } catch(e){}
   }
-  return {hazirla, cal, degistir, beklet, kapaliMi: ()=>kapali, adlar: ()=>Object.keys(TARIF),
+  // iOS sesi kesince yalnız kullanıcı dokunuşunda sürdürülebilir
+  function uyan(){ if (ac && !bekliyor && ac.state !== "running"){ try { ac.resume(); } catch(e){} } }
+  return {hazirla, cal, degistir, beklet, uyan, kapaliMi: ()=>kapali, adlar: ()=>Object.keys(TARIF),
           durum: ()=>(ac ? ac.state : "yok")};
 })();
 
@@ -1420,7 +1429,7 @@ const SES = (function(){
       KAL.ogretici = !!k.ogretici;
     }
   } catch(e){}
-  function kalYaz(){ try { localStorage.setItem("gelgitKalesi.kalici", JSON.stringify(KAL)); } catch(e){} }
+  function kalYaz(){ try { depoYaz("gelgitKalesi.kalici", JSON.stringify(KAL)); } catch(e){} }
   function sv(id){ return Math.max(0, KAL.sv[id] | 0); }
   const ATOLYE = [
     {id: "sur",    ad: "Sağlam surlar",    azami: 5, taban: 12, etki: (n)=>"Kale " + (BASLANGIC_CAN + 3 * n) + " canla başlar"},
@@ -1968,7 +1977,7 @@ const SES = (function(){
   }
 
   // ---------- Kayıt: bölge başı kontrol noktası ----------
-  function kayitYaz(){ try { localStorage.setItem("gelgitKalesi.sefer", JSON.stringify(kontrol)); } catch(e){} }
+  function kayitYaz(){ try { depoYaz("gelgitKalesi.sefer", JSON.stringify(kontrol)); } catch(e){} }
   function kayitOku(){
     try {
       const k = JSON.parse(localStorage.getItem("gelgitKalesi.sefer") || "null");
@@ -2044,7 +2053,7 @@ const SES = (function(){
     hudGuncelle();
     if (yaz){
       kontrolYaz(false);
-      if (b > enUzak){ enUzak = b; try { localStorage.setItem("gelgitKalesi.enUzak", String(b)); } catch(e){} }
+      if (b > enUzak){ enUzak = b; try { depoYaz("gelgitKalesi.enUzak", String(b)); } catch(e){} }
     }
   }
   function sifirla(){ seferKur(null, false); }
@@ -2118,7 +2127,7 @@ const SES = (function(){
   function bitir(){
     asama = "kaybetti";
     const rekor = skor > enIyiSkor;
-    if (rekor){ enIyiSkor = skor; try { localStorage.setItem("gelgitKalesi.enIyi", String(skor)); } catch(e){} }
+    if (rekor){ enIyiSkor = skor; try { depoYaz("gelgitKalesi.enIyi", String(skor)); } catch(e){} }
     document.getElementById("yildizlar").innerHTML = "";
     document.getElementById("sonBaslik").textContent = tx("son.baslik");
     document.getElementById("sonMetin").textContent = tx("son.metin", bolge, dalga, yenilgiIpucu());
@@ -2612,6 +2621,8 @@ const SES = (function(){
     hudGuncelle();
   }
   canvas.addEventListener("click", haritayaDokun);
+  ["touchend", "click", "pointerup"].forEach(t => document.addEventListener(t, ()=>{ try { SES.uyan && SES.uyan(); } catch(e){} }, {passive: true}));
+  document.addEventListener("contextmenu", (e)=>{ e.preventDefault(); });
   canvas.addEventListener("contextmenu", (e)=>{
     e.preventDefault();
     if (yetenek && yetenek.hedefleme){ yetenekSec(); return; }
@@ -4646,7 +4657,7 @@ const SES = (function(){
   }
   function dilSec(d){
     if (d !== "tr" && d !== "en") return;
-    DIL = d; try { localStorage.setItem(DIL_KAYIT, d); } catch(e){}
+    DIL = d; try { depoYaz(DIL_KAYIT, d); } catch(e){}
     dilUygula(); SES.hazirla(); SES.cal("tik");
   }
   document.querySelectorAll("[data-dil]").forEach(b => b.addEventListener("click", (e)=>{ e.stopPropagation(); dilSec(b.dataset.dil); }));
@@ -4673,6 +4684,20 @@ const SES = (function(){
       if (!S || !S.init) return;
       Promise.resolve(S.init()).then(function(){
         CG.sdk = S;
+        // Data modülü: hesaptaki kayıt bu cihazdakinden farklıysa onu al (menüdeyken bir kez yeniden yükle)
+        try {
+          if (S.data && S.data.getItem){
+            window.__cgVeri = S.data;
+            const anahtarlar = ["gelgitKalesi.kalici", "gelgitKalesi.sefer", "gelgitKalesi.enIyi", "gelgitKalesi.enUzak", "gelgitKalesi.ses", DIL_KAYIT];
+            let degisti = false;
+            for (const a of anahtarlar){
+              const v = S.data.getItem(a), yerel = localStorage.getItem(a);
+              if (v != null && v !== yerel){ localStorage.setItem(a, v); degisti = true; }
+              else if (v == null && yerel != null) S.data.setItem(a, yerel);
+            }
+            if (degisti && asama === "menu") location.reload();
+          }
+        } catch(e){}
         let kayitli = null;
         try { kayitli = localStorage.getItem(DIL_KAYIT); } catch(e){}
         let loc = null;
@@ -4699,8 +4724,10 @@ const SES = (function(){
     for (const d of dusmanlar){ d.ox = d.x; d.oy = d.y; }
     for (const m of mermiler){ m.ox = m.x; m.oy = m.y; }
   }
+  let kareKilidi = false;            // yalnız test/video kaydı: zaman sadece GELGIT_TEST.ilerlet ile akar
   function dongu(su){
     let gecen = (su - sonZaman) / 1000;
+    if (kareKilidi) gecen = 0;
     sonZaman = su;
     if (!(gecen > 0)) gecen = 0;
     if (gecen > 0.1) gecen = 0.1;
@@ -4788,6 +4815,13 @@ const SES = (function(){
     ganimetSec: function(i){ return ganimetSec(i); },
     nimetler: function(){ return nimetler.slice(); },
     bolgeAtla: function(b){ bolgeKur(b, false); asama = "oyunda"; return bolge; },
+    kareKilidi: function(v){ kareKilidi = !!v; birikim = 0; },
+    ilerlet: function(sn){
+      const n = Math.max(1, Math.round(sn / ADIM));
+      for (let i = 0; i < n; i++){ oncekiKaydet(); guncelle(ADIM); }
+      onizlemeSayac(); reisBarGuncelle(); ciz(1);
+      DURUM.asama = asama; DURUM.dalga = dalga || 0;
+    },
     ayarla: function(a){ if (a.guc) GUC_TABAN = a.guc; if (a.egim) GUC_EGIM = a.egim; if (a.zorluk != null) ZORLUK_EGIM = a.zorluk; if (a.kare != null) ZORLUK_KARE = a.kare; if (a.telafi != null) SEVIYE_TELAFI = a.telafi; if (a.odulEgim != null) ODUL_EGIM = a.odulEgim; if (a.odulTaban) ODUL_TABAN = a.odulTaban; if (a.buyuk) BUYUK_CARPAN = a.buyuk; if (a.seriAltin != null) SERI_ALTIN = a.seriAltin; if (a.odul) ODUL_CARPAN = a.odul;
                          if (a.topHasar) TOP.hasar = a.topHasar; if (a.can) can = a.can; if (a.altin) { altin = a.altin; hudGuncelle(); } return true; },
     rotaOrnek: function(adim){
