@@ -1245,7 +1245,7 @@ function depoYaz(k, v){
   localStorage.setItem(k, v);
   try { if (window.__cgVeri) window.__cgVeri.setItem(k, v); } catch(e){}
 }
-const SURUM = "1.11 · 21.11.2026";
+const SURUM = "1.12 · 23.11.2026";
 const SES = (function(){
   let ac = null, ana = null, gurultu = null, kapali = false, muzikKapali = false, muzikG = null;
   const son = {};
@@ -1362,8 +1362,8 @@ const SES = (function(){
   /* ---------- Dosya müzikleri (muzik/*.m4a): oyun açıldıktan sonra arka planda yüklenir ----------
      Döngüler baş/son payıyla kesildi; loopStart/loopEnd o paylar arasında, kodlayıcı gecikmesinden bağımsız
      kesintisiz döner. Yüklenemeyen (ör. file://) parça yerine kodla üretilen müzik çalar. */
-  const PARCA_BILGI = {"menu":{"bas":0.5,"son":27.5048},"hazirlik":{"bas":0.5,"son":28.0621},"savas_gunduz":{"bas":0.5,"son":36.34},"savas_gece":{"bas":0.5,"son":27.5861},"tehlike":{"bas":0.5,"son":35.9104},"reis":{"bas":0.5,"son":28.0389},"zafer":{"sure":6.0},"yenilgi":{"sure":7.0},"gelgit":{"sure":4.5}};
-  const PARCA_SIRA = ["menu", "hazirlik", "savas_gunduz", "tehlike", "reis", "savas_gece", "zafer", "yenilgi", "gelgit", "savas_firtina"];
+  const PARCA_BILGI = {"menu":{"bas":0.5,"son":36.7231},"hazirlik":{"bas":0.5,"son":29.8849},"savas_gunduz":{"bas":0.5,"son":25.682},"savas_gece":{"bas":0.5,"son":28.0621},"savas_firtina":{"bas":0.5,"son":26.1},"savas_gunbatimi":{"bas":0.5,"son":31.963},"tehlike":{"bas":0.5,"son":27.1217},"reis":{"bas":0.5,"son":39.0916},"zafer":{"sure":6.5},"yenilgi":{"sure":7.0},"gelgit":{"sure":4.5}};
+  const PARCA_SIRA = ["menu", "hazirlik", "savas_gunduz", "tehlike", "reis", "savas_gece", "savas_firtina", "savas_gunbatimi", "zafer", "yenilgi", "gelgit"];
   const dosya = {};
   let calan = null, yukleniyor = false;
   function dosyalariYukle(){
@@ -4876,7 +4876,8 @@ const SES = (function(){
     if (tehlikeVar) return "tehlike";
     if (araVerildi || !dusmanlar.length) return "hazirlik";
     const tm = temaAdi();
-    return tm === "gece" ? "savas_gece" : (tm === "firtina" && SES.yukluParcalar().indexOf("savas_firtina") >= 0 ? "savas_firtina" : "savas_gunduz");
+    const yuklu = SES.yukluParcalar(), ist = "savas_" + tm;            // gunduz / gece / firtina / gunbatimi
+    return yuklu.indexOf(ist) >= 0 ? ist : "savas_gunduz";
   }
   function reisAktifMi(){ return !!(E.reisBar && E.reisBar._g); }
   function reisBarGuncelle(){
