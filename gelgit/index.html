@@ -114,6 +114,9 @@
   .secim.kucuk button{font-size:12px;padding:5px 10px;}
   #dilSecim{position:absolute;top:12px;right:12px;margin:0;}
   #dilSecim2{margin-top:14px;}
+  .ses-ayar{display:grid;gap:8px;margin:14px auto 0;max-width:300px;text-align:left;}
+  .ses-ayar label{display:grid;grid-template-columns:80px 1fr;align-items:center;gap:10px;font-size:14px;font-weight:700;}
+  .ses-ayar input[type=range]{width:100%;accent-color:var(--turkuaz);height:24px;cursor:pointer;}
   @media (max-width:600px){ #dilSecim{position:static;margin:0 0 8px;} }
   @media (orientation:landscape) and (max-height:500px){
     .cip{font-size:13px;padding:5px 10px 5px 7px;gap:5px;}
@@ -419,6 +422,10 @@
       <p class="ikincil-metin" data-i18n="dr.tuslar"></p>
       <button id="devamBtn" class="btn" data-i18n="dr.devam">Devam et</button>
       <button id="basaDonBtn" class="btn ikincil" data-i18n="dr.kayit">Son kayıttan başla</button>
+      <div class="ses-ayar">
+        <label><span data-i18n="ses.muzikSes">Müzik</span><input type="range" id="muzikSesAyar" min="0" max="100" step="5"></label>
+        <label><span data-i18n="ses.efektSes">Efektler</span><input type="range" id="efektSesAyar" min="0" max="100" step="5"></label>
+      </div>
       <div id="dilSecim2" class="secim kucuk" role="group" data-i18n-title="dil"><button data-dil="en">EN</button><button data-dil="tr">TR</button></div>
     </div>
   </div>
@@ -501,7 +508,7 @@ const METIN = {
     "hud.bolge": (b) => b + "<small>. bölge</small>",
     "hud.seri": "Seri ×",
     "hud.duraklat": "Duraklat (Boşluk)", "hud.hiz": "Oyun hızı (F)", "hud.ses": "Ses (M): müzik / efekt / kapalı",
-    "ses.acik": "Müzik ve sesler açık", "ses.muziksiz": "Müzik kapalı, efektler açık", "ses.kapali": "Ses kapalı",
+    "ses.muzikSes": "Müzik", "ses.efektSes": "Efektler", "ses.acik": "Müzik ve sesler açık", "ses.muziksiz": "Müzik kapalı, efektler açık", "ses.kapali": "Ses kapalı",
     "g.0": "Alçak su", "g.1": "Su yükseliyor", "g.2": "Yüksek su", "g.3": "Su çekiliyor",
     "g.kalan": (n) => n === 1 ? "Sonraki dalgada değişir" : "Değişime " + n + " dalga",
     "g.yukseliyor": "Gelgit yükseliyor!", "g.cekiliyor": "Gelgit çekiliyor!",
@@ -602,7 +609,7 @@ const METIN = {
     "hud.bolge": (b) => "<small>Region </small>" + b,
     "hud.seri": "Combo ×",
     "hud.duraklat": "Pause (Space)", "hud.hiz": "Game speed (F)", "hud.ses": "Sound (M): music / effects / off",
-    "ses.acik": "Music and sound on", "ses.muziksiz": "Music off, effects on", "ses.kapali": "Sound off",
+    "ses.muzikSes": "Music", "ses.efektSes": "Effects", "ses.acik": "Music and sound on", "ses.muziksiz": "Music off, effects on", "ses.kapali": "Sound off",
     "g.0": "Low tide", "g.1": "Tide rising", "g.2": "High tide", "g.3": "Tide falling",
     "g.kalan": (n) => n === 1 ? "Turns next wave" : "Turns in " + n + " waves",
     "g.yukseliyor": "The tide is coming in!", "g.cekiliyor": "The tide is going out!",
@@ -1245,11 +1252,18 @@ function depoYaz(k, v){
   localStorage.setItem(k, v);
   try { if (window.__cgVeri) window.__cgVeri.setItem(k, v); } catch(e){}
 }
-const SURUM = "1.12 · 23.11.2026";
+const SURUM = "1.13 · 23.11.2026";
 const SES = (function(){
-  let ac = null, ana = null, gurultu = null, kapali = false, muzikKapali = false, muzikG = null;
+  let ac = null, ana = null, gurultu = null, kapali = false, muzikKapali = false, muzikG = null, efektG = null;
+  // Ses seviyeleri (0..1): müzik dosyaları efektlerden çok yüksek kaydedildiği için müzik tabanı düşük
+  const MUZIK_TABAN = 0.5, EFEKT_TABAN = 1.25;
+  let muzikSes = 0.4, efektSes = 1;
   const son = {};
-  try { kapali = localStorage.getItem("gelgitKalesi.ses") === "0"; muzikKapali = localStorage.getItem("gelgitKalesi.muzik") === "0"; } catch(e){}
+  try { kapali = localStorage.getItem("gelgitKalesi.ses") === "0"; muzikKapali = localStorage.getItem("gelgitKalesi.muzik") === "0";
+        const m = parseFloat(localStorage.getItem("gelgitKalesi.muzikSes")), e = parseFloat(localStorage.getItem("gelgitKalesi.efektSes"));
+        if (m >= 0 && m <= 1) muzikSes = m; if (e >= 0 && e <= 1) efektSes = e; } catch(e){}
+  function muzikHedef(){ return muzikKapali ? 0 : MUZIK_TABAN * muzikSes * muzikSes; }   // kulak logaritmik: kare eğri
+  function efektHedef(){ return EFEKT_TABAN * efektSes * efektSes; }
 
   function hazirla(){
     if (ac){ if (ac.state === "suspended") ac.resume(); return; }
@@ -1270,7 +1284,8 @@ const SES = (function(){
       const lfo = ac.createOscillator(); lfo.frequency.value = 0.13;
       const lfoG = ac.createGain(); lfoG.gain.value = 0.018;
       lfo.connect(lfoG); lfoG.connect(g.gain);
-      k.connect(f); f.connect(g); g.connect(ana); k.start(); lfo.start();
+      efektG = ac.createGain(); efektG.gain.value = efektHedef(); efektG.connect(ana);
+      k.connect(f); f.connect(g); g.connect(efektG); k.start(); lfo.start();
       muzikG = ac.createGain(); muzikG.gain.value = 0; muzikG.connect(ana);
       muzikMod = null;                                   // bir sonraki karede müzik yumuşakça açılır
       dosyalariYukle();
@@ -1449,7 +1464,7 @@ const SES = (function(){
     if (mod !== muzikMod) adimNo = 0;
     muzikMod = mod; muzikGerilim = gerilim;
     if (muzikG && ac){
-      const hedef = muzikKapali ? 0 : 0.55, t = ac.currentTime;
+      const hedef = muzikHedef(), t = ac.currentTime;
       muzikG.gain.cancelScheduledValues(t); muzikG.gain.setValueAtTime(muzikG.gain.value, t);
       muzikG.gain.linearRampToValueAtTime(hedef, t + 1.5);
     }
@@ -1465,7 +1480,7 @@ const SES = (function(){
     o.type = tur; o.frequency.setValueAtTime(f0, t);
     if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + sure);
     zarf(g, t, atak || 0.005, tepe, sure);
-    o.connect(g); g.connect(ana); o.start(t); o.stop(t + sure + 0.03);
+    o.connect(g); g.connect(efektG); o.start(t); o.stop(t + sure + 0.03);
   }
   function hisirti(filtre, f0, f1, sure, tepe, gecikme, atak, q){
     const t = ac.currentTime + (gecikme || 0);
@@ -1473,7 +1488,7 @@ const SES = (function(){
     const f = ac.createBiquadFilter(); f.type = filtre; f.Q.value = q || 0.8;
     f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + sure);
     const g = ac.createGain(); zarf(g, t, atak || 0.004, tepe, sure);
-    k.connect(f); f.connect(g); g.connect(ana);
+    k.connect(f); f.connect(g); g.connect(efektG);
     k.start(t, Math.random() * 0.5); k.stop(t + sure + 0.03);
   }
   function dizi(tur, notalar, sure, tepe, aralik){
@@ -1526,7 +1541,7 @@ const SES = (function(){
     else if (!kapali){ kapali = true; }                        // 2. tık: tüm ses kapanır
     else { kapali = false; muzikKapali = false; }              // 3. tık: hepsi açılır
     if (ana) ana.gain.value = kapali ? 0 : 0.5;
-    if (muzikG) muzikG.gain.value = muzikKapali ? 0 : 0.55;
+    if (muzikG) muzikG.gain.value = muzikHedef();
     try { depoYaz("gelgitKalesi.ses", kapali ? "0" : "1"); depoYaz("gelgitKalesi.muzik", muzikKapali ? "0" : "1"); } catch(e){}
     return kapali;
   }
@@ -1538,7 +1553,16 @@ const SES = (function(){
   }
   // iOS sesi kesince yalnız kullanıcı dokunuşunda sürdürülebilir
   function uyan(){ if (ac && !bekliyor && ac.state !== "running"){ try { ac.resume(); } catch(e){} } }
-  return {hazirla, cal, degistir, beklet, uyan, muzikDurum, vurgu, calanParca: ()=>(calan ? calan.ad : null), yukluParcalar: ()=>Object.keys(dosya), muzikKapaliMi: ()=>muzikKapali, kapaliMi: ()=>kapali, adlar: ()=>Object.keys(TARIF),
+  function seviye(tur, v){
+    v = Math.max(0, Math.min(1, v));
+    if (tur === "muzik"){ muzikSes = v; if (v > 0 && muzikKapali){ muzikKapali = false; try { depoYaz("gelgitKalesi.muzik", "1"); } catch(e){} } }
+    else efektSes = v;
+    if (ac){ const t = ac.currentTime;
+      if (muzikG){ muzikG.gain.cancelScheduledValues(t); muzikG.gain.setTargetAtTime(muzikHedef(), t, 0.05); }
+      if (efektG){ efektG.gain.cancelScheduledValues(t); efektG.gain.setTargetAtTime(efektHedef(), t, 0.05); } }
+    try { depoYaz("gelgitKalesi." + (tur === "muzik" ? "muzikSes" : "efektSes"), v.toFixed(2)); } catch(e){}
+  }
+  return {hazirla, cal, degistir, beklet, uyan, muzikDurum, seviye, seviyeler: ()=>({muzik: muzikSes, efekt: efektSes}), vurgu, calanParca: ()=>(calan ? calan.ad : null), yukluParcalar: ()=>Object.keys(dosya), muzikKapaliMi: ()=>muzikKapali, kapaliMi: ()=>kapali, adlar: ()=>Object.keys(TARIF),
           durum: ()=>(ac ? ac.state : "yok")};
 })();
 
@@ -2502,6 +2526,15 @@ const SES = (function(){
     try { uyariGoster(tx(SES.kapaliMi() ? "ses.kapali" : (SES.muzikKapaliMi() ? "ses.muziksiz" : "ses.acik")), 1.4); } catch(e){}
   });
   sesDugmesiTazele();
+  (function(){
+    const m = document.getElementById("muzikSesAyar"), e = document.getElementById("efektSesAyar");
+    const tazele = () => { const sv = SES.seviyeler(); m.value = Math.round(sv.muzik * 100); e.value = Math.round(sv.efekt * 100); };
+    tazele();
+    m.addEventListener("input", () => { SES.hazirla(); SES.seviye("muzik", m.value / 100); sesDugmesiTazele(); });
+    e.addEventListener("input", () => { SES.hazirla(); SES.seviye("efekt", e.value / 100); });
+    e.addEventListener("change", () => SES.cal("tik"));
+    ["keydown", "keyup"].forEach(t => { m.addEventListener(t, ev => ev.stopPropagation()); e.addEventListener(t, ev => ev.stopPropagation()); });
+  })();
   // Sekme arka plana geçince (ya da portal reklam gösterirken) oyun kendiliğinden durur
   document.addEventListener("visibilitychange", ()=>{ if (document.hidden && asama === "oyunda") duraklatAyarla(true); });
   window.addEventListener("keydown", (e)=>{
